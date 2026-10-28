@@ -99,3 +99,8 @@ commit 0c373ff94f296da8645fbc892f211083b695709e (v1.36.13-0.20261007182434-0c373
 for two-way JSON/binary checks; it is not a dependency of the root runtime.
 New 2026 files use the Version6 runtime assertion. The modern protocol merger
 also adds missing disjoint official option extension ranges, including 998.
+
+`sh compat/check-downstream.sh` validates fixed etcd raft v3.5.0 and CockroachDB
+errors v1.8.1 consumers, then regenerates raft using the original/candidate gofast
+entrypoints and repeats its complete package suite without application changes.
+The nested module and extra CI job keep those dependencies out of the runtime.

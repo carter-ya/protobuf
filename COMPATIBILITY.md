@@ -64,3 +64,16 @@ The nested `compat/oracle` module pins official Go commit
 
 CI covers Go 1.23/1.27 with protoc 3.21.8/36.2 and a Go 1.15.15 runtime/compiler
 job with protoc 36.2. The modern official oracle runs only on Go 1.23+.
+
+`compat/check-downstream.sh` pins etcd raft v3.5.0 and CockroachDB errors v1.8.1
+(their manifests declare gogo v1.3.2 and v1.3.1 respectively). It tests frozen
+bindings, binary/JSON/Any and gRPC error roundtrips, raft's full package suite,
+and CockroachDB errbase/extgrpc tests. It then regenerates raft with the original
+and candidate gofast generators under the same protoc, compares code and raw
+descriptors, and repeats raft's suite with regenerated bindings and no business
+source edits. These dependencies are isolated from the root module.
+
+Etcd's frozen bindings use the golang runtime despite their gogo generator.
+Regeneration preserves that gofast choice. The smoke test uses integer enum JSON;
+looking up its named enum JSON through gogo's separate registry already fails
+with untouched v1.3.2 and is not broadened as part of this upgrade.
