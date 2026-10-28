@@ -233,7 +233,7 @@ func (p *stringer) Generate(file *generator.FileDescriptor) {
 			nullable := gogoproto.IsNullable(field)
 			repeated := field.IsRepeated()
 			fieldname := p.GetFieldName(message, field)
-			oneof := field.OneofIndex != nil
+			oneof := field.IsRealOneof()
 			if oneof {
 				if _, ok := oneofs[fieldname]; ok {
 					continue
@@ -267,7 +267,7 @@ func (p *stringer) Generate(file *generator.FileDescriptor) {
 					p.P("`", fieldname, ":`", ` + `, stringsPkg.Use(), `.Replace(`, stringsPkg.Use(), `.Replace(`, stringfunc, `, "`, typeName, `","`, msgname, `"`, ", 1),`&`,``,1) + `,", "`,")
 				}
 			} else {
-				if nullable && !repeated && !proto3 {
+				if nullable && !repeated && (!proto3 || field.GetProto3Optional()) {
 					p.P("`", fieldname, ":`", ` + valueToString`, p.localName, `(this.`, fieldname, ") + `,", "`,")
 				} else {
 					p.P("`", fieldname, ":`", ` + `, fmtPkg.Use(), `.Sprintf("%v", this.`, fieldname, ") + `,", "`,")
@@ -292,7 +292,7 @@ func (p *stringer) Generate(file *generator.FileDescriptor) {
 
 		//Generate String methods for oneof fields
 		for _, field := range message.Field {
-			oneof := field.OneofIndex != nil
+			oneof := field.IsRealOneof()
 			if !oneof {
 				continue
 			}

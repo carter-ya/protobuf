@@ -207,7 +207,7 @@ func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
 			// Edge case: if this is in a proto3 message, a zero length
 			// bytes field is considered the zero value, and should not
 			// be merged.
-			if prop != nil && prop.proto3 && in.Len() == 0 {
+			if prop != nil && prop.proto3 && !prop.Proto3Optional && in.Len() == 0 {
 				return
 			}
 

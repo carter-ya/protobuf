@@ -953,6 +953,10 @@ const (
 	// to assert that that code is compatible with this version of the proto package.
 	GoGoProtoPackageIsVersion3 = true
 
+	// Optional-aware generated files require this runtime. Legacy files retain
+	// the Version3 assertion and remain usable without regeneration.
+	GoGoProtoPackageIsVersion4 = true
+
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.
 	GoGoProtoPackageIsVersion2 = true

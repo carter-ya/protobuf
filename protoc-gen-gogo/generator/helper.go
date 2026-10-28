@@ -173,7 +173,7 @@ func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDes
 	if gogoproto.IsEmbed(field) {
 		fieldname = EmbedFieldName(goTyp)
 	}
-	if field.OneofIndex != nil {
+	if field.IsRealOneof() {
 		fieldname = message.OneofDecl[int(*field.OneofIndex)].GetName()
 		fieldname = CamelCase(fieldname)
 	}

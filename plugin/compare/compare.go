@@ -143,12 +143,12 @@ func (p *plugin) generateMsgNullAndTypeCheck(ccTypeName string) {
 }
 
 func (p *plugin) generateField(file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto) {
-	proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
+	proto3 := gogoproto.IsProto3(file.FileDescriptorProto) && !field.GetProto3Optional()
 	fieldname := p.GetOneOfFieldName(message, field)
 	repeated := field.IsRepeated()
 	ctype := gogoproto.IsCustomType(field)
 	nullable := gogoproto.IsNullable(field)
-	// oneof := field.OneofIndex != nil
+	// oneof := field.IsRealOneof()
 	if !repeated {
 		if ctype {
 			if nullable {
@@ -184,6 +184,10 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				p.Out()
 				p.P(`}`)
 			} else if field.IsBytes() {
+				if field.GetProto3Optional() {
+					p.P("if this.", fieldname, " == nil && that1.", fieldname, " != nil { return -1 }")
+					p.P("if this.", fieldname, " != nil && that1.", fieldname, " == nil { return 1 }")
+				}
 				p.P(`if c := `, p.bytesPkg.Use(), `.Compare(this.`, fieldname, `, that1.`, fieldname, `); c != 0 {`)
 				p.In()
 				p.P(`return c`)
@@ -405,7 +409,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 	oneofs := make(map[string]struct{})
 
 	for _, field := range message.Field {
-		oneof := field.OneofIndex != nil
+		oneof := field.IsRealOneof()
 		if oneof {
 			fieldname := p.GetFieldName(message, field)
 			if _, ok := oneofs[fieldname]; ok {
@@ -434,7 +438,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 			p.P(`thisType := -1`)
 			p.P(`switch this.`, fieldname, `.(type) {`)
 			for i, subfield := range message.Field {
-				if *subfield.OneofIndex == *field.OneofIndex {
+				if subfield.IsRealOneof() && *subfield.OneofIndex == *field.OneofIndex {
 					ccTypeName := p.OneOfTypeName(message, subfield)
 					p.P(`case *`, ccTypeName, `:`)
 					p.In()
@@ -451,7 +455,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 			p.P(`that1Type := -1`)
 			p.P(`switch that1.`, fieldname, `.(type) {`)
 			for i, subfield := range message.Field {
-				if *subfield.OneofIndex == *field.OneofIndex {
+				if subfield.IsRealOneof() && *subfield.OneofIndex == *field.OneofIndex {
 					ccTypeName := p.OneOfTypeName(message, subfield)
 					p.P(`case *`, ccTypeName, `:`)
 					p.In()
@@ -557,7 +561,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 	//Generate Compare methods for oneof fields
 	m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
 	for _, field := range m.Field {
-		oneof := field.OneofIndex != nil
+		oneof := field.IsRealOneof()
 		if !oneof {
 			continue
 		}

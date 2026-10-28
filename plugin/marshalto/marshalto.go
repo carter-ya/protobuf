@@ -331,6 +331,11 @@ func (this orderFields) Swap(i, j int) {
 }
 
 func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto) {
+	proto3 = proto3 && !field.GetProto3Optional()
+	if field.GetProto3Optional() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING {
+		name := p.GetFieldName(message, field)
+		p.P("if m.", name, " != nil && !", p.NewImport("unicode/utf8").Use(), ".ValidString(*m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+	}
 	fieldname := p.GetOneOfFieldName(message, field)
 	nullable := gogoproto.IsNullable(field)
 	repeated := field.IsRepeated()
@@ -979,7 +984,7 @@ func (p *marshalto) Generate(file *generator.FileDescriptor) {
 		oneofs := make(map[string]struct{})
 		for i := len(message.Field) - 1; i >= 0; i-- {
 			field := message.Field[i]
-			oneof := field.OneofIndex != nil
+			oneof := field.IsRealOneof()
 			if !oneof {
 				proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
 				p.generateField(proto3, numGen, file, message, field)
@@ -1003,7 +1008,7 @@ func (p *marshalto) Generate(file *generator.FileDescriptor) {
 		//Generate MarshalTo methods for oneof fields
 		m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
 		for _, field := range m.Field {
-			oneof := field.OneofIndex != nil
+			oneof := field.IsRealOneof()
 			if !oneof {
 				continue
 			}

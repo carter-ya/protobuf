@@ -231,6 +231,7 @@ func (p *size) std(field *descriptor.FieldDescriptorProto, name string) (string,
 }
 
 func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto, sizeName string) {
+	proto3 = proto3 && !field.GetProto3Optional()
 	fieldname := p.GetOneOfFieldName(message, field)
 	nullable := gogoproto.IsNullable(field)
 	repeated := field.IsRepeated()
@@ -616,7 +617,7 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 		p.P(`_ = l`)
 		oneofs := make(map[string]struct{})
 		for _, field := range message.Field {
-			oneof := field.OneofIndex != nil
+			oneof := field.IsRealOneof()
 			if !oneof {
 				proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
 				p.generateField(proto3, file, message, field, sizeName)
@@ -660,7 +661,7 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 		//Generate Size methods for oneof fields
 		m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
 		for _, f := range m.Field {
-			oneof := f.OneofIndex != nil
+			oneof := f.IsRealOneof()
 			if !oneof {
 				continue
 			}

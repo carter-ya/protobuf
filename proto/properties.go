@@ -132,19 +132,20 @@ func (sp *StructProperties) Swap(i, j int) { sp.order[i], sp.order[j] = sp.order
 
 // Properties represents the protocol-specific behavior of a single struct field.
 type Properties struct {
-	Name     string // name of the field, for error messages
-	OrigName string // original name before protocol compiler (always set)
-	JSONName string // name to use for JSON; determined by protoc
-	Wire     string
-	WireType int
-	Tag      int
-	Required bool
-	Optional bool
-	Repeated bool
-	Packed   bool   // relevant for repeated primitives only
-	Enum     string // set for enum types only
-	proto3   bool   // whether this is known to be a proto3 field
-	oneof    bool   // whether this is a oneof field
+	Name           string // name of the field, for error messages
+	OrigName       string // original name before protocol compiler (always set)
+	JSONName       string // name to use for JSON; determined by protoc
+	Wire           string
+	WireType       int
+	Tag            int
+	Required       bool
+	Optional       bool
+	Repeated       bool
+	Packed         bool   // relevant for repeated primitives only
+	Enum           string // set for enum types only
+	Proto3Optional bool   // explicit presence in a proto3 field
+	proto3         bool   // whether this is known to be a proto3 field
+	oneof          bool   // whether this is a oneof field
 
 	Default     string // default value
 	HasDefault  bool   // whether an explicit default was provided
@@ -186,6 +187,9 @@ func (p *Properties) String() string {
 	}
 	if p.proto3 {
 		s += ",proto3"
+	}
+	if p.Proto3Optional {
+		s += ",proto3_optional"
 	}
 	if p.oneof {
 		s += ",oneof"
@@ -252,6 +256,8 @@ outer:
 			p.JSONName = f[5:]
 		case strings.HasPrefix(f, "enum="):
 			p.Enum = f[5:]
+		case f == "proto3_optional":
+			p.Proto3Optional = true
 		case f == "proto3":
 			p.proto3 = true
 		case f == "oneof":
