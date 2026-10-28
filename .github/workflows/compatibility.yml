@@ -21,3 +21,4 @@ jobs:
           echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/protoc/bin/protoc" --version
       - run: sh compat/check.sh
+      - run: sh compat/check-optional.sh

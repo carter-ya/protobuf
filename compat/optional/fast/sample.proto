@@ -1,0 +1,34 @@
+syntax = "proto3";
+package compat.optionalfast;
+option go_package = "github.com/gogo/protobuf/compat/optional/fast";
+import "gogoproto/gogo.proto";
+option (gogoproto.equal_all) = true;
+option (gogoproto.compare_all) = true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+enum State { STATE_ZERO = 0; STATE_ONE = 1; }
+message Child { int32 value = 1; }
+message Sample {
+ optional int32 value = 1;
+ optional string label = 2;
+ optional bytes data = 3;
+ optional bool enabled = 4;
+ optional int64 signed_value = 5;
+ optional uint32 unsigned_value = 6;
+ optional uint64 large_value = 7;
+ optional sint32 zigzag32 = 8;
+ optional sint64 zigzag64 = 9;
+ optional fixed32 fixed32_value = 10;
+ optional fixed64 fixed64_value = 11;
+ optional sfixed32 sfixed32_value = 12;
+ optional sfixed64 sfixed64_value = 13;
+ optional float float_value = 14;
+ optional double double_value = 15;
+ optional State state = 16;
+ optional Child child = 17;
+ oneof choice { string name = 18; int64 id = 19; }
+ int32 implicit = 20;
+ repeated int32 numbers = 21;
+}

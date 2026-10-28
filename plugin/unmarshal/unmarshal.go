@@ -500,10 +500,11 @@ func (p *unmarshal) noStarOrSliceType(msg *generator.Descriptor, field *descript
 }
 
 func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descriptor, field *descriptor.FieldDescriptorProto, fieldname string, proto3 bool) {
+	proto3 = proto3 && !field.GetProto3Optional()
 	repeated := field.IsRepeated()
 	nullable := gogoproto.IsNullable(field)
 	typ := p.noStarOrSliceType(msg, field)
-	oneof := field.OneofIndex != nil
+	oneof := field.IsRealOneof()
 	switch *field.Type {
 	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
 		p.P(`var v uint64`)
@@ -1367,7 +1368,7 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		for _, field := range message.Field {
 			fieldname := p.GetFieldName(message, field)
 			errFieldname := fieldname
-			if field.OneofIndex != nil {
+			if field.IsRealOneof() {
 				errFieldname = p.GetOneOfFieldName(message, field)
 			}
 			possiblyPacked := field.IsScalar() && field.IsRepeated()
@@ -1445,6 +1446,9 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.Out()
 				p.P(`}`)
 				p.field(file, message, field, fieldname, proto3)
+				if field.GetProto3Optional() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING {
+					p.P("if !", p.NewImport("unicode/utf8").Use(), ".ValidString(*m.", fieldname, ") { return ", fmtPkg.Use(), ".Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+				}
 			}
 
 			if field.IsRequired() {

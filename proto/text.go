@@ -399,11 +399,11 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			}
 			continue
 		}
-		if props.proto3 && fv.Kind() == reflect.Slice && fv.Len() == 0 {
+		if props.proto3 && !props.Proto3Optional && fv.Kind() == reflect.Slice && fv.Len() == 0 {
 			// empty bytes field
 			continue
 		}
-		if props.proto3 && fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
+		if props.proto3 && !props.Proto3Optional && fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
 			// proto3 non-repeated scalar field; skip if zero value
 			if isProto3Zero(fv) {
 				continue

@@ -583,6 +583,7 @@ func typeMarshaler(t reflect.Type, tags []string, nozero, oneof bool) (sizer, ma
 
 	packed := false
 	proto3 := false
+	proto3Optional := false
 	ctype := false
 	isTime := false
 	isDuration := false
@@ -591,6 +592,9 @@ func typeMarshaler(t reflect.Type, tags []string, nozero, oneof bool) (sizer, ma
 	for i := 2; i < len(tags); i++ {
 		if tags[i] == "packed" {
 			packed = true
+		}
+		if tags[i] == "proto3_optional" {
+			proto3Optional = true
 		}
 		if tags[i] == "proto3" {
 			proto3 = true
@@ -609,6 +613,7 @@ func typeMarshaler(t reflect.Type, tags []string, nozero, oneof bool) (sizer, ma
 		}
 	}
 	validateUTF8 = validateUTF8 && proto3
+	proto3 = proto3 && !proto3Optional
 	if !proto3 && !pointer && !slice {
 		nozero = false
 	}

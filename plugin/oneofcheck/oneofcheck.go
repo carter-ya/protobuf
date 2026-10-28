@@ -63,7 +63,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 	for _, msg := range file.Messages() {
 		face := gogoproto.IsFace(file.FileDescriptorProto, msg.DescriptorProto)
 		for _, field := range msg.GetField() {
-			if field.OneofIndex == nil {
+			if !field.IsRealOneof() {
 				continue
 			}
 			if face {

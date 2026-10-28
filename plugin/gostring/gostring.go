@@ -176,7 +176,7 @@ func (p *gostring) Generate(file *generator.FileDescriptor) {
 			nullable := gogoproto.IsNullable(field)
 			repeated := field.IsRepeated()
 			fieldname := p.GetFieldName(message, field)
-			oneof := field.OneofIndex != nil
+			oneof := field.IsRealOneof()
 			if oneof {
 				if _, ok := oneofs[fieldname]; ok {
 					continue
@@ -254,26 +254,26 @@ func (p *gostring) Generate(file *generator.FileDescriptor) {
 					p.P(`}`)
 				}
 			} else {
-				if !proto3 && (nullable || repeated) {
+				if (!proto3 || field.GetProto3Optional()) && (nullable || repeated) {
 					p.P(`if this.`, fieldname, ` != nil {`)
 					p.In()
 				}
 				if field.IsEnum() {
-					if nullable && !repeated && !proto3 {
+					if nullable && !repeated && (!proto3 || field.GetProto3Optional()) {
 						goTyp, _ := p.GoType(message, field)
 						p.P(`s = append(s, "`, fieldname, `: " + valueToGoString`, p.localName, `(this.`, fieldname, `,"`, generator.GoTypeToName(goTyp), `"`, `) + ",\n")`)
 					} else {
 						p.P(`s = append(s, "`, fieldname, `: " + `, fmtPkg.Use(), `.Sprintf("%#v", this.`, fieldname, `) + ",\n")`)
 					}
 				} else {
-					if nullable && !repeated && !proto3 {
+					if nullable && !repeated && (!proto3 || field.GetProto3Optional()) {
 						goTyp, _ := p.GoType(message, field)
 						p.P(`s = append(s, "`, fieldname, `: " + valueToGoString`, p.localName, `(this.`, fieldname, `,"`, generator.GoTypeToName(goTyp), `"`, `) + ",\n")`)
 					} else {
 						p.P(`s = append(s, "`, fieldname, `: " + `, fmtPkg.Use(), `.Sprintf("%#v", this.`, fieldname, `) + ",\n")`)
 					}
 				}
-				if !proto3 && (nullable || repeated) {
+				if (!proto3 || field.GetProto3Optional()) && (nullable || repeated) {
 					p.Out()
 					p.P(`}`)
 				}
@@ -306,7 +306,7 @@ func (p *gostring) Generate(file *generator.FileDescriptor) {
 
 		//Generate GoString methods for oneof fields
 		for _, field := range message.Field {
-			oneof := field.OneofIndex != nil
+			oneof := field.IsRealOneof()
 			if !oneof {
 				continue
 			}

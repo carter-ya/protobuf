@@ -19,3 +19,22 @@ func (m *DescriptorProto) IsSyntheticOneof(index int32) bool {
 	}
 	return false
 }
+
+// HasProto3Optional reports whether this file needs an optional-aware runtime.
+func (f *FileDescriptorProto) HasProto3Optional() bool {
+	var visit func([]*DescriptorProto) bool
+	visit = func(messages []*DescriptorProto) bool {
+		for _, m := range messages {
+			for _, field := range m.Field {
+				if field.GetProto3Optional() {
+					return true
+				}
+			}
+			if visit(m.NestedType) {
+				return true
+			}
+		}
+		return false
+	}
+	return f != nil && visit(f.MessageType)
+}

@@ -784,6 +784,9 @@ func (g *Generator) WrapTypes() {
 		genFileNames[n] = true
 	}
 	for _, f := range g.Request.ProtoFile {
+		if err := validateOptional(f); err != nil {
+			g.Fail(err.Error())
+		}
 		fd := &FileDescriptor{
 			FileDescriptorProto: f,
 			exported:            make(map[Object][]symbol),
@@ -1202,7 +1205,11 @@ func (g *Generator) generate(file *FileDescriptor) {
 	g.P("// A compilation error at this line likely means your copy of the")
 	g.P("// proto package needs to be updated.")
 	if gogoproto.ImportsGoGoProto(file.FileDescriptorProto) {
-		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
+		codeVersion := generatedCodeVersion
+		if file.HasProto3Optional() {
+			codeVersion = 4
+		}
+		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
 		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
 	}
@@ -1605,6 +1612,7 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 // The tag is a string like "varint,2,opt,name=fieldname,def=7" that
 // identifies details of the field for the protocol buffer marshaling and unmarshaling
 // code.  The fields are:
+//
 //	wire encoding
 //	protocol tag number
 //	opt,req,rep for optional, required, or repeated
@@ -1613,6 +1621,7 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 //	enum= the name of the enum type if it is an enum-typed field.
 //	proto3 if this field is in a proto3 message
 //	def= string representation of the default value, if any.
+//
 // The default value must be in a representation that can be used at run-time
 // to generate the default value. Thus bools become 0 and 1, for instance.
 func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptorProto, wiretype string) string {
@@ -1748,8 +1757,11 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 	if message.proto3() {
 		name += ",proto3"
 	}
+	if field.GetProto3Optional() {
+		name += ",proto3_optional"
+	}
 	oneof := ""
-	if field.OneofIndex != nil {
+	if field.IsRealOneof() {
 		oneof = ",oneof"
 	}
 	stdtime := ""
@@ -1784,6 +1796,7 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 }
 
 func needsStar(field *descriptor.FieldDescriptorProto, proto3 bool, allowOneOf bool) bool {
+	proto3 = proto3 && !field.GetProto3Optional()
 	if isRepeated(field) &&
 		(*field.Type != descriptor.FieldDescriptorProto_TYPE_MESSAGE || gogoproto.IsCustomType(field)) &&
 		(*field.Type != descriptor.FieldDescriptorProto_TYPE_GROUP) {
@@ -1795,7 +1808,7 @@ func needsStar(field *descriptor.FieldDescriptorProto, proto3 bool, allowOneOf b
 	if !gogoproto.IsNullable(field) {
 		return false
 	}
-	if field.OneofIndex != nil && allowOneOf &&
+	if field.IsRealOneof() && allowOneOf &&
 		(*field.Type != descriptor.FieldDescriptorProto_TYPE_MESSAGE) &&
 		(*field.Type != descriptor.FieldDescriptorProto_TYPE_GROUP) {
 		return false
@@ -2073,7 +2086,7 @@ func (g *Generator) getterDefault(field *descriptor.FieldDescriptorProto, goMess
 	switch *field.Type {
 	case descriptor.FieldDescriptorProto_TYPE_GROUP,
 		descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-		if field.OneofIndex != nil {
+		if field.IsRealOneof() {
 			return "nil"
 		} else {
 			if !gogoproto.IsNullable(field) && (gogoproto.IsStdDuration(field) ||
@@ -2860,7 +2873,7 @@ func (g *Generator) generateMessage(message *Descriptor) {
 			fieldName = ""
 		}
 
-		oneof := field.OneofIndex != nil && message.allowOneof()
+		oneof := field.IsRealOneof() && message.allowOneof()
 		if oneof && oFields[*field.OneofIndex] == nil {
 			odp := message.OneofDecl[int(*field.OneofIndex)]
 			base := CamelCase(odp.GetName())

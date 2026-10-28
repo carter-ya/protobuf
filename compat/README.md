@@ -25,3 +25,12 @@ Generated snapshots compare Go syntax and decompressed descriptor bytes. This
 ignores only comments, formatting and gzip representation, which vary between
 Go toolchains. Field tags, declarations, function bodies and descriptor data
 must match; frozen consumer files are still compiled without modification.
+`sh compat/check-optional.sh` checks the in-progress optional implementation
+with a test-only driver. Production generators do not advertise this capability
+until the supported entry-point matrix is validated in the following stack
+layer. The fixtures cover every scalar, explicit empty bytes, real and synthetic
+oneofs, JSON/text, Merge/Clone/Equal, and UTF-8 in reflection and fast paths.
+
+The original randomized TestStdTypesGoString can intermittently emit invalid Go
+expressions for nil standard-type pointers. This also reproduces on unmodified
+v1.3.2; the compatibility scripts do not skip or suppress that test.
