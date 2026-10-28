@@ -52,9 +52,11 @@ has no generator, descriptor or runtime dependencies. These modules do not yet
 enable Editions output: production generators continue to reject Editions until
 the corresponding encoding and runtime paths are implemented and validated.
 
-The original randomized TestStdTypesGoString can intermittently emit invalid Go
-expressions for nil standard-type pointers. This also reproduces on unmodified
-v1.3.2; the compatibility scripts do not skip or suppress that test.
+The original randomized TestStdTypesGoString could emit an invalid `<nil>` Go
+expression for nil time.Time pointers, reproducible on untouched v1.3.2 with
+seed 11. A separate generator fix and regenerated fixture omit the absent field.
+The deterministic regression test and check-gostring.sh verify both the fixture
+and freshly generated code; the randomized test is neither skipped nor suppressed.
 
 Generated snapshots compare Go syntax and decompressed descriptor bytes. This
 ignores only comments, formatting and gzip representation, which vary between
