@@ -90,7 +90,7 @@ if __name__ == '__main__':
         merged = merge(target.read_text(), (include / relative).read_text())
         formatted = subprocess.run(
             [os.environ.get('CLANG_FORMAT', 'clang-format'),
-             '--style={BasedOnStyle: Google, ReflowComments: false}',
+             '--style=file:' + str(pathlib.Path(__file__).resolve().parents[1] / '.clang-format'),
              '--assume-filename=' + target.name],
             input=merged, text=True, stdout=subprocess.PIPE, check=True)
         target.write_text(formatted.stdout)

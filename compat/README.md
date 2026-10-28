@@ -64,4 +64,12 @@ must match; frozen consumer files are still compiled without modification.
 The protocol merge CLI formats its output with clang-format using Google style
 and preserving comment text (`ReflowComments: false`). Set `CLANG_FORMAT` to
 select the formatter binary; the checked-in protocol files use clang-format
-21.1.4. Formatting does not change descriptor fields or defaults.
+21.1.8. Formatting does not change descriptor fields or defaults.
+
+Proto formatting is checked in a separate CI job using the exact version in
+`compat/proto-format-requirements.txt`. Install it in a Python virtual environment
+and run `python3 compat/format-proto.py --check` to check, or omit `--check` to
+format. `CLANG_FORMAT` can select the installed binary. The shared `.clang-format`
+applies Google style without rewriting comment text. The check covers tracked
+proto files added or modified since v1.3.2, plus untracked proto files locally;
+`--base` selects another baseline when needed.
