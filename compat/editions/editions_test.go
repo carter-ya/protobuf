@@ -64,6 +64,8 @@ func TestPresenceAndUnknowns(t *testing.T) {
 		name, input, unknown string
 		list                 []pb.Closed
 	}{
+		{"singular wrong wire", "4a020901", "4a020901", nil},
+		{"oneof wrong wire", "8201020901", "8201020901", nil},
 		{"singular", "4809", "4809", nil},
 		{"packed", "520400090108", "50095008", []pb.Closed{0, 1}},
 		{"expanded", "500050095001", "5009", []pb.Closed{0, 1}},
@@ -224,7 +226,7 @@ func TestOfficialCompilerOracle(t *testing.T) {
 
 func TestEditionExtensions(t *testing.T) {
 	unknown := new(pb.Extensible)
-	if err := proto.Unmarshal(wire("a00609aa0603000901"), unknown); err != nil {
+	if err := proto.Unmarshal(wire("a00609aa0603000901a206020901"), unknown); err != nil {
 		t.Fatal(err)
 	}
 	if proto.HasExtension(unknown, pb.E_ExtClosed) {
@@ -234,7 +236,7 @@ func TestEditionExtensions(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(values, []pb.Closed{0, 1}) {
 		t.Fatalf("closed packed extension: %+v %v", values, err)
 	}
-	if !bytes.Equal(unknown.XXX_unrecognized, wire("a00609a80609")) {
+	if !bytes.Equal(unknown.XXX_unrecognized, wire("a00609a80609a206020901")) {
 		t.Fatalf("extension unknowns not retained: %x", unknown.XXX_unrecognized)
 	}
 	dst := new(pb.Extensible)

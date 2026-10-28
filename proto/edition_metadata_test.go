@@ -68,6 +68,7 @@ func TestEditionClosedEnumUnknownRetention(t *testing.T) {
 		enums          []int32
 		wantMap        map[string]int32
 	}{
+		{"singular wrong wire", []byte{42, 2, 9, 1}, []byte{42, 2, 9, 1}, nil, nil},
 		{"singular", []byte{40, 9}, []byte{40, 9}, nil, nil},
 		{"expanded", []byte{48, 1, 48, 9, 48, 2}, []byte{48, 9}, []int32{1, 2}, nil},
 		{"packed", []byte{50, 4, 1, 9, 2, 8}, []byte{48, 9, 48, 8}, []int32{1, 2}, nil},

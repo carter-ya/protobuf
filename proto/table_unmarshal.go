@@ -465,7 +465,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 				if u.closedExtensions == nil {
 					u.closedExtensions = make(map[uint64]*closedEnumFilter)
 				}
-				u.closedExtensions[uint64(number)] = &closedEnumFilter{values: p.ClosedEnum}
+				u.closedExtensions[uint64(number)] = &closedEnumFilter{values: p.ClosedEnum, allowPacked: p.Repeated}
 			}
 		}
 	}
