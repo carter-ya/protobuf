@@ -48,9 +48,9 @@ to compile canonical feature defaults into a Go 1.15-compatible byte table.
 `internal/semantics` resolves core defaults, allowed targets, fixed features and
 lexical inheritance without rewriting raw descriptors. Extensions inherit their
 declaration scope; structural presence is handled separately. `internal/fieldmeta`
-has no generator, descriptor or runtime dependencies. These modules do not yet
-enable Editions output: production generators continue to reject Editions until
-the corresponding encoding and runtime paths are implemented and validated.
+has no generator, descriptor or runtime dependencies. The production gogo entrypoint now advertises Editions 2023 through 2026 after
+validation of the reflection backend. Unsupported backend/extension combinations
+continue to fail during generation.
 
 The original randomized TestStdTypesGoString could emit an invalid `<nil>` Go
 expression for nil time.Time pointers, reproducible on untouched v1.3.2 with
@@ -76,11 +76,11 @@ applies Google style without rewriting comment text. The check covers tracked
 proto files added or modified since v1.3.2, plus untracked proto files locally;
 `--base` selects another baseline when needed.
 
-The test-only Editions backend currently covers 2023 reflection output: explicit
+The Editions backend covers 2023 reflection output: explicit
 and implicit presence, required fields, UTF-8 policy, packed/expanded primitives,
 open/closed enums (including imported enum definitions), map unknowns, oneofs
 and DELIMITED messages. `check-editions.sh` uses protoc 36.2 as an independent
-binary/text oracle. Production capabilities remain disabled at this layer.
+binary/text oracle. Production capabilities are enabled in the final entrypoint layer.
 Gogo extensions, unsupported explicit Go features and more
 than 64 required fields currently produce diagnostics rather than partial output.
 Raw descriptor data is kept separately from the private lowered generator view.
