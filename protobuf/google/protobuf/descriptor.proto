@@ -212,6 +212,10 @@ message FieldDescriptorProto {
   optional string json_name = 10;
 
   optional FieldOptions options = 8;
+
+  // A proto3 optional field uses a synthetic oneof in the descriptor. Keep
+  // this marker and its oneof index when forwarding or storing descriptors.
+  optional bool proto3_optional = 17;
 }
 
 // Describes a oneof.
