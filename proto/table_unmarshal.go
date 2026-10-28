@@ -81,7 +81,8 @@ type unmarshalInfo struct {
 	extensionRanges []ExtensionRange              // if non-nil, implies extensions field is valid
 	isMessageSet    bool                          // if true, implies extensions field is valid
 
-	bytesExtensions field // offset of XXX_extensions with type []byte
+	closedExtensions map[uint64]*closedEnumFilter
+	bytesExtensions  field // offset of XXX_extensions with type []byte
 }
 
 // An unmarshaler takes a stream of bytes and a pointer to a field of a message.
@@ -210,6 +211,23 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			// Fragments with bad wire type are treated as unknown fields.
 		}
 
+		// Registered Editions closed-enum extensions need the same unknown-value
+		// routing as ordinary fields before the bytes enter the extension store.
+		invalidExtension := false
+		if c := u.closedExtensions[tag]; c != nil {
+			filtered, unknown, err := c.filter(b, wire, tag)
+			if err == errInternalBadWireType {
+				invalidExtension = true
+			} else if err != nil {
+				return err
+			} else {
+				b = filtered
+			}
+			if len(unknown) > 0 && u.unrecognized.IsValid() {
+				z := m.offset(u.unrecognized).toBytes()
+				*z = append(*z, unknown...)
+			}
+		}
 		// Unknown tag.
 		if !u.unrecognized.IsValid() {
 			// Don't keep unrecognized data; just skip it.
@@ -226,6 +244,9 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		var emap map[int32]Extension
 		var e Extension
 		for _, r := range u.extensionRanges {
+			if invalidExtension {
+				break
+			}
 			if uint64(r.Start) <= tag && tag <= uint64(r.End) {
 				if u.extensions.IsValid() {
 					mp := m.offset(u.extensions).toExtensions()
@@ -436,6 +457,18 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		u.extensionRanges = fn.Call(nil)[0].Interface().([]ExtensionRange)
 	}
 
+	if message, ok := reflect.New(t).Interface().(Message); ok {
+		for number, ext := range RegisteredExtensions(message) {
+			var p Properties
+			p.Parse(ext.Tag)
+			if len(p.ClosedEnum) > 0 {
+				if u.closedExtensions == nil {
+					u.closedExtensions = make(map[uint64]*closedEnumFilter)
+				}
+				u.closedExtensions[uint64(number)] = &closedEnumFilter{values: p.ClosedEnum}
+			}
+		}
+	}
 	// Explicitly disallow tag 0. This will ensure we flag an error
 	// when decoding a buffer of all zeros. Without this code, we
 	// would decode and skip an all-zero buffer of even length.

@@ -221,3 +221,88 @@ func TestOfficialCompilerOracle(t *testing.T) {
 		}
 	}
 }
+
+func TestEditionExtensions(t *testing.T) {
+	unknown := new(pb.Extensible)
+	if err := proto.Unmarshal(wire("a00609aa0603000901"), unknown); err != nil {
+		t.Fatal(err)
+	}
+	if proto.HasExtension(unknown, pb.E_ExtClosed) {
+		t.Fatal("unknown closed extension counted as present")
+	}
+	values, err := proto.GetExtension(unknown, pb.E_ExtPacked)
+	if err != nil || !reflect.DeepEqual(values, []pb.Closed{0, 1}) {
+		t.Fatalf("closed packed extension: %+v %v", values, err)
+	}
+	if !bytes.Equal(unknown.XXX_unrecognized, wire("a00609a80609")) {
+		t.Fatalf("extension unknowns not retained: %x", unknown.XXX_unrecognized)
+	}
+	dst := new(pb.Extensible)
+	for _, pair := range []struct {
+		desc  *proto.ExtensionDesc
+		value interface{}
+	}{
+		{pb.E_ExtClosed, pb.Closed_CLOSED_ONE.Enum()},
+		{pb.E_ExtPacked, []pb.Closed{0, 1}},
+		{pb.E_ExtDelimited, &pb.Child{Value: proto.Int32(2)}},
+		{pb.E_ExtUnchecked, proto.String(string([]byte{255}))},
+		{pb.E_ExtFromForeignScope, proto.String(string([]byte{255}))},
+		{pb.E_Declaring_NestedExt, proto.Int32(0)},
+	} {
+		if err := proto.SetExtension(dst, pair.desc, pair.value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	b := marshal(t, dst)
+	back := new(pb.Extensible)
+	if err := proto.Unmarshal(b, back); err != nil {
+		t.Fatal(err)
+	}
+	for _, desc := range []*proto.ExtensionDesc{pb.E_ExtClosed, pb.E_ExtPacked, pb.E_ExtDelimited, pb.E_ExtUnchecked, pb.E_Declaring_NestedExt, pb.E_ExtFromForeignScope} {
+		left, err := proto.GetExtension(dst, desc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		right, err := proto.GetExtension(back, desc)
+		if err != nil || !sameExtension(left, right) {
+			t.Fatalf("extension roundtrip %s: %+v %+v %v", desc.Name, left, right, err)
+		}
+	}
+	compiler := os.Getenv("GOGO_EDITION_PROTOC")
+	if compiler != "" {
+		cmd := exec.Command(compiler, "-I../..", "--decode=compat.editions.v2023.Extensible", "compat/editions/edition2023/sample.proto", "compat/editions/edition2023/foreign_ext.proto")
+		cmd.Stdin = bytes.NewReader(b)
+		text, err := cmd.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(text), "CLOSED_ONE") || !strings.Contains(string(text), "nested_ext") {
+			t.Fatalf("official extension decode: %s", text)
+		}
+		cmd = exec.Command(compiler, "-I../..", "--encode=compat.editions.v2023.Extensible", "compat/editions/edition2023/sample.proto", "compat/editions/edition2023/foreign_ext.proto")
+		cmd.Stdin = bytes.NewReader(text)
+		official, err := cmd.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded := new(pb.Extensible)
+		if err := proto.Unmarshal(official, decoded); err != nil {
+			t.Fatal(err)
+		}
+		for _, desc := range []*proto.ExtensionDesc{pb.E_ExtClosed, pb.E_ExtPacked, pb.E_ExtDelimited, pb.E_ExtUnchecked, pb.E_Declaring_NestedExt, pb.E_ExtFromForeignScope} {
+			a, _ := proto.GetExtension(dst, desc)
+			b, err := proto.GetExtension(decoded, desc)
+			if err != nil || !sameExtension(a, b) {
+				t.Fatalf("official extension roundtrip %s: %v", desc.Name, err)
+			}
+		}
+	}
+}
+
+func sameExtension(a, b interface{}) bool {
+	if left, ok := a.(proto.Message); ok {
+		right, ok := b.(proto.Message)
+		return ok && proto.Equal(left, right)
+	}
+	return reflect.DeepEqual(a, b)
+}

@@ -110,8 +110,34 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 		return nil, nil, err
 	}
 	out := &editionMetadata{fields: state.Fields, enums: enums}
-	if len(file.Extension) > 0 {
-		return nil, nil, fmt.Errorf("%s: Editions extension declarations are not yet supported", file.GetName())
+	prepareExtensions := func(fields []*d.FieldDescriptorProto, scope string) error {
+		for _, f := range fields {
+			if err := checkOptions(f.Options, f.GetOptions().GetFeatures(), scope+"."+f.GetName()); err != nil {
+				return err
+			}
+			features := state.Fields[f]
+			if features.Required() {
+				return fmt.Errorf("%s: %s: required extensions are invalid", file.GetName(), f.GetName())
+			}
+			if f.Options == nil {
+				f.Options = &d.FieldOptions{}
+			}
+			if f.IsRepeated() && IsScalar(f) {
+				f.Options.Packed = proto.Bool(features.Packed())
+			}
+			if f.IsMessage() && features.Delimited() {
+				f.Type = d.FieldDescriptorProto_TYPE_GROUP.Enum()
+			}
+			if f.GetType() == d.FieldDescriptorProto_TYPE_ENUM && f.DefaultValue == nil && features.HasPresence() {
+				if e, ok := enums[f.GetTypeName()]; ok && e.first != "" {
+					f.DefaultValue = proto.String(e.first)
+				}
+			}
+		}
+		return nil
+	}
+	if err := prepareExtensions(file.Extension, file.GetPackage()); err != nil {
+		return nil, nil, err
 	}
 	var visit func([]*d.DescriptorProto, string) error
 	visit = func(messages []*d.DescriptorProto, scope string) error {
@@ -120,8 +146,8 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 			if err := checkOptions(m.Options, m.GetOptions().GetFeatures(), name); err != nil {
 				return err
 			}
-			if len(m.Extension) > 0 || len(m.ExtensionRange) > 0 {
-				return fmt.Errorf("%s: %s: Editions extensions are not yet supported", file.GetName(), name)
+			if err := prepareExtensions(m.Extension, name); err != nil {
+				return err
 			}
 			for _, o := range m.OneofDecl {
 				if err := checkOptions(o.Options, o.GetOptions().GetFeatures(), name+"."+o.GetName()); err != nil {
