@@ -35,9 +35,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /*
-	The code generator for the plugin for the Google protocol buffer compiler.
-	It generates Go code from the protocol buffer description files read by the
-	main routine.
+The code generator for the plugin for the Google protocol buffer compiler.
+It generates Go code from the protocol buffer description files read by the
+main routine.
 */
 package generator
 
@@ -294,10 +294,12 @@ func (id *ImportedDescriptor) TypeName() []string { return id.o.TypeName() }
 // Those slices are constructed by WrapTypes.
 type FileDescriptor struct {
 	*descriptor.FileDescriptorProto
-	desc []*Descriptor          // All the messages defined in this file.
-	enum []*EnumDescriptor      // All the enums defined in this file.
-	ext  []*ExtensionDescriptor // All the top-level extensions defined in this file.
-	imp  []*ImportedDescriptor  // All types defined in files publicly imported by this file.
+	original *descriptor.FileDescriptorProto
+	edition  *editionMetadata
+	desc     []*Descriptor          // All the messages defined in this file.
+	enum     []*EnumDescriptor      // All the enums defined in this file.
+	ext      []*ExtensionDescriptor // All the top-level extensions defined in this file.
+	imp      []*ImportedDescriptor  // All types defined in files publicly imported by this file.
 
 	// Comments, stored as a map of path (comma-separated integers) to the comment.
 	comments map[string]*descriptor.SourceCodeInfo_Location
@@ -783,15 +785,34 @@ func (g *Generator) WrapTypes() {
 	for _, n := range g.Request.FileToGenerate {
 		genFileNames[n] = true
 	}
+	var enumInfo map[string]editionEnum
 	for _, f := range g.Request.ProtoFile {
 		if f.GetSyntax() == "editions" {
-			g.Fail(f.GetName() + ": Editions code generation is not enabled yet")
+			var err error
+			enumInfo, err = editionEnums(g.Request.ProtoFile)
+			if err != nil {
+				g.Fail(err.Error())
+			}
+			break
+		}
+	}
+	for _, raw := range g.Request.ProtoFile {
+		f := raw
+		var metadata *editionMetadata
+		if f.GetSyntax() == "editions" {
+			var err error
+			f, metadata, err = prepareEdition(raw, enumInfo)
+			if err != nil {
+				g.Fail(err.Error())
+			}
 		}
 		if err := validateOptional(f); err != nil {
 			g.Fail(err.Error())
 		}
 		fd := &FileDescriptor{
 			FileDescriptorProto: f,
+			original:            raw,
+			edition:             metadata,
 			exported:            make(map[Object][]symbol),
 			proto3:              fileIsProto3(f),
 		}
@@ -1211,6 +1232,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		codeVersion := generatedCodeVersion
 		if file.HasProto3Optional() {
 			codeVersion = 4
+		}
+		if file.edition != nil {
+			codeVersion = 5
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
@@ -1707,7 +1731,7 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 	}
 	fieldName := field.GetName()
 	name := fieldName
-	if *field.Type == descriptor.FieldDescriptorProto_TYPE_GROUP {
+	if *field.Type == descriptor.FieldDescriptorProto_TYPE_GROUP && message.file.edition == nil {
 		// We must use the type name for groups instead of
 		// the field name to preserve capitalization.
 		// type_name in FieldDescriptorProto is fully-qualified,
@@ -1759,6 +1783,21 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 
 	if message.proto3() {
 		name += ",proto3"
+	}
+	if info := message.file.edition; info != nil {
+		features := info.fields[field]
+		name += ",proto3"
+		if features.HasPresence() {
+			name += ",explicit"
+		}
+		if !features.VerifyUTF8() {
+			name += ",utf8_none"
+		}
+		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_ENUM {
+			if e, ok := info.enums[field.GetTypeName()]; ok && e.closed != "" {
+				name += ",enum_closed=" + e.closed
+			}
+		}
 	}
 	if field.GetProto3Optional() {
 		name += ",proto3_optional"
@@ -3247,7 +3286,11 @@ func (g *Generator) generateInitFunction() {
 func (g *Generator) generateFileDescriptor(file *FileDescriptor) {
 	// Make a copy and trim source_code_info data.
 	// TODO: Trim this more when we know exactly what we need.
-	pb := proto.Clone(file.FileDescriptorProto).(*descriptor.FileDescriptorProto)
+	source := file.FileDescriptorProto
+	if file.original != nil {
+		source = file.original
+	}
+	pb := proto.Clone(source).(*descriptor.FileDescriptorProto)
 	pb.SourceCodeInfo = nil
 
 	b, err := proto.Marshal(pb)

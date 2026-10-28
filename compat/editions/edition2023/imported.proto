@@ -1,0 +1,7 @@
+syntax = "proto2";
+package compat.editions.imported;
+option go_package = "github.com/gogo/protobuf/compat/editions/edition2023";
+enum Imported {
+  FIRST = 5;
+  SECOND = 9;
+}

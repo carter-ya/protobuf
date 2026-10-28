@@ -1,0 +1,43 @@
+edition = "2023";
+package compat.editions.v2023;
+option go_package = "github.com/gogo/protobuf/compat/editions/edition2023";
+import "compat/editions/edition2023/imported.proto";
+enum Open {
+  OPEN_ZERO = 0;
+  OPEN_ONE = 1;
+}
+enum Closed {
+  option features.enum_type = CLOSED;
+  CLOSED_ZERO = 0;
+  CLOSED_ONE = 1;
+}
+message Child {
+  int32 value = 1;
+}
+message Sample {
+  int32 value = 1;
+  bytes explicit_bytes = 2;
+  int32 implicit = 3 [features.field_presence = IMPLICIT];
+  string checked = 4;
+  string unchecked = 5 [features.utf8_validation = NONE];
+  string implicit_unchecked = 6
+      [features.utf8_validation = NONE, features.field_presence = IMPLICIT];
+  repeated int32 packed = 7;
+  repeated int32 expanded = 8 [features.repeated_field_encoding = EXPANDED];
+  Closed closed = 9;
+  repeated Closed closed_packed = 10;
+  map<string, Closed> closed_map = 11;
+  Open open = 12;
+  Child delimited = 13 [features.message_encoding = DELIMITED];
+  repeated Child delimited_many = 14 [features.message_encoding = DELIMITED];
+  Child prefixed = 15;
+  oneof choice {
+    Closed selected = 16;
+    int32 selected_int = 17;
+  }
+  compat.editions.imported.Imported imported = 18;
+  map<string, Child> messages = 19;
+}
+message Required {
+  int32 value = 1 [features.field_presence = LEGACY_REQUIRED];
+}

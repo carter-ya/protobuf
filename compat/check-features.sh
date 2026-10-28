@@ -14,6 +14,6 @@ case "$(protoc --version)" in
     if protoc -I compat/testdata --plugin=protoc-gen-test="$tmp/gogo" --test_out="$tmp" edition2023.proto > "$tmp/error" 2>&1; then
       echo 'Editions unexpectedly enabled before backend validation' >&2; exit 1
     fi
-    grep -q 'Editions code generation is not enabled yet' "$tmp/error"
+    grep -q 'support editions' "$tmp/error"
     ;;
 esac
