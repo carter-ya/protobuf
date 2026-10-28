@@ -21,16 +21,28 @@ The historical `testdata/multi` goldens are ignored by the original repository.
 `compat/golden/multi` freezes them using the original v1.3.2 generator; the
 script copies those references into the disposable suite before testing.
 
-Generated snapshots compare Go syntax and decompressed descriptor bytes. This
-ignores only comments, formatting and gzip representation, which vary between
-Go toolchains. Field tags, declarations, function bodies and descriptor data
-must match; frozen consumer files are still compiled without modification.
-`sh compat/check-optional.sh` checks the in-progress optional implementation
-with a test-only driver. Production generators do not advertise this capability
-until the supported entry-point matrix is validated in the following stack
-layer. The fixtures cover every scalar, explicit empty bytes, real and synthetic
+`sh compat/check-optional.sh` checks optional through the production gogo and
+gogofast generators. The fixtures cover every scalar, explicit empty bytes, real and synthetic
 oneofs, JSON/text, Merge/Clone/Equal, and UTF-8 in reflection and fast paths.
+
+`sh compat/check-entrypoints.sh` compiles and runs the presence tests separately
+for gogo, gogofast, gogofaster, gogoslick and gogotypes, and compiles auxiliary
+GoString output. It verifies diagnostics for unsupported extensions and gofast's
+alternate runtime, plus the compile-time rejection of new feature code by the
+unmodified v1.3.2 runtime. Custom auxiliary plugins must explicitly implement
+SupportsProto3Optional before GeneratePlugin advertises that capability.
+
+Proto3 optional currently requires the gogo runtime and default pointer-based
+scalar representations. nullable=false, customtype/casttype, embedded fields,
+standard-type mappings, face and union combinations are rejected for optional
+fields. Existing proto2/proto3 configurations keep their historical behavior.
+Editions support is not yet advertised.
 
 The original randomized TestStdTypesGoString can intermittently emit invalid Go
 expressions for nil standard-type pointers. This also reproduces on unmodified
 v1.3.2; the compatibility scripts do not skip or suppress that test.
+
+Generated snapshots compare Go syntax and decompressed descriptor bytes. This
+ignores only comments, formatting and gzip representation, which vary between
+Go toolchains. Field tags, declarations, function bodies and descriptor data
+must match; frozen consumer files are still compiled without modification.

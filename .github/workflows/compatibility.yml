@@ -9,6 +9,8 @@ jobs:
         protoc: ['21.8', '36.2']
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
@@ -22,3 +24,4 @@ jobs:
           "$RUNNER_TEMP/protoc/bin/protoc" --version
       - run: sh compat/check.sh
       - run: sh compat/check-optional.sh
+      - run: sh compat/check-entrypoints.sh
