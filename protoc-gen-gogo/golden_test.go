@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"flag"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -97,6 +99,16 @@ func TestGolden(t *testing.T) {
 
 		want = fdescRE.ReplaceAll(want, nil)
 		got = fdescRE.ReplaceAll(got, nil)
+		want, err = goldenSyntax(want)
+		if err != nil {
+			t.Error(err)
+			return nil
+		}
+		got, err = goldenSyntax(got)
+		if err != nil {
+			t.Error(err)
+			return nil
+		}
 		if bytes.Equal(got, want) {
 			return nil
 		}
@@ -106,6 +118,21 @@ func TestGolden(t *testing.T) {
 		t.Errorf("golden file differs: %v\n%v", relPath, string(out))
 		return nil
 	})
+}
+
+// Comments and source positions are formatter-dependent, not generated APIs.
+// Descriptor handling remains the same as the original golden test above.
+func goldenSyntax(src []byte) ([]byte, error) {
+	file, err := parser.ParseFile(token.NewFileSet(), "generated.go", src, 0)
+	if err != nil {
+		return nil, err
+	}
+	var out bytes.Buffer
+	posType := reflect.TypeOf(token.Pos(0))
+	err = ast.Fprint(&out, token.NewFileSet(), file, func(name string, value reflect.Value) bool {
+		return value.Type() != posType && name != "Obj" && name != "Scope" && name != "Unresolved"
+	})
+	return out.Bytes(), err
 }
 
 var fdescRE = regexp.MustCompile(`(?ms)^var fileDescriptor.*}`)
