@@ -81,6 +81,13 @@ and implicit presence, required fields, UTF-8 policy, packed/expanded primitives
 open/closed enums (including imported enum definitions), map unknowns, oneofs
 and DELIMITED messages. `check-editions.sh` uses protoc 36.2 as an independent
 binary/text oracle. Production capabilities remain disabled at this layer.
-Gogo extensions, explicit Go features and more
+Gogo extensions, unsupported explicit Go features and more
 than 64 required fields currently produce diagnostics rather than partial output.
 Raw descriptor data is kept separately from the private lowered generator view.
+
+Edition 2024 fixtures cover option-only dependencies and option retention.
+Runtime-retained custom options remain in reflection data; source-retained
+options do not leak into embedded descriptors. This generator keeps gogo's
+Open Struct API across editions. Explicit API_OPEN and keeping enum prefixes
+are accepted; explicit HYBRID/OPAQUE APIs and other unsupported Go features
+produce errors. No modern Go runtime is imported by consumers.
