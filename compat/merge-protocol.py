@@ -4,8 +4,12 @@
 Usage: python3 compat/merge-protocol.py /path/to/protobuf-36.2/include
 Only optional/repeated fields and message/enum declarations are merged. Existing
 declarations, field numbers, defaults and source options remain authoritative.
+CLI output is formatted with clang-format (Google style, preserving comments).
+Set CLANG_FORMAT to use a specific formatter binary.
 """
+import os
 import pathlib
+import subprocess
 import re
 import sys
 
@@ -83,4 +87,10 @@ if __name__ == '__main__':
     include = pathlib.Path(sys.argv[1])
     for relative in ['google/protobuf/descriptor.proto', 'google/protobuf/compiler/plugin.proto']:
         target = pathlib.Path('protobuf') / relative
-        target.write_text(merge(target.read_text(), (include / relative).read_text()))
+        merged = merge(target.read_text(), (include / relative).read_text())
+        formatted = subprocess.run(
+            [os.environ.get('CLANG_FORMAT', 'clang-format'),
+             '--style={BasedOnStyle: Google, ReflowComments: false}',
+             '--assume-filename=' + target.name],
+            input=merged, text=True, stdout=subprocess.PIPE, check=True)
+        target.write_text(formatted.stdout)

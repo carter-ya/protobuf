@@ -1,11 +1,16 @@
 import importlib.util
 import pathlib
+import re
 import subprocess
 import unittest
 
 spec = importlib.util.spec_from_file_location('merge_protocol', pathlib.Path(__file__).with_name('merge-protocol.py'))
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+
+
+def field_tokens(text):
+    return re.findall(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|[A-Za-z_0-9]+|[^\s]', text)
 
 
 class ProtocolMergeTest(unittest.TestCase):
@@ -32,7 +37,10 @@ class ProtocolMergeTest(unittest.TestCase):
                     old_fields = old.fields(node[1], node[2], identity[0] == 'enum')
                     new_fields = current.fields(target[1], target[2], identity[0] == 'enum')
                     for number, field in old_fields.items():
-                        self.assertEqual(new_fields[number], field, (path, identity, number))
+                        self.assertEqual(new_fields[number][0], field[0], (path, identity, number))
+                        # Formatting may change whitespace, but not names,
+                        # numbers, defaults, literal contents or option values.
+                        self.assertEqual(field_tokens(new_fields[number][1]), field_tokens(field[1]), (path, identity, number))
                     check(old.declarations(node[1]+1,node[2],depth+1), current.declarations(target[1]+1,target[2],depth+1), depth+1)
             check(old.declarations(), current.declarations(), 0)
 

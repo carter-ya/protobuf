@@ -60,3 +60,8 @@ Generated snapshots compare Go syntax and decompressed descriptor bytes. This
 ignores only comments, formatting and gzip representation, which vary between
 Go toolchains. Field tags, declarations, function bodies and descriptor data
 must match; frozen consumer files are still compiled without modification.
+
+The protocol merge CLI formats its output with clang-format using Google style
+and preserving comment text (`ReflowComments: false`). Set `CLANG_FORMAT` to
+select the formatter binary; the checked-in protocol files use clang-format
+21.1.4. Formatting does not change descriptor fields or defaults.
