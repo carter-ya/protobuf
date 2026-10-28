@@ -100,7 +100,8 @@ type unmarshalFieldInfo struct {
 	// if a required field, contains a single set bit at this field's index in the required field list.
 	reqMask uint64
 
-	name string // name of the field, for error reporting
+	name   string // name of the field, for error reporting
+	closed *closedEnumFilter
 }
 
 var (
@@ -172,7 +173,17 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		}
 		if fn := f.unmarshal; fn != nil {
 			var err error
-			b, err = fn(b, m.offset(f.field), wire)
+			if f.closed != nil {
+				var unknown []byte
+				b, unknown, err = f.closed.filter(b, wire, tag)
+				if len(unknown) > 0 && u.unrecognized.IsValid() {
+					z := m.offset(u.unrecognized).toBytes()
+					*z = append(*z, unknown...)
+				}
+			}
+			if err == nil {
+				b, err = fn(b, m.offset(f.field), wire)
+			}
 			if err == nil {
 				reqMask |= f.reqMask
 				continue
@@ -368,6 +379,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 
 		// Store the info in the correct slot in the message.
 		u.setTag(tag, toField(&f), unmarshal, reqMask, name)
+		u.setClosedEnum(tag, &f)
 	}
 
 	// Find any types associated with oneof fields.
@@ -408,6 +420,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 					// when we encounter it during unmarshaling.
 					unmarshal := makeUnmarshalOneof(typ, of.ityp, baseUnmarshal)
 					u.setTag(fieldNum, of.field, unmarshal, 0, name)
+					u.setClosedEnum(fieldNum, &f)
 				}
 			}
 
@@ -480,6 +493,9 @@ func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 	for _, tag := range tagArray[3:] {
 		if strings.HasPrefix(tag, "name=") {
 			name = tag[5:]
+		}
+		if tag == "utf8_none" {
+			validateUTF8 = false
 		}
 		if tag == "proto3" {
 			proto3 = true
@@ -1957,6 +1973,12 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 		var nerr nonFatal
 		k := reflect.New(kt)
 		v := reflect.New(vt)
+		var valueProp Properties
+		valueProp.Parse(strings.Join(valTags, ","))
+		if valueProp.HasDefault && vt.Kind() == reflect.Int32 && len(valueProp.ClosedEnum) > 0 {
+			n, _ := strconv.ParseInt(valueProp.Default, 10, 32)
+			v.Elem().SetInt(n)
+		}
 		for len(b) > 0 {
 			x, n := decodeVarint(b)
 			if n == 0 {
@@ -2004,12 +2026,14 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 
 // makeUnmarshalOneof makes an unmarshaler for oneof fields.
 // for:
-// message Msg {
-//   oneof F {
-//     int64 X = 1;
-//     float64 Y = 2;
-//   }
-// }
+//
+//	message Msg {
+//	  oneof F {
+//	    int64 X = 1;
+//	    float64 Y = 2;
+//	  }
+//	}
+//
 // typ is the type of the concrete entry for a oneof case (e.g. Msg_X).
 // ityp is the interface type of the oneof field (e.g. isMsg_F).
 // unmarshal is the unmarshaler for the base type of the oneof case (e.g. int64).

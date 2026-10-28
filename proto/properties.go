@@ -132,20 +132,23 @@ func (sp *StructProperties) Swap(i, j int) { sp.order[i], sp.order[j] = sp.order
 
 // Properties represents the protocol-specific behavior of a single struct field.
 type Properties struct {
-	Name           string // name of the field, for error messages
-	OrigName       string // original name before protocol compiler (always set)
-	JSONName       string // name to use for JSON; determined by protoc
-	Wire           string
-	WireType       int
-	Tag            int
-	Required       bool
-	Optional       bool
-	Repeated       bool
-	Packed         bool   // relevant for repeated primitives only
-	Enum           string // set for enum types only
-	Proto3Optional bool   // explicit presence in a proto3 field
-	proto3         bool   // whether this is known to be a proto3 field
-	oneof          bool   // whether this is a oneof field
+	Name             string // name of the field, for error messages
+	OrigName         string // original name before protocol compiler (always set)
+	JSONName         string // name to use for JSON; determined by protoc
+	Wire             string
+	WireType         int
+	Tag              int
+	Required         bool
+	Optional         bool
+	Repeated         bool
+	Packed           bool           // relevant for repeated primitives only
+	Enum             string         // set for enum types only
+	Proto3Optional   bool           // explicit presence in a proto3 field
+	ExplicitPresence bool           // Editions presence, independent of UTF-8 validation
+	UTF8None         bool           // Editions strings with validation disabled
+	ClosedEnum       map[int32]bool // allowed numbers, only for new closed-enum fields
+	proto3           bool           // whether this is known to be a proto3 field
+	oneof            bool           // whether this is a oneof field
 
 	Default     string // default value
 	HasDefault  bool   // whether an explicit default was provided
@@ -190,6 +193,26 @@ func (p *Properties) String() string {
 	}
 	if p.Proto3Optional {
 		s += ",proto3_optional"
+	}
+	if p.ExplicitPresence {
+		s += ",explicit"
+	}
+	if p.UTF8None {
+		s += ",utf8_none"
+	}
+	if len(p.ClosedEnum) > 0 {
+		values := make([]int, 0, len(p.ClosedEnum))
+		for n := range p.ClosedEnum {
+			values = append(values, int(n))
+		}
+		sort.Ints(values)
+		s += ",enum_closed="
+		for i, n := range values {
+			if i > 0 {
+				s += ":"
+			}
+			s += strconv.Itoa(n)
+		}
 	}
 	if p.oneof {
 		s += ",oneof"
@@ -256,6 +279,12 @@ outer:
 			p.JSONName = f[5:]
 		case strings.HasPrefix(f, "enum="):
 			p.Enum = f[5:]
+		case f == "explicit":
+			p.ExplicitPresence = true
+		case f == "utf8_none":
+			p.UTF8None = true
+		case strings.HasPrefix(f, "enum_closed="):
+			p.ClosedEnum = parseClosedEnum(f[len("enum_closed="):])
 		case f == "proto3_optional":
 			p.Proto3Optional = true
 		case f == "proto3":

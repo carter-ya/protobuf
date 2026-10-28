@@ -590,10 +590,13 @@ func typeMarshaler(t reflect.Type, tags []string, nozero, oneof bool) (sizer, ma
 	isWktPointer := false
 	validateUTF8 := true
 	for i := 2; i < len(tags); i++ {
+		if tags[i] == "utf8_none" {
+			validateUTF8 = false
+		}
 		if tags[i] == "packed" {
 			packed = true
 		}
-		if tags[i] == "proto3_optional" {
+		if tags[i] == "proto3_optional" || tags[i] == "explicit" {
 			proto3Optional = true
 		}
 		if tags[i] == "proto3" {

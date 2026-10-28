@@ -306,7 +306,7 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 			continue
 		}
 		// Explicitly absent optional fields remain absent even with EmitDefaults.
-		if strings.Contains(valueField.Tag.Get("protobuf"), ",proto3_optional") &&
+		if (strings.Contains(valueField.Tag.Get("protobuf"), ",proto3_optional") || strings.Contains(valueField.Tag.Get("protobuf"), ",explicit")) &&
 			(value.Kind() == reflect.Ptr || value.Kind() == reflect.Slice) && value.IsNil() {
 			continue
 		}
@@ -1234,6 +1234,15 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		inputValue = inputValue[1 : len(inputValue)-1]
 	}
 
+	if prop != nil && len(prop.ClosedEnum) > 0 && targetType.Kind() == reflect.Int32 {
+		var n int32
+		if err := json.Unmarshal(inputValue, &n); err != nil {
+			return err
+		}
+		if !prop.ClosedEnum[n] {
+			return fmt.Errorf("unknown value %d for closed enum %s", n, prop.Enum)
+		}
+	}
 	// Use the encoding/json for parsing other value types.
 	return json.Unmarshal(inputValue, target.Addr().Interface())
 }
