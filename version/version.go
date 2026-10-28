@@ -45,20 +45,23 @@ func Get() string {
 	return versions[1]
 }
 
-func parseVersion(version string) (int, error) {
+func parseVersion(version string) ([3]int, error) {
+	var result [3]int
 	versions := strings.Split(version, ".")
-	if len(versions) != 3 {
-		return 0, fmt.Errorf("version does not have 3 numbers separated by dots: %s", version)
+	if len(versions) != 2 && len(versions) != 3 {
+		return result, fmt.Errorf("version must have 2 or 3 numbers separated by dots: %s", version)
 	}
-	n := 0
-	for _, v := range versions {
+	for index, v := range versions {
+		if v == "" || strings.IndexFunc(v, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+			return result, fmt.Errorf("invalid version component %q", v)
+		}
 		i, err := strconv.Atoi(v)
 		if err != nil {
-			return 0, err
+			return result, err
 		}
-		n = n*10 + i
+		result[index] = i
 	}
-	return n, nil
+	return result, nil
 }
 
 func less(this, that string) bool {
@@ -70,7 +73,12 @@ func less(this, that string) bool {
 	if err != nil {
 		panic(err)
 	}
-	return thisNum <= thatNum
+	for i := range thisNum {
+		if thisNum[i] != thatNum[i] {
+			return thisNum[i] < thatNum[i]
+		}
+	}
+	return true
 }
 
 func AtLeast(v string) bool {

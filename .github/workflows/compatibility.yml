@@ -6,6 +6,7 @@ jobs:
     strategy:
       matrix:
         go: ['1.23.x', '1.27.x']
+        protoc: ['21.8', '36.2']
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -13,7 +14,7 @@ jobs:
           go-version: ${{ matrix.go }}
       - name: Install pinned protoc release
         env:
-          PROTOC_RELEASE: '21.8'
+          PROTOC_RELEASE: ${{ matrix.protoc }}
         run: |
           curl --fail --location --retry 3 "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_RELEASE}/protoc-${PROTOC_RELEASE}-linux-x86_64.zip" -o "$RUNNER_TEMP/protoc.zip"
           unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
