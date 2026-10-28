@@ -6,13 +6,13 @@ trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 cd "$repo"
 export GOBIN="$tmp/bin"
 mkdir -p "$GOBIN" "$tmp/reflection" "$tmp/fast"
-go install ./protoc-gen-gogo ./protoc-gen-gogofaster ./protoc-min-version
+go install ./protoc-gen-gogo ./protoc-gen-gogofaster ./protoc-min-version ./compat/compare-generated
 export PATH="$GOBIN:$PATH"
 # Keep protoc constant when comparing generator output.
 protoc -I compat/schema --gogo_out=paths=source_relative:"$tmp/reflection" compat/schema/legacy.proto
 protoc -I compat/schema --gogofaster_out=paths=source_relative:"$tmp/fast" compat/schema/legacy_fast.proto
-diff -u compat/legacy/reflection/legacy.pb.go "$tmp/reflection/legacy.pb.go"
-diff -u compat/legacy/fast/legacy_fast.pb.go "$tmp/fast/legacy_fast.pb.go"
+compare-generated compat/legacy/reflection/legacy.pb.go "$tmp/reflection/legacy.pb.go"
+compare-generated compat/legacy/fast/legacy_fast.pb.go "$tmp/fast/legacy_fast.pb.go"
 (cd compat/legacy && go test ./...)
 # Several historical integration tests resolve imports through a GOPATH-shaped
 # relative path. Run them in a disposable copy with that layout, without

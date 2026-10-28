@@ -21,3 +21,8 @@ some resolve proto imports through relative paths. No source tests are skipped.
 The historical `testdata/multi` goldens are ignored by the original repository.
 `compat/golden/multi` freezes them using the original v1.3.2 generator; the
 script copies those references into the disposable suite before testing.
+
+Generated snapshots compare Go syntax and decompressed descriptor bytes. This
+ignores only comments, formatting and gzip representation, which vary between
+Go toolchains. Field tags, declarations, function bodies and descriptor data
+must match; frozen consumer files are still compiled without modification.
