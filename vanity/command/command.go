@@ -97,6 +97,9 @@ func GeneratePlugin(req *plugin.CodeGeneratorRequest, p generator.Plugin, filena
 	if err := goformat(g.Response); err != nil {
 		g.Error(err)
 	}
+	if support, ok := p.(interface{ SupportsProto3Optional() bool }); ok && support.SupportsProto3Optional() {
+		g.Response.SupportedFeatures = proto.Uint64(uint64(plugin.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL))
+	}
 	return g.Response
 }
 
@@ -144,6 +147,7 @@ func Generate(req *plugin.CodeGeneratorRequest) *plugin.CodeGeneratorResponse {
 		}
 	}
 
+	g.Response.SupportedFeatures = proto.Uint64(uint64(plugin.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL))
 	return g.Response
 }
 

@@ -122,6 +122,9 @@ func (p *gostring) Name() string {
 	return "gostring"
 }
 
+// SupportsProto3Optional excludes synthetic oneofs from the generated API.
+func (p *gostring) SupportsProto3Optional() bool { return true }
+
 func (p *gostring) Overwrite() {
 	p.overwrite = true
 }
