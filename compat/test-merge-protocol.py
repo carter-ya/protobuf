@@ -25,6 +25,16 @@ class ProtocolMergeTest(unittest.TestCase):
         self.assertIn('message NewType', result)
         self.assertEqual(module.merge(result, upstream), result)
 
+    def test_disjoint_extension_ranges_are_added_idempotently(self):
+        old = 'message A { extensions 1000 to max; }\n'
+        upstream = 'message A { extensions 990 to 998; extensions 1000 to max; }\n'
+        merged = module.merge(old, upstream)
+        self.assertIn('extensions 990 to 998;', merged)
+        self.assertIn('extensions 1000 to max;', merged)
+        self.assertEqual(module.merge(merged, upstream), merged)
+        with self.assertRaises(ValueError):
+            module.merge(old, 'message A { extensions 990 to 2000; }')
+
     def test_all_original_fields_and_enum_values_survive(self):
         for path in ['protobuf/google/protobuf/descriptor.proto', 'protobuf/google/protobuf/compiler/plugin.proto']:
             old = module.Source(subprocess.check_output(['git', 'show', 'v1.3.2:' + path], text=True))

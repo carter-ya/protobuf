@@ -960,6 +960,9 @@ const (
 	// Editions field tags require independently resolved presence and validation.
 	GoGoProtoPackageIsVersion5 = true
 
+	// Edition 2026 JSON enum spellings require the new JSON registry.
+	GoGoProtoPackageIsVersion6 = true
+
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.
 	GoGoProtoPackageIsVersion2 = true

@@ -33,3 +33,7 @@ for api in API_HYBRID API_OPAQUE; do
  fi
  grep -q 'api_level.*unsupported' "$tmp/error"
 done
+protoc -I . --plugin=protoc-gen-test="$tmp/driver" --test_out=paths=source_relative:"$tmp" compat/editions/edition2026/sample.proto
+go run ./compat/compare-generated -- compat/editions/edition2026/sample.pb.go "$tmp/compat/editions/edition2026/sample.pb.go"
+protoc -I . --include_imports --descriptor_set_out="$tmp/2026.pb" compat/editions/edition2026/sample.proto
+(cd compat/oracle && GOGO_ORACLE_DESCRIPTOR="$tmp/2026.pb" go test ./...)

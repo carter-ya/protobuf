@@ -1235,6 +1235,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		}
 		if file.edition != nil {
 			codeVersion = 5
+			if file.GetEdition() == descriptor.Edition_EDITION_2026 {
+				codeVersion = 6
+			}
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
@@ -3342,6 +3345,7 @@ func (g *Generator) generateEnumRegistration(enum *EnumDescriptor) {
 	// The full type name, CamelCased.
 	ccTypeName := CamelCaseSlice(typeName)
 	g.addInitf("%s.RegisterEnum(%q, %[3]s_name, %[3]s_value)", g.Pkg["proto"], pkg+ccTypeName, ccTypeName)
+	g.registerEnumJSON(enum, pkg+ccTypeName)
 	if gogoproto.ImportsGoGoProto(g.file.FileDescriptorProto) && gogoproto.RegistersGolangProto(g.file.FileDescriptorProto) {
 		g.addInitf("%s.RegisterEnum(%q, %[3]s_name, %[3]s_value)", g.Pkg["golang_proto"], pkg+ccTypeName, ccTypeName)
 	}

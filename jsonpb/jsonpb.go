@@ -587,6 +587,18 @@ func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v refle
 
 	// Handle enumerations.
 	if !m.EnumsAsInts && prop.Enum != "" {
+		number := v
+		if number.Kind() == reflect.Ptr {
+			number = number.Elem()
+		}
+		if name, ok := proto.EnumJSONName(prop.Enum, int32(number.Int())); ok {
+			data, err := json.Marshal(name)
+			if err != nil {
+				return err
+			}
+			out.write(string(data))
+			return out.err
+		}
 		// Unknown enum values will are stringified by the proto library as their
 		// value. Such values should _not_ be quoted or they will be interpreted
 		// as an enum string instead of their value.
@@ -1017,6 +1029,18 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		// are from a limited character set.
 		s := inputValue[1 : len(inputValue)-1]
 		n, ok := vmap[string(s)]
+		if !ok {
+			var name string
+			if err := json.Unmarshal(inputValue, &name); err != nil {
+				return err
+			}
+			n, ok = proto.EnumJSONValue(prop.Enum, name)
+			if ok {
+				if native, exists := vmap[name]; exists {
+					n = native
+				}
+			}
+		}
 		if !ok {
 			return fmt.Errorf("unknown value %q for enum %s", s, prop.Enum)
 		}
