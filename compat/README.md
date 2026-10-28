@@ -38,6 +38,20 @@ standard-type mappings, face and union combinations are rejected for optional
 fields. Existing proto2/proto3 configurations keep their historical behavior.
 Editions support is not yet advertised.
 
+The Editions foundation adds protocol declarations from protobuf 36.2 while
+retaining historical fields and defaults that newer upstream schemas removed.
+`merge-protocol.py` merges only additions and is idempotent; it does not replace
+the legacy schema wholesale. Bootstrap protocol code with the frozen v1.3.2
+plugins using `regenerate-protocol.sh`. `regenerate-features.sh` uses protoc 36.2
+to compile canonical feature defaults into a Go 1.15-compatible byte table.
+
+`internal/semantics` resolves core defaults, allowed targets, fixed features and
+lexical inheritance without rewriting raw descriptors. Extensions inherit their
+declaration scope; structural presence is handled separately. `internal/fieldmeta`
+has no generator, descriptor or runtime dependencies. These modules do not yet
+enable Editions output: production generators continue to reject Editions until
+the corresponding encoding and runtime paths are implemented and validated.
+
 The original randomized TestStdTypesGoString can intermittently emit invalid Go
 expressions for nil standard-type pointers. This also reproduces on unmodified
 v1.3.2; the compatibility scripts do not skip or suppress that test.

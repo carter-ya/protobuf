@@ -25,3 +25,4 @@ jobs:
       - run: sh compat/check.sh
       - run: sh compat/check-optional.sh
       - run: sh compat/check-entrypoints.sh
+      - run: sh compat/check-features.sh

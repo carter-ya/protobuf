@@ -1,0 +1,4 @@
+edition = "2023";
+package compat.editions;
+option go_package = "github.com/gogo/protobuf/compat/testdata";
+message Sample { int32 value = 1; }
