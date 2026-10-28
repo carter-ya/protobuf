@@ -1,0 +1,13 @@
+syntax = "proto3";
+package compat.legacyfast;
+option go_package = "example.com/gogo-legacy/fast";
+message Probe {
+  int32 value = 1;
+  string label = 2;
+  bytes data = 3;
+  repeated int32 numbers = 4;
+  oneof choice {
+    string name = 6;
+    int64 id = 7;
+  }
+}
