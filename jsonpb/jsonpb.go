@@ -33,13 +33,17 @@
 Package jsonpb provides marshaling and unmarshaling between protocol buffers and JSON.
 It follows the specification at https://developers.google.com/protocol-buffers/docs/proto3#json.
 
-This package produces a different output than the standard "encoding/json" package,
+This package produces a different output than the standard "encoding/json"
+
+	"encoding/base64" package,
+
 which does not operate correctly on protocol buffers.
 */
 package jsonpb
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1025,24 +1029,16 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 	// at the bottom of this function.
 	if inputValue[0] == '"' && prop != nil && prop.Enum != "" {
 		vmap := proto.EnumValueMap(prop.Enum)
-		// Don't need to do unquoting; valid enum names
-		// are from a limited character set.
-		s := inputValue[1 : len(inputValue)-1]
-		n, ok := vmap[string(s)]
+		var name string
+		if err := json.Unmarshal(inputValue, &name); err != nil {
+			return err
+		}
+		n, ok := vmap[name]
 		if !ok {
-			var name string
-			if err := json.Unmarshal(inputValue, &name); err != nil {
-				return err
-			}
 			n, ok = proto.EnumJSONValue(prop.Enum, name)
-			if ok {
-				if native, exists := vmap[name]; exists {
-					n = native
-				}
-			}
 		}
 		if !ok {
-			return fmt.Errorf("unknown value %q for enum %s", s, prop.Enum)
+			return fmt.Errorf("unknown value %q for enum %s", name, prop.Enum)
 		}
 		if target.Kind() == reflect.Ptr { // proto2
 			target.Set(reflect.New(targetType.Elem()))
@@ -1174,7 +1170,19 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			// https://github.com/golang/go/commit/c60707b14d6be26bf4213114d13070bff00d0b0a
 			var out []byte
 			if err := json.Unmarshal(inputValue, &out); err != nil {
-				return err
+				var encoded string
+				if stringErr := json.Unmarshal(inputValue, &encoded); stringErr != nil {
+					return err
+				}
+				for _, encoding := range []*base64.Encoding{base64.RawStdEncoding, base64.URLEncoding, base64.RawURLEncoding} {
+					out, err = encoding.DecodeString(encoded)
+					if err == nil {
+						break
+					}
+				}
+				if err != nil {
+					return err
+				}
 			}
 			target.SetBytes(out)
 			return nil
@@ -1255,7 +1263,50 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		targetType.Kind() == reflect.Int32 || targetType.Kind() == reflect.Uint32 ||
 		targetType.Kind() == reflect.Float32 || targetType.Kind() == reflect.Float64
 	if isNum && strings.HasPrefix(string(inputValue), `"`) {
-		inputValue = inputValue[1 : len(inputValue)-1]
+		var number string
+		if err := json.Unmarshal(inputValue, &number); err != nil {
+			return err
+		}
+		// Preserve the historical tolerance for whitespace inside numeric strings.
+		// The separate standard entrypoint validates the stricter contract.
+		number = strings.TrimSpace(number)
+		if isFloat {
+			if value, ok := nonFinite[strconv.Quote(number)]; ok {
+				target.SetFloat(value)
+				return nil
+			}
+		}
+		inputValue = json.RawMessage(number)
+	}
+
+	if string(inputValue) != "null" {
+		switch targetType.Kind() {
+		case reflect.Int32, reflect.Int64:
+			decimal, err := integerDecimal(string(inputValue))
+			if err != nil {
+				return err
+			}
+			n, err := strconv.ParseInt(decimal, 10, targetType.Bits())
+			if err != nil {
+				return err
+			}
+			if prop != nil && len(prop.ClosedEnum) > 0 && !prop.ClosedEnum[int32(n)] {
+				return fmt.Errorf("unknown value %d for closed enum %s", n, prop.Enum)
+			}
+			target.SetInt(n)
+			return nil
+		case reflect.Uint32, reflect.Uint64:
+			decimal, err := integerDecimal(string(inputValue))
+			if err != nil {
+				return err
+			}
+			n, err := strconv.ParseUint(decimal, 10, targetType.Bits())
+			if err != nil {
+				return err
+			}
+			target.SetUint(n)
+			return nil
+		}
 	}
 
 	if prop != nil && len(prop.ClosedEnum) > 0 && targetType.Kind() == reflect.Int32 {
