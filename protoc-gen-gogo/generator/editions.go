@@ -167,7 +167,6 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 					return err
 				}
 			}
-			required := 0
 			for _, f := range m.Field {
 				if err := checkOptions(f.Options, f.GetOptions().GetFeatures(), name+"."+f.GetName()); err != nil {
 					return err
@@ -183,7 +182,6 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 				}
 				if features.Required() {
 					f.Label = d.FieldDescriptorProto_LABEL_REQUIRED.Enum()
-					required++
 				}
 				if !features.HasPresence() && !f.IsRepeated() && !f.IsMessage() {
 					proto.SetExtension(f.Options, gogoproto.E_Nullable, proto.Bool(false))
@@ -211,9 +209,6 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 						f.DefaultValue = proto.String(e.first)
 					}
 				}
-			}
-			if required > 64 {
-				return fmt.Errorf("%s: %s: more than 64 required fields are not yet supported", file.GetName(), name)
 			}
 			for _, e := range m.EnumType {
 				if err := checkEnum(e, name+"."+e.GetName()); err != nil {

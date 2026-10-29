@@ -34,8 +34,8 @@ The ordinary enum name maps and `String` methods retain proto names.
 
 - Optional requires the gogo runtime. `nullable=false` and unsupported custom,
   cast, embedded, standard-type, face and union combinations are rejected.
-- Editions currently use reflection output. Fast generators, gogo custom
-  extensions and more than 64 required fields per message are rejected.
+- Editions currently use reflection output. Fast generators and gogo custom
+  extensions are rejected until their feature combinations are validated.
 - Gogo preserves its Open Struct API in every edition. Explicit API_OPEN and
   keeping enum prefixes are accepted. HYBRID/OPAQUE, prefix stripping and other
   unimplemented explicit Go feature requests are rejected.
@@ -104,3 +104,9 @@ Frozen original bindings remain usable and retain new metadata as unknown bytes.
 `compat/check-wkt-metadata.sh` verifies the exact permitted schema delta, generated
 snapshots and original consumers; the isolated official Go oracle checks both
 binary and JSON representations.
+
+Messages with more than 64 required fields now use an additional validation
+bitmap. Files containing such messages require runtime Version7, including
+proto2 files; smaller legacy messages keep their original guard and allocation
+path. The boundary consumer checks 63/64/65/128/129 fields, sparse tags, absent
+fields, explicit zeroes, nested parsing and Merge.
