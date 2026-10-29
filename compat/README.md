@@ -36,7 +36,7 @@ Proto3 optional currently requires the gogo runtime and default pointer-based
 scalar representations. nullable=false, customtype/casttype, embedded fields,
 standard-type mappings, face and union combinations are rejected for optional
 fields. Existing proto2/proto3 configurations keep their historical behavior.
-Editions support is not yet advertised.
+Editions reflection support is advertised as described below.
 
 The Editions foundation adds protocol declarations from protobuf 36.2 while
 retaining historical fields and defaults that newer upstream schemas removed.
@@ -104,3 +104,8 @@ also adds missing disjoint official option extension ranges, including 998.
 errors v1.8.1 consumers, then regenerates raft using the original/candidate gofast
 entrypoints and repeats its complete package suite without application changes.
 The nested module and extra CI job keep those dependencies out of the runtime.
+
+`sh compat/check-conformance.sh` runs the modern upstream 36.2 suites in an
+isolated module. See `conformance/README.md` for the pinned runner setup, exact
+historical failure records, supported Edition scope and CI reports. This gate
+detects new failures; its passing status does not claim full conformance.
