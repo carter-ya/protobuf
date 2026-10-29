@@ -60,3 +60,7 @@ A03 adds an independent standard-mode run and `failures-standard.json`. Its
 inventory is the same, but no variable outcomes are permitted. The legacy
 baseline remains separate so adopting standard rules does not silently change
 old callers. The report directories identify the entrypoint explicitly.
+
+B05 fixes message-oneof merging only for explicit Editions metadata. Six exact
+Editions_Proto2/Proto3 binary/JSON failures are removed from each baseline.
+Historical proto2/proto3 oneof behavior and text baselines are unchanged.

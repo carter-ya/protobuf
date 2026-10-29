@@ -137,6 +137,17 @@ randomized GoString syntax, raw feature retention and unsupported options.
 gogofast, gogofaster, gogoslick and gogotypes. The initial matrix covers all scalar
 and repeated types, presence, UTF-8 VERIFY/NONE, packed/expanded enums, negative
 enums, required fields, unknown/wrong-wire fields and malformed input. Fresh
-fast bindings use Version8. Fast wire/size results are checked against the
-reflection codec and the pinned official protoc binary/text oracle. Complex
-fields remain rejected until their dedicated matrix is enabled.
+fast bindings use Version9. Fast wire/size results are checked against the
+reflection codec and the pinned official protoc binary/text oracle. The matrix
+also covers map UTF-8 and closed-enum routing, message/oneof merging,
+DELIMITED singular/repeated/oneof fields, imported proto2 enums, cross-file and
+nested extensions, raw descriptors and combined auxiliary plugins. Group tags
+must match; extension policy comes from its declaration. A pre-B05 runtime must
+reject these bindings. Partial codec dependency configurations produce explicit
+generation errors; generate referenced messages with matching codec and auxiliary helper methods.
+Custom/cast/nullable and unsafe options remain outside the supported set.
+
+The default reflection runtime still has the individually recorded conformance
+limitations, including validating some lazy string extensions only when read.
+The generated Editions extension path validates registered UTF-8 and wrong-wire
+fields before storage. Historical proto2/proto3 acceptance is preserved.

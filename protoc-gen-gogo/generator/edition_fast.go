@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"github.com/gogo/protobuf/gogoproto"
 	d "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
@@ -21,31 +20,44 @@ func fileHasFastCodec(file *d.FileDescriptorProto) bool {
 	}
 	return visit(file.MessageType)
 }
-func validateEditionFast(file *d.FileDescriptorProto) error {
-	if !fileHasFastCodec(file) {
-		return nil
+
+// Fast methods call dependency methods directly. Diagnose partial per-message
+// configurations rather than producing Go references to methods that do not exist.
+func (g *Generator) validateEditionFastDependencies(file *FileDescriptor) {
+	if !file.IsEditions() {
+		return
 	}
-	if len(file.Extension) > 0 {
-		return fmt.Errorf("%s: fast Editions extension declarations are not yet supported", file.GetName())
-	}
-	var visit func([]*d.DescriptorProto) error
-	visit = func(messages []*d.DescriptorProto) error {
-		for _, message := range messages {
-			if messageHasFastCodec(file, message) {
-				if len(message.ExtensionRange) > 0 || len(message.Extension) > 0 {
-					return fmt.Errorf("%s: %s: fast Editions extensions are not yet supported", file.GetName(), message.GetName())
-				}
-				for _, field := range message.Field {
-					if field.IsRealOneof() || field.IsMessage() || field.GetType() == d.FieldDescriptorProto_TYPE_GROUP {
-						return fmt.Errorf("%s: %s.%s: fast Editions complex fields are not yet supported", file.GetName(), message.GetName(), field.GetName())
-					}
-				}
+	for _, message := range file.Messages() {
+		if message.GetOptions().GetMapEntry() {
+			continue
+		}
+		marshaler := gogoproto.IsMarshaler(file.FileDescriptorProto, message.DescriptorProto)
+		sizer := gogoproto.IsSizer(file.FileDescriptorProto, message.DescriptorProto)
+		protoSizer := gogoproto.IsProtoSizer(file.FileDescriptorProto, message.DescriptorProto)
+		unmarshaler := gogoproto.IsUnmarshaler(file.FileDescriptorProto, message.DescriptorProto)
+		if marshaler && !sizer && !protoSizer {
+			g.Fail(file.GetName(), ": ", message.GetName(), ": Editions marshaler requires sizer or protosizer")
+		}
+		if !marshaler && !sizer && !protoSizer && !unmarshaler {
+			continue
+		}
+		for _, field := range message.Field {
+			target := field
+			if g.IsMap(field) {
+				target = g.GoMapType(nil, field).ValueAliasField
 			}
-			if err := visit(message.NestedType); err != nil {
-				return err
+			if !target.IsMessage() && target.GetType() != d.FieldDescriptorProto_TYPE_GROUP {
+				continue
+			}
+			object := g.ObjectNamed(target.GetTypeName())
+			if imported, ok := object.(*ImportedDescriptor); ok {
+				object = imported.o
+			}
+			dep := object.(*Descriptor)
+			df, dm := dep.File().FileDescriptorProto, dep.DescriptorProto
+			if marshaler && !gogoproto.IsMarshaler(df, dm) || sizer && !gogoproto.IsSizer(df, dm) || protoSizer && !gogoproto.IsProtoSizer(df, dm) || unmarshaler && !gogoproto.IsUnmarshaler(df, dm) {
+				g.Fail(file.GetName(), ": ", message.GetName(), ".", field.GetName(), ": Editions fast dependency requires matching codec methods: ", target.GetTypeName())
 			}
 		}
-		return nil
 	}
-	return visit(file.MessageType)
 }

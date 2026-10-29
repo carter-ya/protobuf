@@ -682,7 +682,9 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 		p.In()
 
 		p.generateMsgNullAndTypeCheck(ccTypeName, verbose)
-		vanity.TurnOffNullableForNativeTypes(field)
+		if !file.IsEditions() || field.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
+			vanity.TurnOffNullableForNativeTypes(field)
+		}
 		p.generateField(file, message, field, verbose)
 
 		if verbose {

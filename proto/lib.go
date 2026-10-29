@@ -968,6 +968,8 @@ const (
 
 	// Version8 supports generated Editions closed-enum filtering.
 	GoGoProtoPackageIsVersion8 = true
+	// Version9 adds generated group bodies and declaration-scoped extensions.
+	GoGoProtoPackageIsVersion9 = true
 
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.

@@ -3,6 +3,7 @@ package proto
 import (
 	"fmt"
 	"io"
+	"unicode/utf8"
 )
 
 func editionVarint(data []byte) (uint64, int, error) {
@@ -94,4 +95,40 @@ func editionField(data []byte) (int, int, int, error) {
 		}
 	}
 	return 0, 0, 0, io.ErrUnexpectedEOF
+}
+
+// EditionGroupBody returns the body and total length of one matching group.
+func EditionGroupBody(data []byte) ([]byte, int, error) {
+	if len(data) == 0 || data[0]&7 != WireStartGroup {
+		return nil, 0, fmt.Errorf("proto: expected Editions group")
+	}
+	end, start, close, err := editionField(data)
+	if err != nil {
+		return nil, 0, err
+	}
+	return data[start:close], end, nil
+}
+
+func validateEditionMap(body []byte, verifyKey bool) error {
+	for len(body) > 0 {
+		key, n, err := editionVarint(body)
+		if err != nil {
+			return err
+		}
+		size, err := EditionFieldSize(body)
+		if err != nil {
+			return err
+		}
+		if verifyKey && key == 10 {
+			length, prefix, err := editionVarint(body[n:size])
+			if err != nil {
+				return err
+			}
+			if !utf8.Valid(body[n+prefix : n+prefix+int(length)]) {
+				return errInvalidUTF8
+			}
+		}
+		body = body[size:]
+	}
+	return nil
 }

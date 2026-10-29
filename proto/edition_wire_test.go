@@ -45,3 +45,22 @@ func TestGeneratedEditionEnumFilter(t *testing.T) {
 		}
 	}
 }
+
+func TestEditionGroupBodyAndMapValidation(t *testing.T) {
+	data := []byte{51, 8, 1, 59, 16, 2, 60, 52, 8, 3}
+	body, n, err := EditionGroupBody(data)
+	if err != nil || n != 8 || !bytes.Equal(body, []byte{8, 1, 59, 16, 2, 60}) {
+		t.Fatalf("%x %d %v", body, n, err)
+	}
+	for _, bad := range [][]byte{{}, {8, 1}, {51, 60}, {51, 59, 52, 60}, {51}} {
+		if _, _, err := EditionGroupBody(bad); err == nil {
+			t.Fatalf("accepted group %x", bad)
+		}
+	}
+	rules := map[uint64]*EditionEnumFilter{1: NewEditionMapEnumFilter([]int32{0, 1}, true)}
+	for _, bad := range [][]byte{{10, 5, 10, 1, 255, 16, 9}, {10, 2, 11, 20}, {10, 2, 0, 0}, {10, 2, 16, 128}} {
+		if _, _, err := FilterEditionEnums(bad, rules); err == nil {
+			t.Fatalf("accepted invalid closed map %x", bad)
+		}
+	}
+}

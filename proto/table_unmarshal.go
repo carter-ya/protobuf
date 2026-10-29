@@ -463,7 +463,9 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 					// We have found the corresponding interface for this struct.
 					// That lets us know where this struct should be stored
 					// when we encounter it during unmarshaling.
-					unmarshal := makeUnmarshalOneof(typ, of.ityp, baseUnmarshal)
+					var policy Properties
+					policy.Parse(f.Tag.Get("protobuf"))
+					unmarshal := makeUnmarshalOneof(typ, of.ityp, baseUnmarshal, policy.ExplicitPresence)
 					u.setTag(fieldNum, of.field, unmarshal, 0, name)
 					u.setClosedEnum(fieldNum, &f)
 				}
@@ -2101,12 +2103,18 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 // ityp is the interface type of the oneof field (e.g. isMsg_F).
 // unmarshal is the unmarshaler for the base type of the oneof case (e.g. int64).
 // Note that this function will be called once for each case in the oneof.
-func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler) unmarshaler {
+func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler, mergeMessage bool) unmarshaler {
 	sf := typ.Field(0)
 	field0 := toField(&sf)
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		// Allocate holder for value.
 		v := reflect.New(typ)
+		if mergeMessage && sf.Type.Kind() == reflect.Ptr && sf.Type.Elem().Kind() == reflect.Struct {
+			previous := f.asPointerTo(ityp).Elem()
+			if !previous.IsNil() && previous.Elem().Type() == v.Type() && !previous.Elem().IsNil() {
+				v = previous.Elem()
+			}
+		}
 
 		// Unmarshal data into holder.
 		// We unmarshal into the first field of the holder object.

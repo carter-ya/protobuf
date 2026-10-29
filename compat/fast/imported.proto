@@ -1,0 +1,11 @@
+syntax = "proto2";
+package compat.imported;
+option go_package = "example.com/gogo-complex/pb";
+enum Foreign {
+  FOREIGN_ZERO = 0;
+  FOREIGN_ONE = 1;
+}
+
+message ForeignChild {
+  optional int32 x = 1;
+}

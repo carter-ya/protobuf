@@ -14,6 +14,9 @@ func (f *FileDescriptor) IsEditions() bool { return f.edition != nil }
 // FieldHasPresence reports the schema's resolved presence contract. Legacy
 // custom Go representations retain their separate nullable decisions.
 func (g *Generator) FieldHasPresence(file *FileDescriptor, field *d.FieldDescriptorProto) bool {
+	if field.IsRealOneof() {
+		return true
+	}
 	if field.IsRepeated() {
 		return false
 	}
@@ -62,4 +65,21 @@ func (g *Generator) FieldClosedEnumValues(file *FileDescriptor, field *d.FieldDe
 		values = append(values, int32(n))
 	}
 	return values
+}
+
+func (g *Generator) inheritMapFeatures(parent, field *d.FieldDescriptorProto) {
+	if g.file.edition == nil {
+		return
+	}
+	features := g.file.edition.fields[parent]
+	features.FieldPresence = 0
+	features.MessageEncoding = 1
+	g.file.edition.fields[field] = features
+}
+
+// CopyFieldSemantics carries resolved policy to private plugin field clones.
+func (g *Generator) CopyFieldSemantics(file *FileDescriptor, original, clone *d.FieldDescriptorProto) {
+	if file.edition != nil {
+		file.edition.fields[clone] = file.edition.fields[original]
+	}
 }

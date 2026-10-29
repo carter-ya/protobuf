@@ -14,7 +14,7 @@ func NewEditionEnumFilter(values []int32, mapValue, packed bool) *EditionEnumFil
 	for _, value := range values {
 		known[value] = true
 	}
-	return &EditionEnumFilter{closedEnumFilter{values: known, mapValue: mapValue, allowPacked: packed}}
+	return &EditionEnumFilter{filter: closedEnumFilter{values: known, mapValue: mapValue, allowPacked: packed, strictMap: mapValue}}
 }
 
 // FilterEditionEnums routes unknown closed-enum values before generated decoding.
@@ -69,4 +69,11 @@ func FilterEditionEnums(data []byte, fields map[uint64]*EditionEnumFilter) ([]by
 		return data, nil, nil
 	}
 	return filtered, unknown, nil
+}
+
+// NewEditionMapEnumFilter adds the map key validation policy to a closed enum.
+func NewEditionMapEnumFilter(values []int32, verifyKey bool) *EditionEnumFilter {
+	rule := NewEditionEnumFilter(values, true, false)
+	rule.filter.verifyMapKey = verifyKey
+	return rule
 }

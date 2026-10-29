@@ -332,18 +332,40 @@ func (this orderFields) Swap(i, j int) {
 
 func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto) {
 	proto3 = p.FieldProto3Value(file, field, proto3)
+	if file.IsEditions() && p.IsMap(field) {
+		m := p.GoMapType(nil, field)
+		for _, entry := range []struct {
+			field *descriptor.FieldDescriptorProto
+			name  string
+		}{{m.KeyAliasField, "key"}, {m.ValueAliasField, "value"}} {
+			if p.FieldRequiresUTF8(file, entry.field) {
+				p.P("for key, value := range m.", p.GetFieldName(message, field), " { _ = key; _ = value; if !", p.NewImport("unicode/utf8").Use(), ".ValidString(", entry.name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in map\") } }")
+			}
+		}
+	}
 	if (file.IsEditions() || field.GetProto3Optional()) && p.FieldRequiresUTF8(file, field) {
-		name := p.GetFieldName(message, field)
+		name := p.GetOneOfFieldName(message, field)
 		utf8 := p.NewImport("unicode/utf8").Use()
 		if field.IsRepeated() {
 			p.P("for _, value := range m.", name, " { if !", utf8, ".ValidString(value) { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") } }")
-		} else if p.FieldHasPresence(file, field) {
+		} else if p.FieldHasPresence(file, field) && !field.IsRealOneof() {
 			p.P("if m.", name, " != nil && !", utf8, ".ValidString(*m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
 		} else {
 			p.P("if !", utf8, ".ValidString(m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
 		}
 	}
 	fieldname := p.GetOneOfFieldName(message, field)
+	if file.IsEditions() && field.IsRealOneof() && (field.IsMessage() || field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP) {
+		p.P("if m.", fieldname, " == nil {")
+		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP {
+			p.encodeKey(field.GetNumber(), proto.WireEndGroup)
+			p.encodeKey(field.GetNumber(), proto.WireStartGroup)
+		} else {
+			p.callVarint("0")
+			p.encodeKey(field.GetNumber(), proto.WireBytes)
+		}
+		p.P("return len(dAtA)-i,nil }")
+	}
 	nullable := gogoproto.IsNullable(field)
 	repeated := field.IsRepeated()
 	required := field.IsRequired()
@@ -656,7 +678,21 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 			p.encodeKey(fieldNumber, wireType)
 		}
 	case descriptor.FieldDescriptorProto_TYPE_GROUP:
-		panic(fmt.Errorf("marshaler does not support group %v", fieldname))
+		if !file.IsEditions() {
+			panic(fmt.Errorf("marshaler does not support group %v", fieldname))
+		}
+		if repeated {
+			val := p.reverseListRange("m.", fieldname)
+			p.encodeKey(fieldNumber, proto.WireEndGroup)
+			p.backward(val, false)
+			p.encodeKey(fieldNumber, proto.WireStartGroup)
+			p.Out()
+			p.P("}")
+		} else {
+			p.encodeKey(fieldNumber, proto.WireEndGroup)
+			p.backward("m."+fieldname, false)
+			p.encodeKey(fieldNumber, proto.WireStartGroup)
+		}
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 		if p.IsMap(field) {
 			m := p.GoMapType(nil, field)
@@ -1022,6 +1058,9 @@ func (p *marshalto) Generate(file *generator.FileDescriptor) {
 
 		//Generate MarshalTo methods for oneof fields
 		m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
+		for index, field := range m.Field {
+			p.CopyFieldSemantics(file, message.Field[index], field)
+		}
 		for _, field := range m.Field {
 			oneof := field.IsRealOneof()
 			if !oneof {
@@ -1042,7 +1081,9 @@ func (p *marshalto) Generate(file *generator.FileDescriptor) {
 			p.P(`func (m *`, ccTypeName, `) MarshalToSizedBuffer(dAtA []byte) (int, error) {`)
 			p.In()
 			p.P(`i := len(dAtA)`)
-			vanity.TurnOffNullableForNativeTypes(field)
+			if !file.IsEditions() || field.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
+				vanity.TurnOffNullableForNativeTypes(field)
+			}
 			p.generateField(false, numGen, file, message, field)
 			p.P(`return len(dAtA) - i, nil`)
 			p.Out()

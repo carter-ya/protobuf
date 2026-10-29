@@ -36,11 +36,6 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
         "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
         "follow_up": "later binary/text runtime conformance work"
@@ -114,11 +109,6 @@
         "test": "Recommended.Editions_Proto3.JsonInput.ValueDeepNesting200",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
-        "follow_up": "later binary/text runtime conformance work"
       },
       {
         "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
@@ -341,16 +331,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
         "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
         "follow_up": "later binary/text runtime conformance work"
@@ -413,16 +393,6 @@
       {
         "test": "Required.Editions_Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
         "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
         "follow_up": "later binary/text runtime conformance work"
       },
       {

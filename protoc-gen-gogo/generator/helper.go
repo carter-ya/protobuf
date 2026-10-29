@@ -51,10 +51,13 @@ func (d *FileDescriptor) Enums() []*EnumDescriptor {
 }
 
 func (d *Descriptor) IsGroup() bool {
-	return d.group
+	return d.group && d.file.edition == nil
 }
 
 func (g *Generator) IsGroup(field *descriptor.FieldDescriptorProto) bool {
+	if g.file.edition != nil {
+		return field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP
+	}
 	if d, ok := g.typeNameToObject[field.GetTypeName()].(*Descriptor); ok {
 		return d.IsGroup()
 	}
@@ -225,6 +228,10 @@ func (g *Generator) IsMap(field *descriptor.FieldDescriptorProto) bool {
 }
 
 func (g *Generator) GetMapKeyField(field, keyField *descriptor.FieldDescriptorProto) *descriptor.FieldDescriptorProto {
+	if g.file.edition != nil {
+		keyField = proto.Clone(keyField).(*descriptor.FieldDescriptorProto)
+		g.inheritMapFeatures(field, keyField)
+	}
 	if !gogoproto.IsCastKey(field) {
 		return keyField
 	}
@@ -244,6 +251,7 @@ func (g *Generator) GetMapValueField(field, valField *descriptor.FieldDescriptor
 		g.Fail("cannot have a customtype and casttype: ", field.String())
 	}
 	valField = proto.Clone(valField).(*descriptor.FieldDescriptorProto)
+	g.inheritMapFeatures(field, valField)
 	if valField.Options == nil {
 		valField.Options = &descriptor.FieldOptions{}
 	}

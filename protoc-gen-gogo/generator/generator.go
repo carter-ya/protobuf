@@ -1216,6 +1216,7 @@ func (g *Generator) runPlugins(file *FileDescriptor) {
 func (g *Generator) generate(file *FileDescriptor) {
 	g.customImports = make([]string, 0)
 	g.file = file
+ g.validateEditionFastDependencies(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
@@ -1243,7 +1244,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 			codeVersion = 7
 		}
 		if file.IsEditions() && fileHasFastCodec(file.FileDescriptorProto) {
-			codeVersion = 8
+			codeVersion = 9
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
