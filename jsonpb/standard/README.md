@@ -25,9 +25,13 @@ iteration is not inherited by this entrypoint. JSONPB custom hooks remain the
 message author's responsibility; they receive the historical configuration and
 must implement any custom representation consistently with the standard.
 
-A03 establishes these rules but does not claim full conformance. The pinned
-upstream gate runs both entrypoints separately. Standard mode currently removes
+These contracts do not claim full conformance. The pinned
+upstream gate runs both entrypoints separately. A03 removed
 52 additional stable failures and all 16 variable legacy oneof/null outcomes;
 remaining binary, JSON and text limitations are individually recorded in
-`compat/conformance/failures-standard.json`. WKT format/range work follows in
-A04. No modern official runtime dependency is added.
+`compat/conformance/failures-standard.json`. A04 adds full-range Duration, validated Timestamp, FieldMask strings and
+Any special-type handling. It removes 44 further stable failures, with
+independent official C++ and Go interoperability checks. No modern official runtime dependency is added.
+
+The current standard baseline retains 120 binary/JSON and 223 text failures.
+Legacy mode retains its separate historical baseline and behavior.

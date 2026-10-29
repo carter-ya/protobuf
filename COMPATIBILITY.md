@@ -85,3 +85,9 @@ preservation and deterministic duplicate/oneof rejection. Existing `jsonpb`
 configuration layouts and default behavior are unchanged. Modern conformance
 runs both entrypoints independently and records remaining limitations; see
 `jsonpb/standard/README.md` and `compat/conformance/README.md`.
+
+Standard JSON also supports full-range Duration, range-checked Timestamp,
+FieldMask strings, empty Any and Any-wrapped special types. It rejects
+non-finite Value numbers. Legacy jsonpb WKT representations and tolerance
+remain unchanged. These paths are checked against both the pinned C++ suites
+and official Go implementation.

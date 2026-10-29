@@ -76,21 +76,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Recommended.Editions_Proto3.FieldMaskNumbersDontRoundTrip.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.FieldMaskPathsDontRoundTrip.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.FieldMaskTooManyUnderscore.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
         "test": "Recommended.Editions_Proto3.JsonInput.IgnoreUnknownEnumStringValueInMapPart.ProtobufOutput",
         "reason": "Failed to parse input or produce output.",
         "follow_up": "A04 WKT standard JSON"
@@ -171,16 +156,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Recommended.Editions_Proto3.ValueRejectInfNumberValue.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ValueRejectNanNumberValue.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
         "test": "Recommended.Proto2.JsonInput.IgnoreUnknownEnumStringValueInMapPart.ProtobufOutput",
         "reason": "Failed to parse input or produce output.",
         "follow_up": "A04 WKT standard JSON"
@@ -249,21 +224,6 @@
         "test": "Recommended.Proto2.ProtobufInput.ValidMessageSetEncoding.SubmessageEncoding.ProtobufOutput",
         "reason": "Output was not equivalent to reference message: deleted: message_set_correct.(protobuf_test_messages.proto2.TestAllTypesProto2.MessageSetCorrectExtension2.message_set_extension): { i: 99 }",
         "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.FieldMaskNumbersDontRoundTrip.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Proto3.FieldMaskPathsDontRoundTrip.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Proto3.FieldMaskTooManyUnderscore.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInMapPart.ProtobufOutput",
@@ -346,16 +306,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Recommended.Proto3.ValueRejectInfNumberValue.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Proto3.ValueRejectNanNumberValue.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
         "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "later binary/text runtime conformance work"
@@ -429,81 +379,6 @@
         "test": "Required.Editions_Proto2.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
         "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
         "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.AnyEmpty.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.AnyEmpty.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.AnyWithFieldMask.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.AnyWithFieldMask.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.AnyWithNoType.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.AnyWithNoType.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.DurationMaxValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.DurationMaxValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.DurationMinValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.DurationMinValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.EmptyFieldMask.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.EmptyFieldMask.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.FieldMask.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.FieldMask.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.TimestampJsonInputTooSmall",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Required.Editions_Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
@@ -581,16 +456,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Editions_Proto3.TimestampProtoInputTooLarge.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.TimestampProtoInputTooSmall.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
         "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "later binary/text runtime conformance work"
@@ -666,81 +531,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Proto3.JsonInput.AnyEmpty.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.AnyEmpty.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.AnyWithFieldMask.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.AnyWithFieldMask.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.AnyWithNoType.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.AnyWithNoType.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.DurationMaxValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.DurationMaxValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.DurationMinValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.DurationMinValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.EmptyFieldMask.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.EmptyFieldMask.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.FieldMask.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.FieldMask.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.TimestampJsonInputTooSmall",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
         "test": "Required.Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "later binary/text runtime conformance work"
@@ -814,16 +604,6 @@
         "test": "Required.Proto3.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
         "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
         "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.TimestampProtoInputTooLarge.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.TimestampProtoInputTooSmall.JsonOutput",
-        "reason": "Should have failed to serialize, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
       }
     ],
     "variable_outcomes": [],
