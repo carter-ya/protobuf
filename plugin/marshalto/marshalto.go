@@ -331,10 +331,17 @@ func (this orderFields) Swap(i, j int) {
 }
 
 func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto) {
-	proto3 = proto3 && !field.GetProto3Optional()
-	if field.GetProto3Optional() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING {
+	proto3 = p.FieldProto3Value(file, field, proto3)
+	if (file.IsEditions() || field.GetProto3Optional()) && p.FieldRequiresUTF8(file, field) {
 		name := p.GetFieldName(message, field)
-		p.P("if m.", name, " != nil && !", p.NewImport("unicode/utf8").Use(), ".ValidString(*m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+		utf8 := p.NewImport("unicode/utf8").Use()
+		if field.IsRepeated() {
+			p.P("for _, value := range m.", name, " { if !", utf8, ".ValidString(value) { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") } }")
+		} else if p.FieldHasPresence(file, field) {
+			p.P("if m.", name, " != nil && !", utf8, ".ValidString(*m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+		} else {
+			p.P("if !", utf8, ".ValidString(m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+		}
 	}
 	fieldname := p.GetOneOfFieldName(message, field)
 	nullable := gogoproto.IsNullable(field)
@@ -437,7 +444,7 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 			p.P(`dAtA`, numGen.Next(), ` := make([]byte, len(m.`, fieldname, `)*10)`)
 			p.P(`var `, jvar, ` int`)
 			if *field.Type == descriptor.FieldDescriptorProto_TYPE_INT64 ||
-				*field.Type == descriptor.FieldDescriptorProto_TYPE_INT32 {
+				*field.Type == descriptor.FieldDescriptorProto_TYPE_INT32 || (file.IsEditions() && *field.Type == descriptor.FieldDescriptorProto_TYPE_ENUM) {
 				p.P(`for _, num1 := range m.`, fieldname, ` {`)
 				p.In()
 				p.P(`num := uint64(num1)`)

@@ -1,0 +1,72 @@
+package consumer_test
+import (
+ "bytes"
+ "math"
+ "os/exec"
+ "reflect"
+ "testing"
+ pb "example.com/gogo-fast/pb"
+ "github.com/gogo/protobuf/jsonpb/standard"
+ "github.com/gogo/protobuf/proto"
+)
+type reflectionSample pb.Sample
+func(m *reflectionSample)Reset(){*m=reflectionSample{}}
+func(m *reflectionSample)String()string{return proto.CompactTextString(m)}
+func(*reflectionSample)ProtoMessage(){}
+func(m *reflectionSample)Descriptor()([]byte,[]int){return (*pb.Sample)(m).Descriptor()}
+func encode(field int,body []byte)[]byte{data:=proto.EncodeVarint(uint64(field<<3|2));data=append(data,proto.EncodeVarint(uint64(len(body)))...);return append(data,body...)}
+func scalar(field int,value uint64)[]byte{return append(proto.EncodeVarint(uint64(field<<3)),proto.EncodeVarint(value)...)}
+func TestScalarCodecs(t *testing.T){
+ state:=pb.State(-1)
+ full:=&pb.Sample{DoubleValue:proto.Float64(-1.5),FloatValue:proto.Float32(1.25),Int64Value:proto.Int64(math.MinInt64),Uint64Value:proto.Uint64(math.MaxUint64),Int32Value:proto.Int32(math.MinInt32),Fixed64Value:proto.Uint64(math.MaxUint64),Fixed32Value:proto.Uint32(math.MaxUint32),BoolValue:proto.Bool(false),Verify:proto.String(""),Data:[]byte{},Uint32Value:proto.Uint32(0),State:&state,Sfixed32Value:proto.Int32(math.MinInt32),Sfixed64Value:proto.Int64(math.MinInt64),Sint32Value:proto.Int32(math.MinInt32),Sint64Value:proto.Int64(math.MinInt64),Raw:proto.String(string([]byte{255})),Labels:[]string{"","雪"},States:[]pb.State{0,1,-1},Opens:[]pb.OpenState{0,9,1},Zigzags:[]int32{0,-1,math.MinInt32,math.MaxInt32},Fixeds:[]uint64{0,math.MaxUint64},Chunks:[][]byte{{},{1,2}}}
+ for _,value:=range []*pb.Sample{new(pb.Sample),{Data:[]byte{}},{Int32Value:proto.Int32(0)},{ImplicitValue:0},full}{
+  expected,err:=proto.Marshal((*reflectionSample)(value));if err!=nil{t.Fatal(err)}
+  actual,err:=proto.Marshal(value);if err!=nil||!bytes.Equal(expected,actual){t.Fatalf("wire mismatch: %x %x %v",expected,actual,err)}
+  if proto.Size(value)!=len(actual){t.Fatal("size differs")}
+  if FAST {codec,ok:=interface{}(value).(interface{Marshal()([]byte,error);Unmarshal([]byte)error;Size()int});if !ok{t.Fatal("no generated fast methods")};data,err:=codec.Marshal();if err!=nil||codec.Size()!=len(data)||!bytes.Equal(data,expected){t.Fatalf("direct fast differs: %x %v",data,err)}}
+  command:=exec.Command("protoc","-I.","--decode=compat.fast.Sample","scalars.proto");command.Stdin=bytes.NewReader(actual)
+  text,err:=command.CombinedOutput();if err!=nil{t.Fatalf("official decode: %s %v",text,err)}
+  command=exec.Command("protoc","-I.","--encode=compat.fast.Sample","scalars.proto");command.Stdin=bytes.NewReader(text)
+  oracle,err:=command.Output();if err!=nil{t.Fatalf("official encode: %v",err)}
+  var official pb.Sample;if err:=proto.Unmarshal(oracle,&official);err!=nil||!proto.Equal(value,&official){t.Fatalf("official roundtrip: %v",err)}
+  var back pb.Sample
+  if err:=proto.Unmarshal(actual,&back);err!=nil||!proto.Equal(value,&back){t.Fatalf("roundtrip: %v %v",value,err)}
+ }
+ explicit:=&pb.Sample{Int32Value:proto.Int32(0),Data:[]byte{}}
+ text,err:=(&standard.Marshaler{}).MarshalToString(explicit);if err!=nil{t.Fatal(err)}
+ var back pb.Sample
+ if err:=standard.UnmarshalString(text,&back);err!=nil||back.Int32Value==nil||back.Data==nil{t.Fatalf("JSON presence: %s %v",text,err)}
+}
+func TestScalarValidation(t *testing.T){
+ bad:=string([]byte{255})
+ for _,value:=range []*pb.Sample{{Verify:&bad},{Labels:[]string{bad}},{ImplicitLabel:bad}}{if _,err:=proto.Marshal(value);err==nil{t.Fatal("invalid UTF-8 accepted")}}
+ for _,field:=range []int{9,19,25}{if err:=proto.Unmarshal(encode(field,[]byte{255}),new(pb.Sample));err==nil{t.Fatalf("invalid UTF-8 decoded at %d",field)}}
+ var raw pb.Sample
+ if err:=proto.Unmarshal(encode(18,[]byte{255}),&raw);err!=nil||raw.Raw==nil||*raw.Raw!=bad{t.Fatalf("UTF8 NONE: %v",err)}
+ if err:=proto.Unmarshal(nil,new(pb.Required));err==nil{t.Fatal("missing required accepted")}
+}
+func TestClosedEnumsAndUnknowns(t *testing.T){
+ input:=scalar(12,9)
+ input=append(input,encode(20,append([]byte{0,9},proto.EncodeVarint(math.MaxUint64)...))...)
+ input=append(input,encode(12,[]byte{0,1})...) // singular wrong-wire packed data remains wholly unknown
+ input=append(input,scalar(21,9)...)
+ input=append(input,scalar(100,7)...)
+ var value pb.Sample
+ var reflected reflectionSample
+ if err:=proto.Unmarshal(input,&value);err!=nil{t.Fatal(err)}
+ if err:=proto.Unmarshal(input,&reflected);err!=nil{t.Fatal(err)}
+ if value.State!=nil||!reflect.DeepEqual(value.States,[]pb.State{0,-1})||!reflect.DeepEqual(value.Opens,[]pb.OpenState{9}){t.Fatalf("closed enum routing: %v",value)}
+ actual,_:=proto.Marshal(&value);expected,_:=proto.Marshal(&reflected)
+ if !bytes.Equal(actual,expected){t.Fatalf("unknown values differ: %x %x",actual,expected)}
+ // Every ordinary scalar's wrong-wire form is retained as unknown.
+ for _,field:=range []int{1,2,3,5,9,10,17,18,25}{
+  var data []byte
+  if field==9||field==10||field==18||field==25{data=scalar(field,1)}else{data=encode(field,[]byte{1})}
+  if err:=proto.Unmarshal(data,new(pb.Sample));err!=nil{t.Fatalf("wrong-wire field %d: %v",field,err)}
+ }
+}
+
+func TestMalformedFastInput(t *testing.T){
+ if !FAST{return}
+ for _,data:=range [][]byte{{0},{8},{15},{12},{11,20},{26,2,1},{24,128,128,128,128,128,128,128,128,128,2},{128,128,128,128,128,1,0},{162,1,1,128}}{if err:=proto.Unmarshal(data,new(pb.Sample));err==nil{t.Fatalf("accepted %x",data)}}
+}

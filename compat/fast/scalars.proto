@@ -1,0 +1,44 @@
+edition = "2023";
+package compat.fast;
+option go_package = "example.com/gogo-fast/pb";
+enum State {
+  option features.enum_type = CLOSED;
+  STATE_UNSPECIFIED = 0;
+  STATE_ONE = 1;
+  STATE_NEG = -1;
+}
+enum OpenState {
+  OPEN_STATE_UNSPECIFIED = 0;
+  OPEN_STATE_ONE = 1;
+}
+message Sample {
+  double double_value = 1;
+  float float_value = 2;
+  int64 int64_value = 3;
+  uint64 uint64_value = 4;
+  int32 int32_value = 5;
+  fixed64 fixed64_value = 6;
+  fixed32 fixed32_value = 7;
+  bool bool_value = 8;
+  string verify = 9;
+  bytes data = 10;
+  uint32 uint32_value = 11;
+  State state = 12;
+  sfixed32 sfixed32_value = 13;
+  sfixed64 sfixed64_value = 14;
+  sint32 sint32_value = 15;
+  sint64 sint64_value = 16;
+  int32 implicit_value = 17 [features.field_presence = IMPLICIT];
+  string raw = 18 [features.utf8_validation = NONE];
+  repeated string labels = 19;
+  repeated State states = 20 [features.repeated_field_encoding = PACKED];
+  repeated OpenState opens = 21 [features.repeated_field_encoding = EXPANDED];
+  repeated sint32 zigzags = 22;
+  repeated fixed64 fixeds = 23;
+  repeated bytes chunks = 24;
+  string implicit_label = 25 [features.field_presence = IMPLICIT];
+}
+message Required {
+  int32 value = 1 [features.field_presence = LEGACY_REQUIRED];
+  State state = 2 [features.field_presence = LEGACY_REQUIRED];
+}

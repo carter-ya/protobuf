@@ -1242,6 +1242,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		if fileNeedsWideRequired(file.FileDescriptorProto) {
 			codeVersion = 7
 		}
+		if file.IsEditions() && fileHasFastCodec(file.FileDescriptorProto) {
+			codeVersion = 8
+		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
 		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")

@@ -231,7 +231,7 @@ func (p *size) std(field *descriptor.FieldDescriptorProto, name string) (string,
 }
 
 func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto, sizeName string) {
-	proto3 = proto3 && !field.GetProto3Optional()
+	proto3 = p.FieldProto3Value(file, field, proto3)
 	fieldname := p.GetOneOfFieldName(message, field)
 	nullable := gogoproto.IsNullable(field)
 	repeated := field.IsRepeated()
