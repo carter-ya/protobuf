@@ -257,7 +257,7 @@ func (p *gostring) Generate(file *generator.FileDescriptor) {
 					p.P(`}`)
 				}
 			} else {
-				if (!proto3 || field.GetProto3Optional()) && (nullable || repeated) {
+				if ((!proto3 || field.GetProto3Optional()) && (nullable || repeated)) || (gogoproto.IsStdTime(field) && nullable && !repeated) {
 					p.P(`if this.`, fieldname, ` != nil {`)
 					p.In()
 				}
@@ -276,7 +276,7 @@ func (p *gostring) Generate(file *generator.FileDescriptor) {
 						p.P(`s = append(s, "`, fieldname, `: " + `, fmtPkg.Use(), `.Sprintf("%#v", this.`, fieldname, `) + ",\n")`)
 					}
 				}
-				if (!proto3 || field.GetProto3Optional()) && (nullable || repeated) {
+				if ((!proto3 || field.GetProto3Optional()) && (nullable || repeated)) || (gogoproto.IsStdTime(field) && nullable && !repeated) {
 					p.Out()
 					p.P(`}`)
 				}

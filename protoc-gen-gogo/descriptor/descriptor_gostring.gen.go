@@ -38,7 +38,7 @@ func (this *FileDescriptorProto) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 16)
+	s := make([]string, 0, 18)
 	s = append(s, "&descriptor.FileDescriptorProto{")
 	if this.Name != nil {
 		s = append(s, "Name: "+valueToGoStringDescriptor(this.Name, "string")+",\n")
@@ -76,6 +76,12 @@ func (this *FileDescriptorProto) GoString() string {
 	if this.Syntax != nil {
 		s = append(s, "Syntax: "+valueToGoStringDescriptor(this.Syntax, "string")+",\n")
 	}
+	if this.OptionDependency != nil {
+		s = append(s, "OptionDependency: "+fmt.Sprintf("%#v", this.OptionDependency)+",\n")
+	}
+	if this.Edition != nil {
+		s = append(s, "Edition: "+valueToGoStringDescriptor(this.Edition, "Edition")+",\n")
+	}
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
 	}
@@ -86,7 +92,7 @@ func (this *DescriptorProto) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 14)
+	s := make([]string, 0, 15)
 	s = append(s, "&descriptor.DescriptorProto{")
 	if this.Name != nil {
 		s = append(s, "Name: "+valueToGoStringDescriptor(this.Name, "string")+",\n")
@@ -117,6 +123,9 @@ func (this *DescriptorProto) GoString() string {
 	}
 	if this.ReservedName != nil {
 		s = append(s, "ReservedName: "+fmt.Sprintf("%#v", this.ReservedName)+",\n")
+	}
+	if this.Visibility != nil {
+		s = append(s, "Visibility: "+valueToGoStringDescriptor(this.Visibility, "SymbolVisibility")+",\n")
 	}
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
@@ -167,12 +176,48 @@ func (this *ExtensionRangeOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 8)
 	s = append(s, "&descriptor.ExtensionRangeOptions{")
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
 	}
+	if this.Declaration != nil {
+		s = append(s, "Declaration: "+fmt.Sprintf("%#v", this.Declaration)+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
+	}
+	if this.Verification != nil {
+		s = append(s, "Verification: "+valueToGoStringDescriptor(this.Verification, "ExtensionRangeOptions_VerificationState")+",\n")
+	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ExtensionRangeOptions_Declaration) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 9)
+	s = append(s, "&descriptor.ExtensionRangeOptions_Declaration{")
+	if this.Number != nil {
+		s = append(s, "Number: "+valueToGoStringDescriptor(this.Number, "int32")+",\n")
+	}
+	if this.FullName != nil {
+		s = append(s, "FullName: "+valueToGoStringDescriptor(this.FullName, "string")+",\n")
+	}
+	if this.Type != nil {
+		s = append(s, "Type: "+valueToGoStringDescriptor(this.Type, "string")+",\n")
+	}
+	if this.Reserved != nil {
+		s = append(s, "Reserved: "+valueToGoStringDescriptor(this.Reserved, "bool")+",\n")
+	}
+	if this.Repeated != nil {
+		s = append(s, "Repeated: "+valueToGoStringDescriptor(this.Repeated, "bool")+",\n")
+	}
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
 	}
@@ -246,7 +291,7 @@ func (this *EnumDescriptorProto) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 10)
 	s = append(s, "&descriptor.EnumDescriptorProto{")
 	if this.Name != nil {
 		s = append(s, "Name: "+valueToGoStringDescriptor(this.Name, "string")+",\n")
@@ -262,6 +307,9 @@ func (this *EnumDescriptorProto) GoString() string {
 	}
 	if this.ReservedName != nil {
 		s = append(s, "ReservedName: "+fmt.Sprintf("%#v", this.ReservedName)+",\n")
+	}
+	if this.Visibility != nil {
+		s = append(s, "Visibility: "+valueToGoStringDescriptor(this.Visibility, "SymbolVisibility")+",\n")
 	}
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
@@ -363,7 +411,7 @@ func (this *FileOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 25)
+	s := make([]string, 0, 26)
 	s = append(s, "&descriptor.FileOptions{")
 	if this.JavaPackage != nil {
 		s = append(s, "JavaPackage: "+valueToGoStringDescriptor(this.JavaPackage, "string")+",\n")
@@ -428,6 +476,9 @@ func (this *FileOptions) GoString() string {
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
 	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
+	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
@@ -439,7 +490,7 @@ func (this *MessageOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 11)
 	s = append(s, "&descriptor.MessageOptions{")
 	if this.MessageSetWireFormat != nil {
 		s = append(s, "MessageSetWireFormat: "+valueToGoStringDescriptor(this.MessageSetWireFormat, "bool")+",\n")
@@ -456,6 +507,12 @@ func (this *MessageOptions) GoString() string {
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
 	}
+	if this.DeprecatedLegacyJsonFieldConflicts != nil {
+		s = append(s, "DeprecatedLegacyJsonFieldConflicts: "+valueToGoStringDescriptor(this.DeprecatedLegacyJsonFieldConflicts, "bool")+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
+	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
@@ -467,7 +524,7 @@ func (this *FieldOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 11)
+	s := make([]string, 0, 18)
 	s = append(s, "&descriptor.FieldOptions{")
 	if this.Ctype != nil {
 		s = append(s, "Ctype: "+valueToGoStringDescriptor(this.Ctype, "FieldOptions_CType")+",\n")
@@ -490,7 +547,73 @@ func (this *FieldOptions) GoString() string {
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
 	}
+	if this.UnverifiedLazy != nil {
+		s = append(s, "UnverifiedLazy: "+valueToGoStringDescriptor(this.UnverifiedLazy, "bool")+",\n")
+	}
+	if this.DebugRedact != nil {
+		s = append(s, "DebugRedact: "+valueToGoStringDescriptor(this.DebugRedact, "bool")+",\n")
+	}
+	if this.Retention != nil {
+		s = append(s, "Retention: "+valueToGoStringDescriptor(this.Retention, "FieldOptions_OptionRetention")+",\n")
+	}
+	if this.Targets != nil {
+		s = append(s, "Targets: "+fmt.Sprintf("%#v", this.Targets)+",\n")
+	}
+	if this.EditionDefaults != nil {
+		s = append(s, "EditionDefaults: "+fmt.Sprintf("%#v", this.EditionDefaults)+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
+	}
+	if this.FeatureSupport != nil {
+		s = append(s, "FeatureSupport: "+fmt.Sprintf("%#v", this.FeatureSupport)+",\n")
+	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FieldOptions_EditionDefault) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&descriptor.FieldOptions_EditionDefault{")
+	if this.Edition != nil {
+		s = append(s, "Edition: "+valueToGoStringDescriptor(this.Edition, "Edition")+",\n")
+	}
+	if this.Value != nil {
+		s = append(s, "Value: "+valueToGoStringDescriptor(this.Value, "string")+",\n")
+	}
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FieldOptions_FeatureSupport) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 9)
+	s = append(s, "&descriptor.FieldOptions_FeatureSupport{")
+	if this.EditionIntroduced != nil {
+		s = append(s, "EditionIntroduced: "+valueToGoStringDescriptor(this.EditionIntroduced, "Edition")+",\n")
+	}
+	if this.EditionDeprecated != nil {
+		s = append(s, "EditionDeprecated: "+valueToGoStringDescriptor(this.EditionDeprecated, "Edition")+",\n")
+	}
+	if this.DeprecationWarning != nil {
+		s = append(s, "DeprecationWarning: "+valueToGoStringDescriptor(this.DeprecationWarning, "string")+",\n")
+	}
+	if this.EditionRemoved != nil {
+		s = append(s, "EditionRemoved: "+valueToGoStringDescriptor(this.EditionRemoved, "Edition")+",\n")
+	}
+	if this.RemovalError != nil {
+		s = append(s, "RemovalError: "+valueToGoStringDescriptor(this.RemovalError, "string")+",\n")
+	}
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
 	}
@@ -501,10 +624,13 @@ func (this *OneofOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 6)
 	s = append(s, "&descriptor.OneofOptions{")
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
 	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
@@ -517,7 +643,7 @@ func (this *EnumOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 9)
 	s = append(s, "&descriptor.EnumOptions{")
 	if this.AllowAlias != nil {
 		s = append(s, "AllowAlias: "+valueToGoStringDescriptor(this.AllowAlias, "bool")+",\n")
@@ -527,6 +653,12 @@ func (this *EnumOptions) GoString() string {
 	}
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
+	}
+	if this.DeprecatedLegacyJsonFieldConflicts != nil {
+		s = append(s, "DeprecatedLegacyJsonFieldConflicts: "+valueToGoStringDescriptor(this.DeprecatedLegacyJsonFieldConflicts, "bool")+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
 	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
@@ -539,13 +671,22 @@ func (this *EnumValueOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 9)
 	s = append(s, "&descriptor.EnumValueOptions{")
 	if this.Deprecated != nil {
 		s = append(s, "Deprecated: "+valueToGoStringDescriptor(this.Deprecated, "bool")+",\n")
 	}
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
+	}
+	if this.DebugRedact != nil {
+		s = append(s, "DebugRedact: "+valueToGoStringDescriptor(this.DebugRedact, "bool")+",\n")
+	}
+	if this.FeatureSupport != nil {
+		s = append(s, "FeatureSupport: "+fmt.Sprintf("%#v", this.FeatureSupport)+",\n")
 	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
@@ -558,13 +699,16 @@ func (this *ServiceOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 7)
 	s = append(s, "&descriptor.ServiceOptions{")
 	if this.Deprecated != nil {
 		s = append(s, "Deprecated: "+valueToGoStringDescriptor(this.Deprecated, "bool")+",\n")
 	}
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
 	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
@@ -577,7 +721,7 @@ func (this *MethodOptions) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 7)
+	s := make([]string, 0, 8)
 	s = append(s, "&descriptor.MethodOptions{")
 	if this.Deprecated != nil {
 		s = append(s, "Deprecated: "+valueToGoStringDescriptor(this.Deprecated, "bool")+",\n")
@@ -587,6 +731,9 @@ func (this *MethodOptions) GoString() string {
 	}
 	if this.UninterpretedOption != nil {
 		s = append(s, "UninterpretedOption: "+fmt.Sprintf("%#v", this.UninterpretedOption)+",\n")
+	}
+	if this.Features != nil {
+		s = append(s, "Features: "+fmt.Sprintf("%#v", this.Features)+",\n")
 	}
 	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
@@ -707,7 +854,7 @@ func (this *GeneratedCodeInfo_Annotation) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 9)
 	s = append(s, "&descriptor.GeneratedCodeInfo_Annotation{")
 	if this.Path != nil {
 		s = append(s, "Path: "+fmt.Sprintf("%#v", this.Path)+",\n")
@@ -720,6 +867,115 @@ func (this *GeneratedCodeInfo_Annotation) GoString() string {
 	}
 	if this.End != nil {
 		s = append(s, "End: "+valueToGoStringDescriptor(this.End, "int32")+",\n")
+	}
+	if this.Semantic != nil {
+		s = append(s, "Semantic: "+valueToGoStringDescriptor(this.Semantic, "GeneratedCodeInfo_Annotation_Semantic")+",\n")
+	}
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FeatureSet) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 13)
+	s = append(s, "&descriptor.FeatureSet{")
+	if this.FieldPresence != nil {
+		s = append(s, "FieldPresence: "+valueToGoStringDescriptor(this.FieldPresence, "FeatureSet_FieldPresence")+",\n")
+	}
+	if this.EnumType != nil {
+		s = append(s, "EnumType: "+valueToGoStringDescriptor(this.EnumType, "FeatureSet_EnumType")+",\n")
+	}
+	if this.RepeatedFieldEncoding != nil {
+		s = append(s, "RepeatedFieldEncoding: "+valueToGoStringDescriptor(this.RepeatedFieldEncoding, "FeatureSet_RepeatedFieldEncoding")+",\n")
+	}
+	if this.Utf8Validation != nil {
+		s = append(s, "Utf8Validation: "+valueToGoStringDescriptor(this.Utf8Validation, "FeatureSet_Utf8Validation")+",\n")
+	}
+	if this.MessageEncoding != nil {
+		s = append(s, "MessageEncoding: "+valueToGoStringDescriptor(this.MessageEncoding, "FeatureSet_MessageEncoding")+",\n")
+	}
+	if this.JsonFormat != nil {
+		s = append(s, "JsonFormat: "+valueToGoStringDescriptor(this.JsonFormat, "FeatureSet_JsonFormat")+",\n")
+	}
+	if this.EnforceNamingStyle != nil {
+		s = append(s, "EnforceNamingStyle: "+valueToGoStringDescriptor(this.EnforceNamingStyle, "FeatureSet_EnforceNamingStyle")+",\n")
+	}
+	if this.DefaultSymbolVisibility != nil {
+		s = append(s, "DefaultSymbolVisibility: "+valueToGoStringDescriptor(this.DefaultSymbolVisibility, "FeatureSet_VisibilityFeature_DefaultSymbolVisibility")+",\n")
+	}
+	if this.EnforceProtoLimits != nil {
+		s = append(s, "EnforceProtoLimits: "+valueToGoStringDescriptor(this.EnforceProtoLimits, "FeatureSet_ProtoLimitsFeature_EnforceProtoLimits")+",\n")
+	}
+	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FeatureSet_VisibilityFeature) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&descriptor.FeatureSet_VisibilityFeature{")
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FeatureSet_ProtoLimitsFeature) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 4)
+	s = append(s, "&descriptor.FeatureSet_ProtoLimitsFeature{")
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FeatureSetDefaults) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&descriptor.FeatureSetDefaults{")
+	if this.Defaults != nil {
+		s = append(s, "Defaults: "+fmt.Sprintf("%#v", this.Defaults)+",\n")
+	}
+	if this.MinimumEdition != nil {
+		s = append(s, "MinimumEdition: "+valueToGoStringDescriptor(this.MinimumEdition, "Edition")+",\n")
+	}
+	if this.MaximumEdition != nil {
+		s = append(s, "MaximumEdition: "+valueToGoStringDescriptor(this.MaximumEdition, "Edition")+",\n")
+	}
+	if this.XXX_unrecognized != nil {
+		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *FeatureSetDefaults_FeatureSetEditionDefault) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&descriptor.FeatureSetDefaults_FeatureSetEditionDefault{")
+	if this.Edition != nil {
+		s = append(s, "Edition: "+valueToGoStringDescriptor(this.Edition, "Edition")+",\n")
+	}
+	if this.OverridableFeatures != nil {
+		s = append(s, "OverridableFeatures: "+fmt.Sprintf("%#v", this.OverridableFeatures)+",\n")
+	}
+	if this.FixedFeatures != nil {
+		s = append(s, "FixedFeatures: "+fmt.Sprintf("%#v", this.FixedFeatures)+",\n")
 	}
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")

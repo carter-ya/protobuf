@@ -38,11 +38,40 @@ standard-type mappings, face and union combinations are rejected for optional
 fields. Existing proto2/proto3 configurations keep their historical behavior.
 Editions support is not yet advertised.
 
-The original randomized TestStdTypesGoString can intermittently emit invalid Go
-expressions for nil standard-type pointers. This also reproduces on unmodified
-v1.3.2; the compatibility scripts do not skip or suppress that test.
+The Editions foundation adds protocol declarations from protobuf 36.2 while
+retaining historical fields and defaults that newer upstream schemas removed.
+`merge-protocol.py` merges only additions and is idempotent; it does not replace
+the legacy schema wholesale. Bootstrap protocol code with the frozen v1.3.2
+plugins using `regenerate-protocol.sh`. `regenerate-features.sh` uses protoc 36.2
+to compile canonical feature defaults into a Go 1.15-compatible byte table.
+
+`internal/semantics` resolves core defaults, allowed targets, fixed features and
+lexical inheritance without rewriting raw descriptors. Extensions inherit their
+declaration scope; structural presence is handled separately. `internal/fieldmeta`
+has no generator, descriptor or runtime dependencies. These modules do not yet
+enable Editions output: production generators continue to reject Editions until
+the corresponding encoding and runtime paths are implemented and validated.
+
+The original randomized TestStdTypesGoString could emit an invalid `<nil>` Go
+expression for nil time.Time pointers, reproducible on untouched v1.3.2 with
+seed 11. A separate generator fix and regenerated fixture omit the absent field.
+The deterministic regression test and check-gostring.sh verify both the fixture
+and freshly generated code; the randomized test is neither skipped nor suppressed.
 
 Generated snapshots compare Go syntax and decompressed descriptor bytes. This
 ignores only comments, formatting and gzip representation, which vary between
 Go toolchains. Field tags, declarations, function bodies and descriptor data
 must match; frozen consumer files are still compiled without modification.
+
+The protocol merge CLI formats its output with clang-format using Google style
+and preserving comment text (`ReflowComments: false`). Set `CLANG_FORMAT` to
+select the formatter binary; the checked-in protocol files use clang-format
+21.1.8. Formatting does not change descriptor fields or defaults.
+
+Proto formatting is checked in a separate CI job using the exact version in
+`compat/proto-format-requirements.txt`. Install it in a Python virtual environment
+and run `python3 compat/format-proto.py --check` to check, or omit `--check` to
+format. `CLANG_FORMAT` can select the installed binary. The shared `.clang-format`
+applies Google style without rewriting comment text. The check covers tracked
+proto files added or modified since v1.3.2, plus untracked proto files locally;
+`--base` selects another baseline when needed.

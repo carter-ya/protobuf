@@ -784,6 +784,9 @@ func (g *Generator) WrapTypes() {
 		genFileNames[n] = true
 	}
 	for _, f := range g.Request.ProtoFile {
+		if f.GetSyntax() == "editions" {
+			g.Fail(f.GetName() + ": Editions code generation is not enabled yet")
+		}
 		if err := validateOptional(f); err != nil {
 			g.Fail(err.Error())
 		}

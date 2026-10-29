@@ -1,6 +1,20 @@
 name: Legacy compatibility
 on: [push, pull_request]
 jobs:
+  proto-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: compat/proto-format-requirements.txt
+      - run: python -m pip install -r compat/proto-format-requirements.txt
+      - run: python compat/format-proto.py --check
+
   compatibility:
     runs-on: ubuntu-latest
     strategy:
@@ -25,3 +39,5 @@ jobs:
       - run: sh compat/check.sh
       - run: sh compat/check-optional.sh
       - run: sh compat/check-entrypoints.sh
+      - run: sh compat/check-features.sh
+      - run: sh compat/check-gostring.sh
