@@ -28,6 +28,7 @@ func (this *FileDescriptorSet) GoString() string {
 	if this.File != nil {
 		s = append(s, "File: "+fmt.Sprintf("%#v", this.File)+",\n")
 	}
+	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
 	}
@@ -802,6 +803,7 @@ func (this *SourceCodeInfo) GoString() string {
 	if this.Location != nil {
 		s = append(s, "Location: "+fmt.Sprintf("%#v", this.Location)+",\n")
 	}
+	s = append(s, "XXX_InternalExtensions: "+extensionToGoStringDescriptor(this)+",\n")
 	if this.XXX_unrecognized != nil {
 		s = append(s, "XXX_unrecognized:"+fmt.Sprintf("%#v", this.XXX_unrecognized)+",\n")
 	}

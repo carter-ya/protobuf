@@ -55,6 +55,12 @@ option optimize_for = SPEED;
 // files it parses.
 message FileDescriptorSet {
   repeated FileDescriptorProto file = 1;
+
+  extensions 536000000 [declaration = {
+    number: 536000000
+    type: ".buf.descriptor.v1.FileDescriptorSetExtension"
+    full_name: ".buf.descriptor.v1.buf_file_descriptor_set_extension"
+  }];
 }
 
 // Describes a complete .proto file.
@@ -171,6 +177,8 @@ message ExtensionRangeOptions {
   optional FeatureSet features = 50;
   optional VerificationState verification = 3
       [default = UNVERIFIED, retention = RETENTION_SOURCE];
+
+  extensions 990 to 998;
 }
 
 // Describes a field within a message.
@@ -477,6 +485,12 @@ message FileOptions {
   //reserved 38;
 
   optional FeatureSet features = 50;
+
+  extensions 990 to 998 [declaration = {
+    number: 990,
+    full_name: ".pb.file.cpp",
+    type: ".pb.file.CppFileOptions"
+  }];
 }
 
 message MessageOptions {
@@ -545,6 +559,8 @@ message MessageOptions {
 
   optional bool deprecated_legacy_json_field_conflicts = 11 [deprecated = true];
   optional FeatureSet features = 12;
+
+  extensions 990 to 998;
 }
 
 message FieldOptions {
@@ -693,6 +709,8 @@ message FieldOptions {
   repeated EditionDefault edition_defaults = 20;
   optional FeatureSet features = 21;
   optional FeatureSupport feature_support = 22;
+
+  extensions 990 to 998;
 }
 
 message OneofOptions {
@@ -703,6 +721,8 @@ message OneofOptions {
   extensions 1000 to max;
 
   optional FeatureSet features = 1;
+
+  extensions 990 to 998;
 }
 
 message EnumOptions {
@@ -726,6 +746,8 @@ message EnumOptions {
 
   optional bool deprecated_legacy_json_field_conflicts = 6 [deprecated = true];
   optional FeatureSet features = 7;
+
+  extensions 990 to 998;
 }
 
 message EnumValueOptions {
@@ -744,6 +766,12 @@ message EnumValueOptions {
   optional FeatureSet features = 2;
   optional bool debug_redact = 3 [default = false];
   optional FieldOptions.FeatureSupport feature_support = 4;
+
+  extensions 990 to 998 [declaration = {
+    number: 998,
+    full_name: ".pb.enumvalue.json",
+    type: ".pb.enumvalue.JsonEnumValueOptions"
+  }];
 }
 
 message ServiceOptions {
@@ -765,6 +793,8 @@ message ServiceOptions {
   extensions 1000 to max;
 
   optional FeatureSet features = 34;
+
+  extensions 990 to 998;
 }
 
 message MethodOptions {
@@ -797,6 +827,8 @@ message MethodOptions {
   extensions 1000 to max;
 
   optional FeatureSet features = 35;
+
+  extensions 990 to 998;
 }
 
 // A message representing a option the parser does not recognize. This only
@@ -961,6 +993,12 @@ message SourceCodeInfo {
     optional string trailing_comments = 4;
     repeated string leading_detached_comments = 6;
   }
+
+  extensions 536000000 [declaration = {
+    number: 536000000
+    type: ".buf.descriptor.v1.SourceCodeInfoExtension"
+    full_name: ".buf.descriptor.v1.buf_source_code_info_extension"
+  }];
 }
 
 // Describes the relationship between generated code and its original source

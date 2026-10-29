@@ -70,7 +70,7 @@ func editionEnums(files []*d.FileDescriptorProto) (map[string]editionEnum, error
 }
 
 func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*d.FileDescriptorProto, *editionMetadata, error) {
-	if raw.GetEdition() != d.Edition_EDITION_2023 && raw.GetEdition() != d.Edition_EDITION_2024 {
+	if raw.GetEdition() != d.Edition_EDITION_2023 && raw.GetEdition() != d.Edition_EDITION_2024 && raw.GetEdition() != d.Edition_EDITION_2026 {
 		return nil, nil, fmt.Errorf("%s: unsupported edition %d", raw.GetName(), raw.GetEdition())
 	}
 	if !gogoproto.ImportsGoGoProto(raw) {

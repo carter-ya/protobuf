@@ -2,7 +2,7 @@
 """Add modern protocol declarations without removing historical public fields.
 
 Usage: python3 compat/merge-protocol.py /path/to/protobuf-36.2/include
-Only optional/repeated fields and message/enum declarations are merged. Existing
+Optional/repeated fields, message/enum declarations and disjoint extension ranges are merged. Existing
 declarations, field numbers, defaults and source options remain authoritative.
 CLI output is formatted with clang-format (Google style, preserving comments).
 Set CLANG_FORMAT to use a specific formatter binary.
@@ -16,6 +16,7 @@ import sys
 TOKEN = re.compile(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 DECL = re.compile(r'\b(message|enum)\s+(\w+)\s*\{')
 FIELD = re.compile(r'\b(optional|required|repeated)\s+[.\w]+\s+(\w+)\s*=\s*(\d+)')
+EXTENSION = re.compile(r'\bextensions\s+(\d+)(?:\s+to\s+(\d+|max))?[^;]*;')
 ENUM_VALUE = re.compile(r'\b([A-Z][A-Z_0-9]*)\s*=\s*(-?\d+)')
 
 
@@ -52,6 +53,15 @@ class Source:
             result[int(match.group(2 if enum else 3))] = (match.group(1 if enum else 2), self.text[match.start():end])
         return result
 
+    def extensions(self, opening, closing):
+        result = []
+        for match in EXTENSION.finditer(self.mask, opening + 1, closing):
+            if self.depth[match.start()] != self.depth[opening] + 1:
+                continue
+            end = match.group(2) or match.group(1)
+            result.append((int(match.group(1)), 536870911 if end == 'max' else int(end), self.text[match.start():match.end()]))
+        return result
+
 
 def merge(old_text, upstream_text):
     old, upstream = Source(old_text), Source(upstream_text)
@@ -69,6 +79,14 @@ def merge(old_text, upstream_text):
             old_names = {field[0] for field in old_fields.values()}
             fields = [field[1] for number, field in upstream.fields(new_node[1], new_node[2], enum).items()
                       if number not in old_fields and field[0] not in old_names]
+            if not enum:
+                old_ranges = old.extensions(old_node[1], old_node[2])
+                for start, end, declaration in upstream.extensions(new_node[1], new_node[2]):
+                    if any(a <= start and end <= b for a, b, _ in old_ranges):
+                        continue
+                    if any(start <= b and a <= end for a, b, _ in old_ranges):
+                        raise ValueError('partially overlapping extension range requires review')
+                    fields.append(declaration)
             if fields:
                 edits.append((old_node[2], '\n' + '\n'.join('  ' + f for f in fields) + '\n'))
             visit(old.declarations(old_node[1] + 1, old_node[2], depth + 1),

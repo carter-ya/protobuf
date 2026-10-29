@@ -91,3 +91,11 @@ options do not leak into embedded descriptors. This generator keeps gogo's
 Open Struct API across editions. Explicit API_OPEN and keeping enum prefixes
 are accepted; explicit HYBRID/OPAQUE APIs and other unsupported Go features
 produce errors. No modern Go runtime is imported by consumers.
+
+Edition 2026 adds custom JSON enum spellings, including empty strings, aliases,
+quotes, Unicode, repeated values and map values. The text-format enum registry
+is unchanged. An isolated `compat/oracle` module pins the official Go development
+commit 0c373ff94f296da8645fbc892f211083b695709e (v1.36.13-0.20261007182434-0c373ff94f29)
+for two-way JSON/binary checks; it is not a dependency of the root runtime.
+New 2026 files use the Version6 runtime assertion. The modern protocol merger
+also adds missing disjoint official option extension ranges, including 998.
