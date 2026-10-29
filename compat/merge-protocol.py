@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Add modern protocol declarations without removing historical public fields.
 
-Usage: python3 compat/merge-protocol.py /path/to/protobuf-36.2/include
-Optional/repeated fields, message/enum declarations and disjoint extension ranges are merged. Existing
+Usage: python3 compat/merge-protocol.py /path/to/protobuf-36.2/include [relative.proto ...]
+Proto2/proto3 fields, message/enum declarations and disjoint extension ranges are merged. Existing
 declarations, field numbers, defaults and source options remain authoritative.
 CLI output is formatted with clang-format (Google style, preserving comments).
 Set CLANG_FORMAT to use a specific formatter binary.
@@ -15,7 +15,7 @@ import sys
 
 TOKEN = re.compile(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 DECL = re.compile(r'\b(message|enum)\s+(\w+)\s*\{')
-FIELD = re.compile(r'\b(optional|required|repeated)\s+[.\w]+\s+(\w+)\s*=\s*(\d+)')
+FIELD = re.compile(r'\b(?:(optional|required|repeated)\s+)?[.\w]+\s+(\w+)\s*=\s*(\d+)')
 EXTENSION = re.compile(r'\bextensions\s+(\d+)(?:\s+to\s+(\d+|max))?[^;]*;')
 ENUM_VALUE = re.compile(r'\b([A-Z][A-Z_0-9]*)\s*=\s*(-?\d+)')
 
@@ -103,7 +103,7 @@ def merge(old_text, upstream_text):
 
 if __name__ == '__main__':
     include = pathlib.Path(sys.argv[1])
-    for relative in ['google/protobuf/descriptor.proto', 'google/protobuf/compiler/plugin.proto']:
+    for relative in (sys.argv[2:] or ['google/protobuf/descriptor.proto', 'google/protobuf/compiler/plugin.proto']):
         target = pathlib.Path('protobuf') / relative
         merged = merge(target.read_text(), (include / relative).read_text())
         formatted = subprocess.run(

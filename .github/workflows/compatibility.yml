@@ -44,6 +44,7 @@ jobs:
       - run: sh compat/check-entrypoints.sh
       - run: sh compat/check-features.sh
       - run: sh compat/check-gostring.sh
+      - run: sh compat/check-wkt-metadata.sh
       - run: sh compat/check-editions.sh
 
   downstream:
