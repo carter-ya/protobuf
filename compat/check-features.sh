@@ -11,9 +11,6 @@ case "$(protoc --version)" in
     sh compat/regenerate-features.sh "$tmp/defaults.gen.go"
     diff -u internal/semantics/defaults.gen.go "$tmp/defaults.gen.go"
     go build -o "$tmp/gogo" ./protoc-gen-gogo
-    if protoc -I compat/testdata --plugin=protoc-gen-test="$tmp/gogo" --test_out="$tmp" edition2023.proto > "$tmp/error" 2>&1; then
-      echo 'Editions unexpectedly enabled before backend validation' >&2; exit 1
-    fi
-    grep -q 'support editions' "$tmp/error"
+    protoc -I compat/testdata --plugin=protoc-gen-test="$tmp/gogo" --test_out="$tmp" edition2023.proto
     ;;
 esac

@@ -52,6 +52,7 @@ import (
 	_ "github.com/gogo/protobuf/plugin/union"
 	_ "github.com/gogo/protobuf/plugin/unmarshal"
 	"github.com/gogo/protobuf/proto"
+	descriptor "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	_ "github.com/gogo/protobuf/protoc-gen-gogo/grpc"
 	plugin "github.com/gogo/protobuf/protoc-gen-gogo/plugin"
@@ -147,7 +148,9 @@ func Generate(req *plugin.CodeGeneratorRequest) *plugin.CodeGeneratorResponse {
 		}
 	}
 
-	g.Response.SupportedFeatures = proto.Uint64(uint64(plugin.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL))
+	g.Response.SupportedFeatures = proto.Uint64(uint64(plugin.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL | plugin.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS))
+	g.Response.MinimumEdition = proto.Int32(int32(descriptor.Edition_EDITION_2023))
+	g.Response.MaximumEdition = proto.Int32(int32(descriptor.Edition_EDITION_2026))
 	return g.Response
 }
 
