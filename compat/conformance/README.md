@@ -30,7 +30,10 @@ A missing executable is an error. Both suites enforce recommended tests too.
 are uploaded by CI. The inventories contain 5,649 binary/JSON cases and 909 text
 cases. This baseline is a regression gate, not a claim of full conformance.
 
-`failures.json` enumerates every historical stable failure with its observed
+A02 removes 64 stable binary/JSON failures through compatible integer, base64
+and escaped-enum parsing improvements. The remaining limitations stay explicit.
+
+`failures.json` enumerates every remaining historical stable failure with its observed
 reason and follow-up area. New failures, new skips, missing tests and runner
 crashes fail the gate. An improvement must remove its baseline entry.
 

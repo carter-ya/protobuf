@@ -11,16 +11,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Recommended.Editions_Proto2.JsonInput.BytesFieldBase64Url.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Recommended.Editions_Proto2.JsonInput.BytesFieldBase64Url.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
         "test": "Recommended.Editions_Proto2.JsonInput.FieldNameDuplicate",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
@@ -144,16 +134,6 @@
         "test": "Recommended.Editions_Proto3.FieldMaskTooManyUnderscore.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.JsonInput.BytesFieldBase64Url.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.JsonInput.BytesFieldBase64Url.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
       },
       {
         "test": "Recommended.Editions_Proto3.JsonInput.FieldNameDuplicate",
@@ -291,16 +271,6 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Recommended.Proto2.JsonInput.BytesFieldBase64Url.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Recommended.Proto2.JsonInput.BytesFieldBase64Url.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
         "test": "Recommended.Proto2.JsonInput.FieldNameDuplicate",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
@@ -429,16 +399,6 @@
         "test": "Recommended.Proto3.FieldMaskTooManyUnderscore.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Recommended.Proto3.JsonInput.BytesFieldBase64Url.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Recommended.Proto3.JsonInput.BytesFieldBase64Url.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
       },
       {
         "test": "Recommended.Proto3.JsonInput.FieldNameDuplicate",
@@ -576,69 +536,9 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldExponentialFormat.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldExponentialFormat.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldFloatTrailingZero.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldFloatTrailingZero.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
         "test": "Required.Editions_Proto2.JsonInput.Int32FieldLeadingSpace",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldMinFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldMinFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldQuotedExponentialValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldQuotedExponentialValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldStringValueEscaped.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Int32FieldStringValueEscaped.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Required.Editions_Proto2.JsonInput.Int32FieldTrailingSpace",
@@ -654,16 +554,6 @@
         "test": "Required.Editions_Proto2.JsonInput.RejectTopLevelNull",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Uint32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto2.JsonInput.Uint32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
@@ -811,69 +701,9 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldExponentialFormat.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldExponentialFormat.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldFloatTrailingZero.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldFloatTrailingZero.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
         "test": "Required.Editions_Proto3.JsonInput.Int32FieldLeadingSpace",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldMinFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldMinFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldQuotedExponentialValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldQuotedExponentialValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldStringValueEscaped.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Int32FieldStringValueEscaped.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Required.Editions_Proto3.JsonInput.Int32FieldTrailingSpace",
@@ -893,16 +723,6 @@
       {
         "test": "Required.Editions_Proto3.JsonInput.TimestampJsonInputTooSmall",
         "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Uint32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Editions_Proto3.JsonInput.Uint32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
         "follow_up": "A04 WKT standard JSON"
       },
       {
@@ -991,69 +811,9 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Required.Proto2.JsonInput.Int32FieldExponentialFormat.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldExponentialFormat.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldFloatTrailingZero.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldFloatTrailingZero.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
         "test": "Required.Proto2.JsonInput.Int32FieldLeadingSpace",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldMinFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldMinFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldQuotedExponentialValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldQuotedExponentialValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldStringValueEscaped.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Int32FieldStringValueEscaped.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Required.Proto2.JsonInput.Int32FieldTrailingSpace",
@@ -1069,16 +829,6 @@
         "test": "Required.Proto2.JsonInput.RejectTopLevelNull",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Uint32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto2.JsonInput.Uint32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
@@ -1226,69 +976,9 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Required.Proto3.JsonInput.Int32FieldExponentialFormat.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldExponentialFormat.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldFloatTrailingZero.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldFloatTrailingZero.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
         "test": "Required.Proto3.JsonInput.Int32FieldLeadingSpace",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldMinFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldMinFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldQuotedExponentialValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldQuotedExponentialValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldStringValueEscaped.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Int32FieldStringValueEscaped.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
       },
       {
         "test": "Required.Proto3.JsonInput.Int32FieldTrailingSpace",
@@ -1308,16 +998,6 @@
       {
         "test": "Required.Proto3.JsonInput.TimestampJsonInputTooSmall",
         "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Uint32FieldMaxFloatValue.JsonOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.JsonInput.Uint32FieldMaxFloatValue.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
         "follow_up": "A04 WKT standard JSON"
       },
       {
