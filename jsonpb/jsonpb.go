@@ -222,6 +222,11 @@ func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typ
 	}
 
 	s := reflect.ValueOf(v).Elem()
+	if m.standard {
+		if handled, err := m.marshalStandardSpecial(out, v); handled || err != nil {
+			return err
+		}
+	}
 
 	// Handle well-known types.
 	if wkt, ok := v.(isWkt); ok {
@@ -293,6 +298,9 @@ func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typ
 			}
 			// oneof -> *T -> T -> T.F
 			x := kind.Elem().Elem().Field(0)
+			if m.standard && x.Kind() == reflect.Float64 && (math.IsNaN(x.Float()) || math.IsInf(x.Float(), 0)) {
+				return fmt.Errorf("non-finite google.protobuf.Value")
+			}
 			// TODO: pass the correct Properties if needed.
 			return m.marshalValue(out, &proto.Properties{}, x, indent)
 		}
@@ -467,6 +475,13 @@ func (m *jsonEncoder) marshalAny(out *errWriter, any proto.Message, indent strin
 	v := reflect.ValueOf(any).Elem()
 	turl := v.Field(0).String()
 	val := v.Field(1).Bytes()
+	if m.standard && turl == "" && len(val) == 0 {
+		out.write("{}")
+		return out.err
+	}
+	if m.standard && (!strings.Contains(turl, "/") || strings.HasSuffix(turl, "/")) {
+		return fmt.Errorf("invalid Any type URL")
+	}
 
 	var msg proto.Message
 	var err error
@@ -483,7 +498,11 @@ func (m *jsonEncoder) marshalAny(out *errWriter, any proto.Message, indent strin
 		return err
 	}
 
-	if _, ok := msg.(isWkt); ok {
+	_, custom := msg.(isWkt)
+	if m.standard {
+		custom = standardCustomJSON(msg)
+	}
+	if custom {
 		out.write("{")
 		if m.Indent != "" {
 			out.write("\n")
@@ -899,6 +918,12 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		return jsu.UnmarshalJSONPB(u.Unmarshaler, []byte(inputValue))
 	}
 
+	if u.standard {
+		if handled, err := u.unmarshalStandardSpecial(target, inputValue); handled || err != nil {
+			return err
+		}
+	}
+
 	// Handle well-known types that are not pointers.
 	if w, ok := target.Addr().Interface().(isWkt); ok {
 		switch w.XXX_WellKnownType() {
@@ -914,6 +939,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
+			if u.standard && len(jsonFields) == 0 {
+				return nil
+			}
 			val, ok := jsonFields["@type"]
 			if !ok || val == nil {
 				return errors.New("Any JSON doesn't have '@type'")
@@ -922,6 +950,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			var turl string
 			if err := json.Unmarshal([]byte(*val), &turl); err != nil {
 				return fmt.Errorf("can't unmarshal Any's '@type': %q", *val)
+			}
+			if u.standard && (!strings.Contains(turl, "/") || strings.HasSuffix(turl, "/")) {
+				return fmt.Errorf("invalid Any type URL")
 			}
 			target.Field(0).SetString(turl)
 
@@ -936,7 +967,14 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
-			if _, ok := m.(isWkt); ok {
+			_, custom := m.(isWkt)
+			if u.standard {
+				custom = standardCustomJSON(m)
+			}
+			if custom {
+				if u.standard && !u.AllowUnknownFields && len(jsonFields) != 2 {
+					return fmt.Errorf("unknown Any field")
+				}
 				val, ok := jsonFields["value"]
 				if !ok {
 					return errors.New("Any JSON doesn't have 'value'")
@@ -970,6 +1008,15 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
+			if u.standard {
+				seconds, nanos, err := parseStandardDuration(unq)
+				if err != nil {
+					return err
+				}
+				target.Field(0).SetInt(seconds)
+				target.Field(1).SetInt(nanos)
+				return nil
+			}
 			d, err := time.ParseDuration(unq)
 			if err != nil {
 				return fmt.Errorf("bad Duration: %v", err)
@@ -987,6 +1034,15 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
+			if u.standard {
+				timestamp, err := parseStandardTimestamp(unq)
+				if err != nil {
+					return err
+				}
+				target.Field(0).SetInt(timestamp.Seconds)
+				target.Field(1).SetInt(int64(timestamp.Nanos))
+				return nil
+			}
 			t, err := time.Parse(time.RFC3339Nano, unq)
 			if err != nil {
 				return fmt.Errorf("bad Timestamp: %v", err)
