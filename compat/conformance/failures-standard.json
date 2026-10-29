@@ -1,0 +1,1972 @@
+{
+  "upstream": "36.2",
+  "baseline_commit": "4ce24b7fb0c7bfb23efa1d12f49c58bc753d9944",
+  "binary_json": {
+    "tests": 5649,
+    "inventory_sha256": "49a5e8ae087e2c8a0df0f59add56e73b3c5f023b8dfb538f21cc5842980e0ed0",
+    "failures": [
+      {
+        "test": "Recommended.Editions.ProtobufInput.RejectInvalidUtf8.String.Extension",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.JsonInput.IgnoreUnknownEnumStringValueInMapPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.JsonInput.IgnoreUnknownEnumStringValueInMapValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.JsonInput.IgnoreUnknownEnumStringValueInOptionalField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.JsonInput.IgnoreUnknownEnumStringValueInRepeatedField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.JsonInput.IgnoreUnknownEnumStringValueInRepeatedPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.FieldMaskNumbersDontRoundTrip.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.FieldMaskPathsDontRoundTrip.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.FieldMaskTooManyUnderscore.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.IgnoreUnknownEnumStringValueInMapPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.IgnoreUnknownEnumStringValueInMapValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.IgnoreUnknownEnumStringValueInOptionalField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.IgnoreUnknownEnumStringValueInRepeatedField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.IgnoreUnknownEnumStringValueInRepeatedPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.ListValueDeepNesting200",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.StructDeepNesting200",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.JsonInput.ValueDeepNesting200",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ValueRejectInfNumberValue.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ValueRejectNanNumberValue.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto2.JsonInput.IgnoreUnknownEnumStringValueInMapPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto2.JsonInput.IgnoreUnknownEnumStringValueInMapValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto2.JsonInput.IgnoreUnknownEnumStringValueInOptionalField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto2.JsonInput.IgnoreUnknownEnumStringValueInRepeatedField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto2.JsonInput.IgnoreUnknownEnumStringValueInRepeatedPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto2.ProtobufInput.ValidMessageSetEncoding.SubmessageEncoding.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: deleted: message_set_correct.(protobuf_test_messages.proto2.TestAllTypesProto2.MessageSetCorrectExtension2.message_set_extension): { i: 99 }",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.FieldMaskNumbersDontRoundTrip.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.FieldMaskPathsDontRoundTrip.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.FieldMaskTooManyUnderscore.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInMapPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInMapValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInOptionalField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInRepeatedField.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.IgnoreUnknownEnumStringValueInRepeatedPart.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.ListValueDeepNesting200",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.StructDeepNesting200",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Recommended.Proto3.JsonInput.ValueDeepNesting200",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ValueRejectInfNumberValue.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Recommended.Proto3.ValueRejectNanNumberValue.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_OverlongVarint",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.MismatchedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.MismatchedNestedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.AnyEmpty.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.AnyEmpty.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.AnyWithFieldMask.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.AnyWithFieldMask.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.AnyWithNoType.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.AnyWithNoType.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.DurationMaxValue.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.DurationMaxValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.DurationMinValue.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.DurationMinValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.EmptyFieldMask.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.EmptyFieldMask.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.FieldMask.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.FieldMask.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.JsonInput.TimestampJsonInputTooSmall",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_FieldNumberTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_OverlongVarint",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.MismatchedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.MismatchedNestedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TimestampProtoInputTooLarge.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.TimestampProtoInputTooSmall.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.BadTag_OverlongVarint",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.MismatchedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.MismatchedNestedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.AnyEmpty.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.AnyEmpty.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.AnyWithFieldMask.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.AnyWithFieldMask.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.AnyWithNoType.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.AnyWithNoType.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A03 JSON standard entrypoint"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.DurationMaxValue.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.DurationMaxValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.DurationMinValue.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.DurationMinValue.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.EmptyFieldMask.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.EmptyFieldMask.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.FieldMask.JsonOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.FieldMask.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.JsonInput.TimestampJsonInputTooSmall",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.BadTag_FieldNumberTooHigh",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.BadTag_OverlongVarint",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.MismatchedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.MismatchedNestedGroupTags",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
+        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TimestampProtoInputTooLarge.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.TimestampProtoInputTooSmall.JsonOutput",
+        "reason": "Should have failed to serialize, but didn't.",
+        "follow_up": "A04 WKT standard JSON"
+      }
+    ],
+    "variable_outcomes": [],
+    "skips": [
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidBytes.JsonOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      },
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidBytes.ProtobufOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      },
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidMap.Bytes.JsonOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      },
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidMap.Bytes.ProtobufOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      }
+    ]
+  },
+  "text": {
+    "tests": 909,
+    "inventory_sha256": "d3649c99da775f379416a2867047d0726bcf3adb1879f16e2fc3a38db58a4b85",
+    "failures": [
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.GroupUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.GroupUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.MessageUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.MessageUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.RepeatedUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.RepeatedUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ScalarUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.ProtobufInput.ScalarUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateFirstOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateFirstOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogatePairBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogatePairString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateSecondOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateSecondOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateFirstOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateFirstOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogatePairBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogatePairString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateSecondOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateSecondOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairLongShortBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairLongShortString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairShortLongBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Editions_Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairShortLongString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.GroupUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.GroupUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.MessageUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.MessageUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.RepeatedUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.RepeatedUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ScalarUnknownFields_Drop.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.ProtobufInput.ScalarUnknownFields_Print.TextFormatOutput",
+        "reason": "TEXT_FORMAT output we received from test was unparseable.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateFirstOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateFirstOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogatePairBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogatePairString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateSecondOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralLongUnicodeEscapeSurrogateSecondOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateFirstOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateFirstOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogatePairBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogatePairString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateSecondOnlyBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogateSecondOnlyString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairLongShortBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairLongShortString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairShortLongBytes",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Recommended.Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairShortLongString",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions.TextFormatInput.GroupFieldEmpty.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions.TextFormatInput.GroupFieldEmpty.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions.TextFormatInput.GroupFieldNoColon.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions.TextFormatInput.GroupFieldNoColon.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions.TextFormatInput.GroupFieldWithColon.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions.TextFormatInput.GroupFieldWithColon.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldEmpty.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldEmpty.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldMultiWord.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldMultiWord.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldNoColon.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldNoColon.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldWithColon.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto2.TextFormatInput.GroupFieldWithColon.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.DoubleFieldOverflowInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.DoubleFieldOverflowInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.DoubleFieldOverflowInfinityHugeExponent.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.DoubleFieldOverflowInfinityHugeExponent.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.DoubleFieldOverflowNegativeInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.DoubleFieldOverflowNegativeInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldLargerThanInt64_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldLargerThanInt64_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldLargerThanUint64_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldLargerThanUint64_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldMaxValue_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldMaxValue_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldMinValue_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldMinValue_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegativeNoLeadingZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegativeNoLeadingZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegativeZero.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_float: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegativeZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegativeZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegativeZero_f.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_float: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegative_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNegative_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNoLeadingZeroWithExponent_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNoLeadingZeroWithExponent_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNoLeadingZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNoLeadingZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNoNegativeOctal",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldNoOctal",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldOverflowInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldOverflowInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldOverflowInfinityHugeExponent.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldOverflowInfinityHugeExponent.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldOverflowNegativeInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldOverflowNegativeInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooLarge.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooLarge.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooLarge_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooLarge_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooLarge_f.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooLarge_f.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooSmall_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldTooSmall_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldWithInt32Max_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldWithInt32Max_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldWithVeryPreciseNumber_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldWithVeryPreciseNumber_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatFieldZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatField_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.FloatField_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.NegDoubleFieldLargeNegativeExponentParsesAsNegZero.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_double: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.NegFloatFieldLargeNegativeExponentParsesAsNegZero.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_float: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Boolean.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Boolean.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Enum.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Enum.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Float.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Float.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Integer.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Integer.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Message.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.Message.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.MessageAngleBrackets.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.MessageAngleBrackets.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.RepeatedFloat.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.RepeatedFloat.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.RepeatedInteger.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.RepeatedInteger.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.RepeatedString.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.RepeatedString.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.String.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.ReservedFieldName.String.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.StringFieldBadUTF8Hex",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Editions_Proto3.TextFormatInput.StringFieldBadUTF8Octal",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.TextFormatInput.ClosedEnumFieldWithUnknownNumber",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.TextFormatInput.GroupFieldLowercased.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.TextFormatInput.GroupFieldLowercased.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.TextFormatInput.GroupFieldLowercasedMultiWord.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto2.TextFormatInput.GroupFieldLowercasedMultiWord.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.DoubleFieldOverflowInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.DoubleFieldOverflowInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.DoubleFieldOverflowInfinityHugeExponent.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.DoubleFieldOverflowInfinityHugeExponent.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.DoubleFieldOverflowNegativeInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.DoubleFieldOverflowNegativeInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldLargerThanInt64_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldLargerThanInt64_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldLargerThanUint64_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldLargerThanUint64_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldMaxValue_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldMaxValue_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldMinValue_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldMinValue_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "A04 WKT standard JSON"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegativeNoLeadingZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegativeNoLeadingZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegativeZero.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_float: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegativeZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegativeZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegativeZero_f.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_float: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegative_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNegative_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNoLeadingZeroWithExponent_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNoLeadingZeroWithExponent_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNoLeadingZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNoLeadingZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNoNegativeOctal",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldNoOctal",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldOverflowInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldOverflowInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldOverflowInfinityHugeExponent.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldOverflowInfinityHugeExponent.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldOverflowNegativeInfinity.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldOverflowNegativeInfinity.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooLarge.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooLarge.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooLarge_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooLarge_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooLarge_f.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooLarge_f.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooSmall_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldTooSmall_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldWithInt32Max_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldWithInt32Max_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldWithVeryPreciseNumber_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldWithVeryPreciseNumber_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldZero_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatFieldZero_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatField_F.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.FloatField_F.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.NegDoubleFieldLargeNegativeExponentParsesAsNegZero.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_double: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.NegFloatFieldLargeNegativeExponentParsesAsNegZero.TextFormatOutput",
+        "reason": "Output was not equivalent to reference message: deleted: optional_float: -0",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Boolean.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Boolean.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Enum.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Enum.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Float.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Float.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Integer.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Integer.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Message.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.Message.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.MessageAngleBrackets.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.MessageAngleBrackets.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.RepeatedFloat.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.RepeatedFloat.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.RepeatedInteger.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.RepeatedInteger.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.RepeatedString.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.RepeatedString.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.String.ProtobufOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.ReservedFieldName.String.TextFormatOutput",
+        "reason": "Failed to parse input or produce output.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.StringFieldBadUTF8Hex",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      },
+      {
+        "test": "Required.Proto3.TextFormatInput.StringFieldBadUTF8Octal",
+        "reason": "Should have failed to parse, but didn't.",
+        "follow_up": "later binary/text runtime conformance work"
+      }
+    ],
+    "variable_outcomes": [],
+    "skips": []
+  }
+}

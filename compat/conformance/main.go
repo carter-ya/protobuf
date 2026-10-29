@@ -16,8 +16,11 @@ import (
 	p3 "example.com/gogo-conformance/pb/proto3"
 	pb "example.com/gogo-conformance/pb/protocol"
 	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb/standard"
 	"github.com/gogo/protobuf/proto"
 )
+
+var standardMode bool
 
 func message(name string) proto.Message {
 	switch name {
@@ -54,7 +57,12 @@ func handle(req *pb.ConformanceRequest) (res *pb.ConformanceResponse) {
 		err = proto.Unmarshal(p.ProtobufPayload, msg)
 	case *pb.ConformanceRequest_JsonPayload:
 		u := jsonpb.Unmarshaler{AllowUnknownFields: req.TestCategory == pb.TestCategory_JSON_IGNORE_UNKNOWN_PARSING_TEST}
-		err = u.Unmarshal(strings.NewReader(p.JsonPayload), msg)
+		if standardMode {
+			options := standard.Unmarshaler(u)
+			err = options.Unmarshal(strings.NewReader(p.JsonPayload), msg)
+		} else {
+			err = u.Unmarshal(strings.NewReader(p.JsonPayload), msg)
+		}
 	case *pb.ConformanceRequest_TextPayload:
 		err = proto.UnmarshalText(p.TextPayload, msg)
 	default:
@@ -72,7 +80,11 @@ func handle(req *pb.ConformanceRequest) (res *pb.ConformanceResponse) {
 		}
 	case pb.WireFormat_JSON:
 		var text string
-		text, err = (&jsonpb.Marshaler{}).MarshalToString(msg)
+		if standardMode {
+			text, err = (&standard.Marshaler{}).MarshalToString(msg)
+		} else {
+			text, err = (&jsonpb.Marshaler{}).MarshalToString(msg)
+		}
 		if err == nil {
 			return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_JsonPayload{JsonPayload: text}}
 		}
@@ -118,6 +130,7 @@ func serve(in io.Reader, out io.Writer) error {
 	}
 }
 func main() {
+	standardMode = len(os.Args) == 2 && os.Args[1] == "standard"
 	if err := serve(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
