@@ -1731,7 +1731,7 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 	}
 	fieldName := field.GetName()
 	name := fieldName
-	if *field.Type == descriptor.FieldDescriptorProto_TYPE_GROUP && message.file.edition == nil {
+	if *field.Type == descriptor.FieldDescriptorProto_TYPE_GROUP && g.file.edition == nil {
 		// We must use the type name for groups instead of
 		// the field name to preserve capitalization.
 		// type_name in FieldDescriptorProto is fully-qualified,
@@ -1784,7 +1784,7 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 	if message.proto3() {
 		name += ",proto3"
 	}
-	if info := message.file.edition; info != nil {
+	if info := g.file.edition; info != nil {
 		features := info.fields[field]
 		name += ",proto3"
 		if features.HasPresence() {

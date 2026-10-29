@@ -81,6 +81,6 @@ and implicit presence, required fields, UTF-8 policy, packed/expanded primitives
 open/closed enums (including imported enum definitions), map unknowns, oneofs
 and DELIMITED messages. `check-editions.sh` uses protoc 36.2 as an independent
 binary/text oracle. Production capabilities remain disabled at this layer.
-Editions extension declarations, gogo extensions, explicit Go features and more
+Gogo extensions, explicit Go features and more
 than 64 required fields currently produce diagnostics rather than partial output.
 Raw descriptor data is kept separately from the private lowered generator view.

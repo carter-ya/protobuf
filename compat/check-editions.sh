@@ -8,8 +8,8 @@ trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 go build -o "$tmp/driver" ./compat/testdata/editions-driver
 go build -o "$tmp/gogo" ./protoc-gen-gogo
 go build -o "$tmp/fast" ./protoc-gen-gogofast
-protoc -I . -I protobuf --plugin=protoc-gen-test="$tmp/driver" --test_out=paths=source_relative:"$tmp" compat/editions/edition2023/imported.proto compat/editions/edition2023/sample.proto compat/editions/edition2023/inherited.proto
-for file in imported sample inherited; do
+protoc -I . -I protobuf --plugin=protoc-gen-test="$tmp/driver" --test_out=paths=source_relative:"$tmp" compat/editions/edition2023/imported.proto compat/editions/edition2023/sample.proto compat/editions/edition2023/inherited.proto compat/editions/edition2023/foreign_ext.proto
+for file in imported sample inherited foreign_ext; do
  go run ./compat/compare-generated -- "compat/editions/edition2023/$file.pb.go" "$tmp/compat/editions/edition2023/$file.pb.go"
 done
 GOGO_EDITION_PROTOC="$(command -v protoc)" go test ./compat/editions/...

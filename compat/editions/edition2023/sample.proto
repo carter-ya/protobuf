@@ -41,3 +41,17 @@ message Sample {
 message Required {
   int32 value = 1 [features.field_presence = LEGACY_REQUIRED];
 }
+message Extensible {
+  extensions 100 to 199;
+}
+extend Extensible {
+  Closed ext_closed = 100;
+  repeated Closed ext_packed = 101;
+  Child ext_delimited = 102 [features.message_encoding = DELIMITED];
+  string ext_unchecked = 103 [features.utf8_validation = NONE];
+}
+message Declaring {
+  extend Extensible {
+    int32 nested_ext = 104;
+  }
+}
