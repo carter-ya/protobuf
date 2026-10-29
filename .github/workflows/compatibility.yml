@@ -63,7 +63,7 @@ jobs:
       - run: sh compat/check-downstream.sh
 
   conformance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/conformance/bin
-          key: conformance-36.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('compat/conformance/build-runner.py', 'compat/conformance/runner-main.cc') }}
+          key: conformance-36.2-ubuntu24.04-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('compat/conformance/build-runner.py', 'compat/conformance/runner-main.cc') }}
       - name: Build pinned upstream conformance suites
         run: python3 compat/conformance/build-runner.py "$RUNNER_TEMP/conformance"
       - name: Check modern conformance baseline

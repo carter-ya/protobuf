@@ -8,4 +8,5 @@ python3 -m unittest discover -s "$repo/compat/conformance" -p "test_*.py"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 python3 "$repo/compat/conformance/prepare.py" "$PROTOBUF_CONFORMANCE_SOURCE" "$tmp/module"
-python3 "$repo/compat/conformance/run.py" "$PROTOBUF_CONFORMANCE_RUNNER" "$tmp/module/testee" "$CONFORMANCE_OUTPUT"
+python3 "$repo/compat/conformance/run.py" "$PROTOBUF_CONFORMANCE_RUNNER" "$tmp/module/testee" "$CONFORMANCE_OUTPUT/legacy"
+python3 "$repo/compat/conformance/run.py" "$PROTOBUF_CONFORMANCE_RUNNER" "$tmp/module/testee" "$CONFORMANCE_OUTPUT/standard" --mode standard

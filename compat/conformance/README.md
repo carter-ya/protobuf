@@ -12,10 +12,14 @@ python3 compat/conformance/build-runner.py /tmp/gogo-conformance
 ```
 
 The release archive is pinned by SHA-256. Dependency versions come from that
-release's CMake configuration. Only the small executable entrypoint is replaced:
+release's CMake configuration. The executable entrypoint is replaced:
 upstream's combined main short-circuits after a failed binary/JSON suite, which
-would hide the text suite. The upstream suite implementations remain unmodified.
-CI caches the executable under a key containing the entrypoint and build script.
+would hide the text suite. A CMake alias makes the pinned dependency check accept
+the static JsonCpp target. The upstream suite implementations remain unmodified.
+CI pins Ubuntu 24.04 and caches the executable under a key containing the
+platform, entrypoint and build script. JsonCpp and Protobuf are linked statically,
+so the cached runner does not depend on libraries left in the build directory.
+A startup probe rejects broken cache entries and rebuilds them before testing.
 
 With protoc 36.2 on PATH, run:
 
@@ -51,3 +55,8 @@ The binary and text failures outside A01–A04 remain explicit work for subseque
 runtime conformance upgrades. No tests are wildcarded or silently added to a
 failure list during CI. The existing historical conformance directory is kept
 for old workflows; this gate does not depend on it.
+
+A03 adds an independent standard-mode run and `failures-standard.json`. Its
+inventory is the same, but no variable outcomes are permitted. The legacy
+baseline remains separate so adopting standard rules does not silently change
+old callers. The report directories identify the entrypoint explicitly.

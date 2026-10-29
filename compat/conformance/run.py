@@ -29,8 +29,10 @@ def check_results(suite, tests, failures, skips, summaries, returncode, expected
     inventory = hashlib.sha256('\n'.join(sorted(tests)).encode()).hexdigest()
     if len(summaries) != 1 or returncode not in (0, 1):
         errors.append(suite + ': runner failed or did not finish')
+        return errors
     if inventory != expected['inventory_sha256'] or len(tests) != expected['tests']:
         errors.append(suite + ': test inventory changed')
+        return errors
     for name in sorted(set(failures) - stable - flaky):
         errors.append(suite + ': new failure: ' + name)
     for name in sorted(stable - set(failures)):
@@ -47,21 +49,23 @@ def main():
     parser.add_argument('runner', type=pathlib.Path)
     parser.add_argument('testee', type=pathlib.Path)
     parser.add_argument('output', type=pathlib.Path)
-    parser.add_argument('--baseline', type=pathlib.Path, default=ROOT / 'failures.json')
+    parser.add_argument('--mode', choices=['legacy', 'standard'], default='legacy')
+    parser.add_argument('--baseline', type=pathlib.Path, default=None)
     args = parser.parse_args()
     if not args.runner.is_file() or not args.testee.is_file():
         sys.exit('conformance runner and testee are required; tests cannot be skipped')
-    baseline = json.loads(args.baseline.read_text())
+    baseline_path = args.baseline or ROOT / ('failures-standard.json' if args.mode == 'standard' else 'failures.json')
+    baseline = json.loads(baseline_path.read_text())
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    report = {'upstream': baseline['upstream'], 'mode': 'legacy', 'suites': {}}
+    report = {'upstream': baseline['upstream'], 'mode': args.mode, 'suites': {}}
     errors = []
     for suite in ['binary_json', 'text']:
         dest = output / suite
         dest.mkdir(exist_ok=True)
         process = subprocess.run([str(args.runner.resolve()), suite, '--maximum_edition', '2023',
                                   '--enforce_recommended', '--verbose', '--output_dir', str(dest),
-                                  str(args.testee.resolve())], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                                  str(args.testee.resolve())] + (['standard'] if args.mode == 'standard' else []), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         (dest / 'runner.log').write_text(process.stdout)
         tests, failures, skips, summaries = observe(process.stdout)
         expected = baseline[suite]

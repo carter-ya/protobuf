@@ -34,6 +34,10 @@ class GateTests(unittest.TestCase):
         self.assertTrue(self.check(summaries=[]))
         self.assertTrue(self.check(code=-9))
 
+    def test_crashed_runner_is_not_reported_as_an_improvement(self):
+        errors = self.check(tests=set(), failures={}, summaries=[], code=127)
+        self.assertEqual(['suite: runner failed or did not finish'], errors)
+
     def test_log_observation(self):
         log = ('conformance test: name=Required.Proto3.Bad, request=x\n'
                'ERROR, test=Required.Proto3.Bad: invalid output, request=x\n'

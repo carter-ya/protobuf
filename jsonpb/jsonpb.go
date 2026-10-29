@@ -54,6 +54,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -132,6 +133,10 @@ type JSONPBUnmarshaler interface {
 
 // Marshal marshals a protocol buffer into JSON.
 func (m *Marshaler) Marshal(out io.Writer, pb proto.Message) error {
+	return (&jsonEncoder{Marshaler: m}).marshal(out, pb)
+}
+
+func (m *jsonEncoder) marshal(out io.Writer, pb proto.Message) error {
 	v := reflect.ValueOf(pb)
 	if pb == nil || (v.Kind() == reflect.Ptr && v.IsNil()) {
 		return errors.New("Marshal called with nil")
@@ -151,6 +156,15 @@ func (m *Marshaler) MarshalToString(pb proto.Message) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+type jsonEncoder struct {
+	*Marshaler
+	standard bool
+}
+type jsonDecoder struct {
+	*Unmarshaler
+	standard bool
 }
 
 type int32Slice []int32
@@ -176,9 +190,9 @@ var (
 )
 
 // marshalObject writes a struct to the Writer.
-func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeURL string) error {
+func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typeURL string) error {
 	if jsm, ok := v.(JSONPBMarshaler); ok {
-		b, err := jsm.MarshalJSONPB(m)
+		b, err := jsm.MarshalJSONPB(m.Marshaler)
 		if err != nil {
 			return err
 		}
@@ -315,6 +329,13 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 			continue
 		}
 
+		if m.standard && value.Kind() == reflect.Ptr && value.IsNil() {
+			continue
+		}
+		if m.standard && value.Kind() == reflect.Slice && value.Type().Elem().Kind() == reflect.Uint8 && value.IsNil() && !strings.Contains(valueField.Tag.Get("protobuf"), ",proto3") {
+			continue
+		}
+
 		// IsNil will panic on most value kinds.
 		switch value.Kind() {
 		case reflect.Chan, reflect.Func, reflect.Interface:
@@ -430,7 +451,7 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 	return out.err
 }
 
-func (m *Marshaler) writeSep(out *errWriter) {
+func (m *jsonEncoder) writeSep(out *errWriter) {
 	if m.Indent != "" {
 		out.write(",\n")
 	} else {
@@ -438,7 +459,7 @@ func (m *Marshaler) writeSep(out *errWriter) {
 	}
 }
 
-func (m *Marshaler) marshalAny(out *errWriter, any proto.Message, indent string) error {
+func (m *jsonEncoder) marshalAny(out *errWriter, any proto.Message, indent string) error {
 	// "If the Any contains a value that has a special JSON mapping,
 	//  it will be converted as follows: {"@type": xxx, "value": yyy}.
 	//  Otherwise, the value will be converted into a JSON object,
@@ -492,7 +513,7 @@ func (m *Marshaler) marshalAny(out *errWriter, any proto.Message, indent string)
 	return m.marshalObject(out, msg, indent, turl)
 }
 
-func (m *Marshaler) marshalTypeURL(out *errWriter, indent, typeURL string) error {
+func (m *jsonEncoder) marshalTypeURL(out *errWriter, indent, typeURL string) error {
 	if m.Indent != "" {
 		out.write(indent)
 		out.write(m.Indent)
@@ -510,14 +531,23 @@ func (m *Marshaler) marshalTypeURL(out *errWriter, indent, typeURL string) error
 }
 
 // marshalField writes field description and value to the Writer.
-func (m *Marshaler) marshalField(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
+func (m *jsonEncoder) marshalField(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
 	if m.Indent != "" {
 		out.write(indent)
 		out.write(m.Indent)
 	}
-	out.write(`"`)
-	out.write(prop.JSONName)
-	out.write(`":`)
+	if m.standard {
+		name, err := json.Marshal(prop.JSONName)
+		if err != nil {
+			return err
+		}
+		out.write(string(name))
+		out.write(":")
+	} else {
+		out.write(`"`)
+		out.write(prop.JSONName)
+		out.write(`":`)
+	}
 	if m.Indent != "" {
 		out.write(" ")
 	}
@@ -528,14 +558,25 @@ func (m *Marshaler) marshalField(out *errWriter, prop *proto.Properties, v refle
 }
 
 // marshalValue writes the value to the Writer.
-func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
+func (m *jsonEncoder) marshalValue(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
 
+	if m.standard && v.Kind() == reflect.Ptr && v.IsNil() && v.Type().Implements(messageType) {
+		// A missing binary map message value denotes an empty message.
+		v = reflect.New(v.Type().Elem())
+	}
 	v = reflect.Indirect(v)
 
 	// Handle nil pointer
 	if v.Kind() == reflect.Invalid {
+		if m.standard {
+			return fmt.Errorf("nil message element cannot be encoded")
+		}
 		out.write("null")
 		return out.err
+	}
+
+	if m.standard && v.Kind() == reflect.String && !utf8.ValidString(v.String()) {
+		return fmt.Errorf("invalid UTF-8 string")
 	}
 
 	// Handle repeated elements.
@@ -687,6 +728,9 @@ func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v refle
 		keys := v.MapKeys()
 		sort.Sort(mapKeys(keys))
 		for i, k := range keys {
+			if m.standard && k.Kind() == reflect.String && !utf8.ValidString(k.String()) {
+				return fmt.Errorf("invalid UTF-8 map key")
+			}
 			if i > 0 {
 				out.write(`,`)
 			}
@@ -792,7 +836,7 @@ func (u *Unmarshaler) UnmarshalNext(dec *json.Decoder, pb proto.Message) error {
 	if err := dec.Decode(&inputValue); err != nil {
 		return err
 	}
-	if err := u.unmarshalValue(reflect.ValueOf(pb).Elem(), inputValue, nil); err != nil {
+	if err := (&jsonDecoder{Unmarshaler: u}).unmarshalValue(reflect.ValueOf(pb).Elem(), inputValue, nil); err != nil {
 		return err
 	}
 	return checkRequiredFields(pb)
@@ -829,8 +873,14 @@ func UnmarshalString(str string, pb proto.Message) error {
 
 // unmarshalValue converts/copies a value into the target.
 // prop may be nil.
-func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMessage, prop *proto.Properties) error {
+func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMessage, prop *proto.Properties) error {
 	targetType := target.Type()
+	if u.standard {
+		inputValue = bytes.TrimSpace(inputValue)
+	}
+	if u.standard && string(inputValue) == "null" && prop != nil && !acceptsJSONNull(targetType) {
+		return nil
+	}
 
 	// Allocate memory for pointer fields.
 	if targetType.Kind() == reflect.Ptr {
@@ -846,7 +896,7 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 	}
 
 	if jsu, ok := target.Addr().Interface().(JSONPBUnmarshaler); ok {
-		return jsu.UnmarshalJSONPB(u, []byte(inputValue))
+		return jsu.UnmarshalJSONPB(u.Unmarshaler, []byte(inputValue))
 	}
 
 	// Handle well-known types that are not pointers.
@@ -1061,11 +1111,15 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 
 	// Handle nested messages.
 	if targetType.Kind() == reflect.Struct {
+		if u.standard && string(inputValue) == "null" {
+			return fmt.Errorf("expected a message object")
+		}
 		var jsonFields map[string]json.RawMessage
 		if err := json.Unmarshal(inputValue, &jsonFields); err != nil {
 			return err
 		}
 
+		var fieldError error
 		consumeField := func(prop *proto.Properties) (json.RawMessage, bool) {
 			// Be liberal in what names we accept; both orig_name and camelName are okay.
 			fieldNames := acceptedJSONFieldNames(prop)
@@ -1073,6 +1127,10 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			vOrig, okOrig := jsonFields[fieldNames.orig]
 			vCamel, okCamel := jsonFields[fieldNames.camel]
 			if !okOrig && !okCamel {
+				return nil, false
+			}
+			if u.standard && okOrig && okCamel && fieldNames.orig != fieldNames.camel {
+				fieldError = fmt.Errorf("duplicate field %q", prop.OrigName)
 				return nil, false
 			}
 			// If, for some reason, both are present in the data, favour the camelName.
@@ -1095,6 +1153,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				continue
 			}
 			valueForField, ok := consumeField(sprops.Prop[i])
+			if fieldError != nil {
+				return fieldError
+			}
 			if !ok {
 				continue
 			}
@@ -1105,10 +1166,23 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		}
 		// Check for any oneof fields.
 		if len(jsonFields) > 0 {
+			seen := make(map[int]bool)
 			for _, oop := range sprops.OneofTypes {
 				raw, ok := consumeField(oop.Prop)
+				if fieldError != nil {
+					return fieldError
+				}
 				if !ok {
 					continue
+				}
+				if u.standard {
+					if string(bytes.TrimSpace(raw)) == "null" && !acceptsJSONNull(oop.Type.Elem().Field(0).Type) {
+						continue
+					}
+					if seen[oop.Field] {
+						return fmt.Errorf("multiple values for oneof")
+					}
+					seen[oop.Field] = true
 				}
 				nv := reflect.New(oop.Type.Elem())
 				target.Field(oop.Field).Set(nv)
@@ -1152,6 +1226,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 	// Handle arrays
 	if targetType.Kind() == reflect.Slice {
 		if targetType.Elem().Kind() == reflect.Uint8 {
+			if u.standard && len(inputValue) > 0 && inputValue[0] != '"' {
+				return fmt.Errorf("expected base64 string")
+			}
 			outRef := reflect.New(targetType)
 			outVal := outRef.Interface()
 			//CustomType with underlying type []byte
@@ -1196,6 +1273,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			l := len(slc)
 			target.Set(reflect.MakeSlice(targetType, l, l))
 			for i := 0; i < l; i++ {
+				if u.standard && string(bytes.TrimSpace(slc[i])) == "null" && !acceptsJSONNull(targetType.Elem()) {
+					return fmt.Errorf("null repeated element")
+				}
 				if err := u.unmarshalValue(target.Index(i), slc[i], prop); err != nil {
 					return err
 				}
@@ -1213,6 +1293,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		if mp != nil {
 			target.Set(reflect.MakeMap(targetType))
 			for ks, raw := range mp {
+				if u.standard && string(bytes.TrimSpace(raw)) == "null" && !acceptsJSONNull(targetType.Elem()) {
+					return fmt.Errorf("null map value")
+				}
 				// Unmarshal map key. The core json library already decoded the key into a
 				// string, so we handle that specially. Other types were quoted post-serialization.
 				var k reflect.Value
@@ -1266,6 +1349,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		var number string
 		if err := json.Unmarshal(inputValue, &number); err != nil {
 			return err
+		}
+		if u.standard && strings.TrimSpace(number) != number {
+			return fmt.Errorf("whitespace in numeric string")
 		}
 		// Preserve the historical tolerance for whitespace inside numeric strings.
 		// The separate standard entrypoint validates the stricter contract.

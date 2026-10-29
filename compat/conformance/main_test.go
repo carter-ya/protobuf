@@ -9,17 +9,22 @@ import (
 )
 
 func TestDispatch(t *testing.T) {
-	for _, name := range []string{"protobuf_test_messages.proto2.TestAllTypesProto2", "protobuf_test_messages.proto3.TestAllTypesProto3", "protobuf_test_messages.editions.proto2.TestAllTypesProto2", "protobuf_test_messages.editions.proto3.TestAllTypesProto3", "protobuf_test_messages.editions.TestAllTypesEdition2023"} {
-		for _, format := range []pb.WireFormat{pb.WireFormat_PROTOBUF, pb.WireFormat_JSON, pb.WireFormat_TEXT_FORMAT} {
-			r := handle(&pb.ConformanceRequest{MessageType: name, Payload: &pb.ConformanceRequest_ProtobufPayload{}, RequestedOutputFormat: format})
-			switch r.Result.(type) {
-			case *pb.ConformanceResponse_ProtobufPayload, *pb.ConformanceResponse_JsonPayload, *pb.ConformanceResponse_TextPayload:
-			default:
-				t.Fatalf("%s %v: %v", name, format, r)
+	for _, mode := range []bool{false, true} {
+		standardMode = mode
+		defer func() { standardMode = false }()
+		for _, name := range []string{"protobuf_test_messages.proto2.TestAllTypesProto2", "protobuf_test_messages.proto3.TestAllTypesProto3", "protobuf_test_messages.editions.proto2.TestAllTypesProto2", "protobuf_test_messages.editions.proto3.TestAllTypesProto3", "protobuf_test_messages.editions.TestAllTypesEdition2023"} {
+			for _, format := range []pb.WireFormat{pb.WireFormat_PROTOBUF, pb.WireFormat_JSON, pb.WireFormat_TEXT_FORMAT} {
+				r := handle(&pb.ConformanceRequest{MessageType: name, Payload: &pb.ConformanceRequest_ProtobufPayload{}, RequestedOutputFormat: format})
+				switch r.Result.(type) {
+				case *pb.ConformanceResponse_ProtobufPayload, *pb.ConformanceResponse_JsonPayload, *pb.ConformanceResponse_TextPayload:
+				default:
+					t.Fatalf("%s %v: %v", name, format, r)
+				}
 			}
 		}
 	}
 }
+
 func TestFrames(t *testing.T) {
 	req := &pb.ConformanceRequest{MessageType: "conformance.FailureSet"}
 	wire, _ := proto.Marshal(req)

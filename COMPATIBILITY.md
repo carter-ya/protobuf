@@ -77,3 +77,11 @@ Etcd's frozen bindings use the golang runtime despite their gogo generator.
 Regeneration preserves that gofast choice. The smoke test uses integer enum JSON;
 looking up its named enum JSON through gogo's separate registry already fails
 with untouched v1.3.2 and is not broadened as part of this upgrade.
+
+## Explicit standard JSON entrypoint
+
+`jsonpb/standard` offers whole-document parsing, Unicode validation, presence
+preservation and deterministic duplicate/oneof rejection. Existing `jsonpb`
+configuration layouts and default behavior are unchanged. Modern conformance
+runs both entrypoints independently and records remaining limitations; see
+`jsonpb/standard/README.md` and `compat/conformance/README.md`.
