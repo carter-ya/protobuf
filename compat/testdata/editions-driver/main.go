@@ -13,6 +13,6 @@ func main() {
 	r := command.Generate(command.Read())
 	r.SupportedFeatures = proto.Uint64(uint64(p.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL | p.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS))
 	r.MinimumEdition = proto.Int32(int32(d.Edition_EDITION_2023))
-	r.MaximumEdition = proto.Int32(int32(d.Edition_EDITION_2023))
+	r.MaximumEdition = proto.Int32(int32(d.Edition_EDITION_2024))
 	command.Write(r)
 }

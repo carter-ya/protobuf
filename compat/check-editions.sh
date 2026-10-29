@@ -22,3 +22,14 @@ if protoc -I . -I protobuf --plugin=protoc-gen-test="$tmp/fast" --test_out="$tmp
  echo 'unsupported fast Editions combination accepted' >&2; exit 1
 fi
 grep -q 'gogo extension.*not yet supported with Editions' "$tmp/error"
+# Option imports need the compiler's pinned modern include tree, without
+# replacing the legacy standard-proto fixtures used by old projects.
+protoc -I . --plugin=protoc-gen-test="$tmp/driver" --test_out=paths=source_relative:"$tmp" compat/editions/edition2024/sample.proto
+go run ./compat/compare-generated -- compat/editions/edition2024/sample.pb.go "$tmp/compat/editions/edition2024/sample.pb.go"
+for api in API_HYBRID API_OPAQUE; do
+ sed "s/API_OPEN/$api/" compat/editions/edition2024/sample.proto > "$tmp/unsupported.proto"
+ if protoc -I "$tmp" -I . --plugin=protoc-gen-test="$tmp/driver" --test_out="$tmp" unsupported.proto > "$tmp/error" 2>&1; then
+  echo "unsupported $api accepted" >&2; exit 1
+ fi
+ grep -q 'api_level.*unsupported' "$tmp/error"
+done

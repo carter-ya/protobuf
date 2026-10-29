@@ -70,7 +70,7 @@ func editionEnums(files []*d.FileDescriptorProto) (map[string]editionEnum, error
 }
 
 func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*d.FileDescriptorProto, *editionMetadata, error) {
-	if raw.GetEdition() != d.Edition_EDITION_2023 {
+	if raw.GetEdition() != d.Edition_EDITION_2023 && raw.GetEdition() != d.Edition_EDITION_2024 {
 		return nil, nil, fmt.Errorf("%s: unsupported edition %d", raw.GetName(), raw.GetEdition())
 	}
 	if !gogoproto.ImportsGoGoProto(raw) {
@@ -97,7 +97,9 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 			extensions, _ := proto.ExtensionDescs(features)
 			for _, e := range extensions {
 				if e.Field == 1002 {
-					return fmt.Errorf("%s: %s: explicit Go features are not yet supported", file.GetName(), scope)
+					if err := validateGoFeatures(features); err != nil {
+						return fmt.Errorf("%s: %s: %v", file.GetName(), scope, err)
+					}
 				}
 			}
 			if len(features.XXX_unrecognized) > 0 {
@@ -138,6 +140,17 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 	}
 	if err := prepareExtensions(file.Extension, file.GetPackage()); err != nil {
 		return nil, nil, err
+	}
+	checkEnum := func(e *d.EnumDescriptorProto, scope string) error {
+		if err := checkOptions(e.Options, e.GetOptions().GetFeatures(), scope); err != nil {
+			return err
+		}
+		for _, v := range e.Value {
+			if err := checkOptions(v.Options, v.GetOptions().GetFeatures(), scope+"."+v.GetName()); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	var visit func([]*d.DescriptorProto, string) error
 	visit = func(messages []*d.DescriptorProto, scope string) error {
@@ -203,7 +216,7 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 				return fmt.Errorf("%s: %s: more than 64 required fields are not yet supported", file.GetName(), name)
 			}
 			for _, e := range m.EnumType {
-				if err := checkOptions(e.Options, e.GetOptions().GetFeatures(), name+"."+e.GetName()); err != nil {
+				if err := checkEnum(e, name+"."+e.GetName()); err != nil {
 					return err
 				}
 			}
@@ -214,7 +227,7 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 		return nil
 	}
 	for _, e := range file.EnumType {
-		if err := checkOptions(e.Options, e.GetOptions().GetFeatures(), e.GetName()); err != nil {
+		if err := checkEnum(e, e.GetName()); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -236,6 +249,8 @@ func reflectNilMessage(m proto.Message) bool {
 	case *d.EnumOptions:
 		return v == nil
 	case *d.OneofOptions:
+		return v == nil
+	case *d.EnumValueOptions:
 		return v == nil
 	}
 	return false

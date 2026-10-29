@@ -1,0 +1,17 @@
+edition = "2024";
+package compat.editions.v2024;
+option go_package = "github.com/gogo/protobuf/compat/editions/edition2024";
+import option "compat/editions/edition2024/options.proto";
+import option "google/protobuf/go_features.proto";
+option features.(pb.go).api_level = API_OPEN;
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1;
+}
+message Sample {
+  int32 value = 1 [
+    (compat.editions.options.runtime_note) = "keep",
+    (compat.editions.options.source_note) = "strip"
+  ];
+  Status status = 2;
+}
