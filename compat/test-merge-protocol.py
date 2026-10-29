@@ -14,6 +14,16 @@ def field_tokens(text):
 
 
 class ProtocolMergeTest(unittest.TestCase):
+    def test_proto3_unlabelled_fields_are_additive(self):
+        old = 'message Type { string name = 1; repeated string names = 2; }\nenum Syntax { PROTO2 = 0; }\n'
+        modern = 'message Type { string changed = 1; repeated string names = 2; string edition = 3; }\nenum Syntax { PROTO2 = 0; EDITIONS = 2; }\n'
+        result = module.merge(old, modern)
+        self.assertIn('string name = 1', result)
+        self.assertNotIn('string changed', result)
+        self.assertEqual(result.count('string edition = 3'), 1)
+        self.assertIn('EDITIONS = 2', result)
+        self.assertEqual(result, module.merge(result, modern))
+
     def test_additions_preserve_legacy_fields_and_defaults(self):
         old = 'message A { optional bool old_field = 1 [default=false]; message B { optional string value=1; } }\nenum E { OLD = 0; }\n'
         upstream = 'message A { optional bool old_field = 1 [default=true]; optional int32 added=2; message B { optional string value=1; optional int32 added=2; } }\nenum E { OLD = 0; NEW = 1; }\nmessage NewType { optional string value=1; }\n'

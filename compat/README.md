@@ -109,3 +109,15 @@ The nested module and extra CI job keep those dependencies out of the runtime.
 isolated module. See `conformance/README.md` for the pinned runner setup, exact
 historical failure records, supported Edition scope and CI reports. This gate
 detects new failures; its passing status does not claim full conformance.
+
+`sh compat/check-wkt-metadata.sh` checks the additive Type/Enum/Api/Method
+Editions metadata update. It regenerates only the two maintained WKT bindings,
+compares all old schema declarations against v1.3.2 with an explicit whitelist,
+and compiles frozen original WKT consumers against the candidate runtime. Those
+consumers must retain unknown edition fields during binary roundtrips.
+
+Regenerate these two bindings with `sh compat/regenerate-wkt-metadata.sh`; an
+optional output directory allows snapshot checks without modifying the checkout.
+`merge-protocol.py` accepts optional relative filenames for additive WKT source
+updates. Existing declarations remain authoritative; Method's deprecation is
+reviewed separately by the exact schema-delta check.

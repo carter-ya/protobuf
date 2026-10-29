@@ -91,3 +91,16 @@ FieldMask strings, empty Any and Any-wrapped special types. It rejects
 non-finite Value numbers. Legacy jsonpb WKT representations and tolerance
 remain unchanged. These paths are checked against both the pinned C++ suites
 and official Go implementation.
+
+## Editions metadata in standard types
+
+`Syntax_SYNTAX_EDITIONS` is value 2. Type, Enum, Api and Method gain the ordinary
+string `Edition` field with their official field numbers (7, 6, 8 and 8).
+Method's syntax and edition metadata are deprecated in favor of the parent Api,
+matching upstream. Existing field numbers, defaults, imports and runtime guard
+remain unchanged. These additions do change the public WKT struct shapes;
+consumers using positional literals or depending on in-memory layout must adapt.
+Frozen original bindings remain usable and retain new metadata as unknown bytes.
+`compat/check-wkt-metadata.sh` verifies the exact permitted schema delta, generated
+snapshots and original consumers; the isolated official Go oracle checks both
+binary and JSON representations.

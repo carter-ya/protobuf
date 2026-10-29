@@ -12,10 +12,12 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/apipb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/typepb"
 )
 
 func TestStandardWKTInteroperability(t *testing.T) {
@@ -32,6 +34,10 @@ func TestStandardWKTInteroperability(t *testing.T) {
 		{&old.Duration{Seconds: -315576000000, Nanos: -999999999}, new(durationpb.Duration)},
 		{&old.Timestamp{Seconds: -62135596800}, new(timestamppb.Timestamp)},
 		{&old.Timestamp{Seconds: 253402300799, Nanos: 999999999}, new(timestamppb.Timestamp)},
+		{&old.Type{Name: "M", Syntax: old.Syntax_SYNTAX_EDITIONS, Edition: "2026"}, new(typepb.Type)},
+		{&old.Enum{Name: "E", Syntax: old.Syntax_SYNTAX_EDITIONS, Edition: "2024"}, new(typepb.Enum)},
+		{&old.Api{Name: "A", Syntax: old.Syntax_SYNTAX_EDITIONS, Edition: "2023"}, new(apipb.Api)},
+		{&old.Method{Name: "Call", Syntax: old.Syntax_SYNTAX_EDITIONS, Edition: "2023"}, new(apipb.Method)},
 		{mask, new(fieldmaskpb.FieldMask)}, {packed, new(anypb.Any)},
 		{new(old.Any), new(anypb.Any)}, {new(old.Empty), new(emptypb.Empty)},
 	} {
