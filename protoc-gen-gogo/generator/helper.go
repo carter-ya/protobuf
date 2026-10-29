@@ -442,6 +442,9 @@ func (g *Generator) AllFiles() *descriptor.FileDescriptorSet {
 	set.File = make([]*descriptor.FileDescriptorProto, len(g.allFiles))
 	for i := range g.allFiles {
 		set.File[i] = g.allFiles[i].FileDescriptorProto
+		if g.allFiles[i].original != nil {
+			set.File[i] = g.allFiles[i].original
+		}
 	}
 	return set
 }

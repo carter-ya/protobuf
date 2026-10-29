@@ -75,3 +75,12 @@ format. `CLANG_FORMAT` can select the installed binary. The shared `.clang-forma
 applies Google style without rewriting comment text. The check covers tracked
 proto files added or modified since v1.3.2, plus untracked proto files locally;
 `--base` selects another baseline when needed.
+
+The test-only Editions backend currently covers 2023 reflection output: explicit
+and implicit presence, required fields, UTF-8 policy, packed/expanded primitives,
+open/closed enums (including imported enum definitions), map unknowns, oneofs
+and DELIMITED messages. `check-editions.sh` uses protoc 36.2 as an independent
+binary/text oracle. Production capabilities remain disabled at this layer.
+Editions extension declarations, gogo extensions, explicit Go features and more
+than 64 required fields currently produce diagnostics rather than partial output.
+Raw descriptor data is kept separately from the private lowered generator view.

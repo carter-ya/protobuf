@@ -957,6 +957,9 @@ const (
 	// the Version3 assertion and remain usable without regeneration.
 	GoGoProtoPackageIsVersion4 = true
 
+	// Editions field tags require independently resolved presence and validation.
+	GoGoProtoPackageIsVersion5 = true
+
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.
 	GoGoProtoPackageIsVersion2 = true

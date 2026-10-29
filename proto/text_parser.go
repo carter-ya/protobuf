@@ -935,6 +935,9 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		}
 	case reflect.Int32:
 		if x, err := strconv.ParseInt(tok.value, 0, 32); err == nil {
+			if len(props.ClosedEnum) > 0 && !props.ClosedEnum[int32(x)] {
+				return p.errorf("unknown value %d for closed enum %s", x, props.Enum)
+			}
 			fv.SetInt(x)
 			return nil
 		}
