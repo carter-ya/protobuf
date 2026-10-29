@@ -118,6 +118,8 @@ func NewGoString() *gostring {
 	return &gostring{}
 }
 
+func (p *gostring) SupportsEditions() bool { return true }
+
 func (p *gostring) Name() string {
 	return "gostring"
 }

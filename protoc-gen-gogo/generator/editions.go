@@ -86,10 +86,8 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 		if options != nil && !reflectNilMessage(options) {
 			extensions, _ := proto.ExtensionDescs(options)
 			for _, e := range extensions {
-				// Original gogo options occupy the 62000-65000 range. Enable each
-				// combination only after its plugin consumes resolved field semantics.
-				if e.Field >= 62000 && e.Field < 66000 {
-					return fmt.Errorf("%s: %s: gogo extension %d is not yet supported with Editions", file.GetName(), scope, e.Field)
+				if err := validateEditionOption(options, e); err != nil {
+					return fmt.Errorf("%s: %s: %v", file.GetName(), scope, err)
 				}
 			}
 		}

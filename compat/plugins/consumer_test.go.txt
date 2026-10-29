@@ -1,0 +1,31 @@
+package consumer_test
+import (
+ "bytes"
+ "compress/gzip"
+ "go/parser"
+ "io/ioutil"
+ "math/rand"
+ "testing"
+ pb "example.com/gogo-plugins/pb"
+ "github.com/gogo/protobuf/proto"
+ d "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+)
+func TestAuxiliaryPresence(t *testing.T){
+ absent:=new(pb.Sample);present:=&pb.Sample{Data:[]byte{}}
+ if absent.Equal(present)||absent.Compare(present)==0{t.Fatal("empty bytes lost presence")}
+ zero:=&pb.Sample{CustomValue:proto.Int32(0)}
+ if absent.Equal(zero)||absent.Compare(zero)==0{t.Fatal("explicit zero lost presence")}
+ var copy pb.Sample
+ wire,err:=proto.Marshal(zero);if err!=nil{t.Fatal(err)}
+ if err:=proto.Unmarshal(wire,&copy);err!=nil||!zero.Equal(&copy)||zero.Compare(&copy)!=0{t.Fatalf("roundtrip: %v",err)}
+ for seed:=int64(0);seed<50;seed++{
+  sample:=pb.NewPopulatedSample(rand.New(rand.NewSource(seed)),false)
+  if _,err:=parser.ParseExpr(sample.GoString());err!=nil{t.Fatalf("seed %d: %s %v",seed,sample.GoString(),err)}
+  _=sample.String()
+  cloned:=proto.Clone(sample).(*pb.Sample)
+  if !sample.Equal(cloned)||sample.Compare(cloned)!=0{t.Fatalf("clone seed %d",seed)}
+ }
+ raw,_:=absent.Descriptor();reader,err:=gzip.NewReader(bytes.NewReader(raw));if err!=nil{t.Fatal(err)};decoded,_:=ioutil.ReadAll(reader);reader.Close();var file d.FileDescriptorProto
+ if err:=proto.Unmarshal(decoded,&file);err!=nil{t.Fatal(err)}
+ if file.GetSyntax()!="editions"||file.MessageType[0].Field[2].GetOptions().GetFeatures().GetFieldPresence()!=d.FeatureSet_IMPLICIT{t.Fatal("raw features rewritten")}
+}

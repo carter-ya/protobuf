@@ -101,6 +101,11 @@ func GeneratePlugin(req *plugin.CodeGeneratorRequest, p generator.Plugin, filena
 	if support, ok := p.(interface{ SupportsProto3Optional() bool }); ok && support.SupportsProto3Optional() {
 		g.Response.SupportedFeatures = proto.Uint64(uint64(plugin.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL))
 	}
+	if support, ok := p.(interface{ SupportsEditions() bool }); ok && support.SupportsEditions() {
+		g.Response.SupportedFeatures = proto.Uint64(g.Response.GetSupportedFeatures() | uint64(plugin.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS))
+		g.Response.MinimumEdition = proto.Int32(int32(descriptor.Edition_EDITION_2023))
+		g.Response.MaximumEdition = proto.Int32(int32(descriptor.Edition_EDITION_2026))
+	}
 	return g.Response
 }
 

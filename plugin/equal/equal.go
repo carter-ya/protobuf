@@ -176,6 +176,8 @@ func NewPlugin() *plugin {
 	return &plugin{}
 }
 
+func (p *plugin) SupportsEditions() bool { return true }
+
 func (p *plugin) Name() string {
 	return "equal"
 }
@@ -287,7 +289,7 @@ func (p *plugin) generateMsgNullAndTypeCheck(ccTypeName string, verbose bool) {
 }
 
 func (p *plugin) generateField(file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto, verbose bool) {
-	proto3 := gogoproto.IsProto3(file.FileDescriptorProto) && !field.GetProto3Optional()
+	proto3 := p.FieldProto3Value(file, field, gogoproto.IsProto3(file.FileDescriptorProto))
 	fieldname := p.GetOneOfFieldName(message, field)
 	repeated := field.IsRepeated()
 	ctype := gogoproto.IsCustomType(field)
@@ -380,7 +382,7 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				}
 			} else if field.IsBytes() {
 				presence := ""
-				if field.GetProto3Optional() {
+				if field.GetProto3Optional() || (file.IsEditions() && p.FieldHasPresence(file, field)) {
 					presence = "(this." + fieldname + " == nil) != (that1." + fieldname + " == nil) || "
 				}
 				p.P(`if `, presence, `!`, p.bytesPkg.Use(), `.Equal(this.`, fieldname, `, that1.`, fieldname, `) {`)

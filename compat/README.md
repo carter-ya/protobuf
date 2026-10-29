@@ -127,3 +127,8 @@ consumers at required-field word boundaries. Protoc 3.21.8 checks proto2; 36.2
 checks both. Wide generated files require runtime Version7 and must fail to
 compile against the fixed pre-B02 runtime, which already supported Editions
 but did not validate required fields beyond the first 64.
+
+`sh compat/check-editions-plugins.sh` generates and compiles the safe auxiliary
+plugin combinations for Editions 2023/2024/2026, including independent GoString
+output. The matrix verifies explicit zero/empty presence, clone/equality/order,
+randomized GoString syntax, raw feature retention and unsupported options.

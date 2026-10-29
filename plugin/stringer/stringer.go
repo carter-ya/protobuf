@@ -109,6 +109,8 @@ func NewStringer() *stringer {
 	return &stringer{}
 }
 
+func (p *stringer) SupportsEditions() bool { return true }
+
 func (p *stringer) Name() string {
 	return "stringer"
 }
