@@ -81,8 +81,8 @@ and implicit presence, required fields, UTF-8 policy, packed/expanded primitives
 open/closed enums (including imported enum definitions), map unknowns, oneofs
 and DELIMITED messages. `check-editions.sh` uses protoc 36.2 as an independent
 binary/text oracle. Production capabilities are enabled in the final entrypoint layer.
-Gogo extensions, unsupported explicit Go features and more
-than 64 required fields currently produce diagnostics rather than partial output.
+Gogo extensions and unsupported explicit Go features currently produce
+diagnostics rather than partial output.
 Raw descriptor data is kept separately from the private lowered generator view.
 
 Edition 2024 fixtures cover option-only dependencies and option retention.
@@ -121,3 +121,9 @@ optional output directory allows snapshot checks without modifying the checkout.
 `merge-protocol.py` accepts optional relative filenames for additive WKT source
 updates. Existing declarations remain authoritative; Method's deprecation is
 reviewed separately by the exact schema-delta check.
+
+`sh compat/check-required.sh` generates independent proto2 and Edition 2023
+consumers at required-field word boundaries. Protoc 3.21.8 checks proto2; 36.2
+checks both. Wide generated files require runtime Version7 and must fail to
+compile against the fixed pre-B02 runtime, which already supported Editions
+but did not validate required fields beyond the first 64.

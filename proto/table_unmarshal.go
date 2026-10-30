@@ -74,6 +74,7 @@ type unmarshalInfo struct {
 	dense           []unmarshalFieldInfo          // fields indexed by tag #
 	sparse          map[uint64]unmarshalFieldInfo // fields indexed by tag #
 	reqFields       []string                      // names of required fields
+	reqExtraWords   int                           // words after the first 64 required fields
 	reqMask         uint64                        // 1<<len(reqFields)-1
 	unrecognized    field                         // offset of []byte to put unrecognized data (or invalidField if we should throw it away)
 	extensions      field                         // offset of extensions field (of type proto.XXX_InternalExtensions), or invalidField if it does not exist
@@ -100,6 +101,7 @@ type unmarshalFieldInfo struct {
 
 	// if a required field, contains a single set bit at this field's index in the required field list.
 	reqMask uint64
+	reqWord int // zero for the historical first-word path
 
 	name   string // name of the field, for error reporting
 	closed *closedEnumFilter
@@ -143,6 +145,10 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		return unmarshalMessageSet(b, m.offset(u.extensions).toExtensions())
 	}
 	var reqMask uint64 // bitmask of required fields we've seen.
+	var reqExtra []uint64
+	if u.reqExtraWords > 0 {
+		reqExtra = make([]uint64, u.reqExtraWords)
+	}
 	var errLater error
 	for len(b) > 0 {
 		// Read tag and wire type.
@@ -186,7 +192,11 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 				b, err = fn(b, m.offset(f.field), wire)
 			}
 			if err == nil {
-				reqMask |= f.reqMask
+				if f.reqWord == 0 {
+					reqMask |= f.reqMask
+				} else {
+					reqExtra[f.reqWord-1] |= f.reqMask
+				}
 				continue
 			}
 			if r, ok := err.(*RequiredNotSetError); ok {
@@ -195,7 +205,11 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 				if errLater == nil {
 					errLater = r
 				}
-				reqMask |= f.reqMask
+				if f.reqWord == 0 {
+					reqMask |= f.reqMask
+				} else {
+					reqExtra[f.reqWord-1] |= f.reqMask
+				}
 				continue
 			}
 			if err != errInternalBadWireType {
@@ -287,7 +301,18 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			emap[int32(tag)] = e
 		}
 	}
-	if reqMask != u.reqMask && errLater == nil {
+	if len(reqExtra) > 0 && errLater == nil {
+		for bit, name := range u.reqFields {
+			word := reqMask
+			if bit >= 64 {
+				word = reqExtra[bit/64-1]
+			}
+			if word&(uint64(1)<<uint(bit%64)) == 0 {
+				errLater = &RequiredNotSetError{name}
+			}
+		}
+	}
+	if len(reqExtra) == 0 && reqMask != u.reqMask && errLater == nil {
 		// A required field of this message is missing.
 		for _, n := range u.reqFields {
 			if reqMask&1 == 0 {
@@ -389,17 +414,16 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 
 		// Required field?
 		var reqMask uint64
+		var reqWord int
 		if tagArray[2] == "req" {
 			bit := len(u.reqFields)
 			u.reqFields = append(u.reqFields, name)
-			reqMask = uint64(1) << uint(bit)
-			// TODO: if we have more than 64 required fields, we end up
-			// not verifying that all required fields are present.
-			// Fix this, perhaps using a count of required fields?
+			reqMask = uint64(1) << uint(bit%64)
+			reqWord = bit / 64
 		}
 
 		// Store the info in the correct slot in the message.
-		u.setTag(tag, toField(&f), unmarshal, reqMask, name)
+		u.setTag(tag, toField(&f), unmarshal, reqMask, name, reqWord)
 		u.setClosedEnum(tag, &f)
 	}
 
@@ -479,6 +503,9 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 
 	// Set mask for required field check.
 	u.reqMask = uint64(1)<<uint(len(u.reqFields)) - 1
+	if len(u.reqFields) > 64 {
+		u.reqExtraWords = (len(u.reqFields) - 1) / 64
+	}
 
 	atomic.StoreInt32(&u.initialized, 1)
 }
@@ -488,8 +515,11 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 // field/unmarshal = unmarshal info for that field.
 // reqMask = if required, bitmask for field position in required field list. 0 otherwise.
 // name = short name of the field.
-func (u *unmarshalInfo) setTag(tag int, field field, unmarshal unmarshaler, reqMask uint64, name string) {
+func (u *unmarshalInfo) setTag(tag int, field field, unmarshal unmarshaler, reqMask uint64, name string, reqWord ...int) {
 	i := unmarshalFieldInfo{field: field, unmarshal: unmarshal, reqMask: reqMask, name: name}
+	if len(reqWord) != 0 {
+		i.reqWord = reqWord[0]
+	}
 	n := u.typ.NumField()
 	if tag >= 0 && (tag < 16 || tag < 2*n) { // TODO: what are the right numbers here?
 		for len(u.dense) <= tag {
