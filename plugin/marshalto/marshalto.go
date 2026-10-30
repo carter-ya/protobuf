@@ -391,7 +391,11 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 			p.Out()
 			p.P(`}`)
 		} else if proto3 {
-			p.P(`if m.`, fieldname, ` != 0 {`)
+			if file.IsEditions() {
+				p.P(`if `, p.mathPkg.Use(), `.Float64bits(float64(m.`, fieldname, `)) != 0 {`)
+			} else {
+				p.P(`if m.`, fieldname, ` != 0 {`)
+			}
 			p.In()
 			p.callFixed64(p.mathPkg.Use(), `.Float64bits(float64(m.`+fieldname, `))`)
 			p.encodeKey(fieldNumber, wireType)
@@ -421,7 +425,11 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 			p.Out()
 			p.P(`}`)
 		} else if proto3 {
-			p.P(`if m.`, fieldname, ` != 0 {`)
+			if file.IsEditions() {
+				p.P(`if `, p.mathPkg.Use(), `.Float32bits(float32(m.`, fieldname, `)) != 0 {`)
+			} else {
+				p.P(`if m.`, fieldname, ` != 0 {`)
+			}
 			p.In()
 			p.callFixed32(p.mathPkg.Use(), `.Float32bits(float32(m.`+fieldname, `))`)
 			p.encodeKey(fieldNumber, wireType)

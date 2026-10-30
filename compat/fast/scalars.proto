@@ -62,3 +62,12 @@ message Packed {
   repeated sint64 sint64s = 14 [features.repeated_field_encoding = EXPANDED];
   int32 following = 20;
 }
+
+message FloatingPoint {
+  double implicit_double = 1 [features.field_presence = IMPLICIT];
+  float implicit_float = 2 [features.field_presence = IMPLICIT];
+  double explicit_double = 3;
+  float explicit_float = 4;
+  repeated double doubles = 5;
+  repeated float floats = 6;
+}

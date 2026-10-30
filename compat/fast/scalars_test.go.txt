@@ -130,3 +130,64 @@ func TestPackedScalarPayloadBounds(t *testing.T){
   }
  })}
 }
+
+type reflectionFloatingPoint pb.FloatingPoint
+func(m *reflectionFloatingPoint)Reset(){*m=reflectionFloatingPoint{}}
+func(m *reflectionFloatingPoint)String()string{return proto.CompactTextString(m)}
+func(*reflectionFloatingPoint)ProtoMessage(){}
+func(m *reflectionFloatingPoint)Descriptor()([]byte,[]int){return (*pb.FloatingPoint)(m).Descriptor()}
+
+func TestFloatingPointSignedZero(t *testing.T){
+ cases:=[]struct{name string;double uint64;single uint32}{
+  {"positive_zero",0,0},
+  {"negative_double_zero",1<<63,0},
+  {"negative_float_zero",0,1<<31},
+  {"negative_zeros",1<<63,1<<31},
+  {"positive_subnormal",1,1},
+  {"negative_subnormal",1<<63|1,1<<31|1},
+  {"max_finite",0x7fefffffffffffff,0x7f7fffff},
+  {"positive_infinity",0x7ff0000000000000,0x7f800000},
+  {"negative_infinity",0xfff0000000000000,0xff800000},
+  {"nan_payload",0x7ff8000000000042,0x7fc00042},
+ }
+ for _,c:=range cases{t.Run(c.name,func(t *testing.T){
+  value:=&pb.FloatingPoint{ImplicitDouble:math.Float64frombits(c.double),ImplicitFloat:math.Float32frombits(c.single)}
+  expected,err:=proto.Marshal((*reflectionFloatingPoint)(value));if err!=nil{t.Fatal(err)}
+  actual,err:=proto.Marshal(value)
+  if err!=nil||!bytes.Equal(actual,expected){t.Fatalf("float wire differs: fast=%x reflection=%x err=%v",actual,expected,err)}
+  if proto.Size(value)!=len(expected){t.Fatalf("float size=%d want=%d",proto.Size(value),len(expected))}
+  var back pb.FloatingPoint
+  if err:=proto.Unmarshal(actual,&back);err!=nil{t.Fatal(err)}
+  if math.Float64bits(back.ImplicitDouble)!=c.double||math.Float32bits(back.ImplicitFloat)!=c.single{t.Fatalf("float bits lost: %016x/%08x want %016x/%08x",math.Float64bits(back.ImplicitDouble),math.Float32bits(back.ImplicitFloat),c.double,c.single)}
+  if FAST{
+   codec,ok:=interface{}(value).(interface{MarshalTo([]byte)(int,error);MarshalToSizedBuffer([]byte)(int,error);Size()int});if !ok{t.Fatal("fast float methods missing")}
+   if codec.Size()!=len(expected){t.Fatal("direct float size differs")}
+   start:=make([]byte,len(expected)+3);n,err:=codec.MarshalTo(start)
+   if err!=nil||n!=len(expected)||!bytes.Equal(start[:n],expected){t.Fatalf("MarshalTo differs: %x %v",start,err)}
+   end:=make([]byte,len(expected)+3);n,err=codec.MarshalToSizedBuffer(end)
+   if err!=nil||n!=len(expected)||!bytes.Equal(end[len(end)-n:],expected){t.Fatalf("sized buffer differs: %x %v",end,err)}
+  }
+  // Text format canonicalizes NaN payloads; compare those through binary paths.
+  if !math.IsNaN(value.ImplicitDouble)&&!math.IsNaN(float64(value.ImplicitFloat)){
+   command:=exec.Command("protoc","-I.","--decode=compat.fast.FloatingPoint","scalars.proto");command.Stdin=bytes.NewReader(actual)
+   text,err:=command.CombinedOutput();if err!=nil{t.Fatalf("official float decode: %s %v",text,err)}
+   command=exec.Command("protoc","-I.","--encode=compat.fast.FloatingPoint","scalars.proto");command.Stdin=bytes.NewReader(text)
+   wire,err:=command.Output();if err!=nil{t.Fatalf("official float encode: %v",err)}
+   if err:=proto.Unmarshal(wire,&back);err!=nil{t.Fatal(err)}
+   if math.Float64bits(back.ImplicitDouble)!=c.double||math.Float32bits(back.ImplicitFloat)!=c.single{t.Fatalf("official float bits differ: %x",wire)}
+  }
+ })}
+}
+
+func TestFloatingPointExplicitAndRepeatedZeros(t *testing.T){
+ negativeDouble:=math.Float64frombits(1<<63);negativeFloat:=math.Float32frombits(1<<31)
+ for _,negative:=range []bool{false,true}{
+  double,single:=float64(0),float32(0);if negative{double,single=negativeDouble,negativeFloat}
+  value:=&pb.FloatingPoint{ExplicitDouble:&double,ExplicitFloat:&single,Doubles:[]float64{0,negativeDouble},Floats:[]float32{0,negativeFloat}}
+  expected,err:=proto.Marshal((*reflectionFloatingPoint)(value));if err!=nil{t.Fatal(err)}
+  actual,err:=proto.Marshal(value);if err!=nil||!bytes.Equal(actual,expected)||proto.Size(value)!=len(expected){t.Fatalf("explicit/repeated zero wire differs: %x / %x %v",actual,expected,err)}
+  var back pb.FloatingPoint;if err:=proto.Unmarshal(actual,&back);err!=nil{t.Fatal(err)}
+  if back.ExplicitDouble==nil||back.ExplicitFloat==nil||math.Float64bits(*back.ExplicitDouble)!=math.Float64bits(double)||math.Float32bits(*back.ExplicitFloat)!=math.Float32bits(single){t.Fatal("explicit zero presence/sign lost")}
+  if len(back.Doubles)!=2||len(back.Floats)!=2||math.Float64bits(back.Doubles[0])!=0||math.Float64bits(back.Doubles[1])!=1<<63||math.Float32bits(back.Floats[0])!=0||math.Float32bits(back.Floats[1])!=1<<31{t.Fatal("repeated zero bits lost")}
+ }
+}

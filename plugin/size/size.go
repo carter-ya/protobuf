@@ -260,7 +260,11 @@ func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, messag
 		} else if repeated {
 			p.P(`n+=`, strconv.Itoa(key+8), `*len(m.`, fieldname, `)`)
 		} else if proto3 {
-			p.P(`if m.`, fieldname, ` != 0 {`)
+			if file.IsEditions() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_DOUBLE {
+				p.P(`if `, p.NewImport("math").Use(), `.Float64bits(float64(m.`, fieldname, `)) != 0 {`)
+			} else {
+				p.P(`if m.`, fieldname, ` != 0 {`)
+			}
 			p.In()
 			p.P(`n+=`, strconv.Itoa(key+8))
 			p.Out()
@@ -278,7 +282,11 @@ func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, messag
 		} else if repeated {
 			p.P(`n+=`, strconv.Itoa(key+4), `*len(m.`, fieldname, `)`)
 		} else if proto3 {
-			p.P(`if m.`, fieldname, ` != 0 {`)
+			if file.IsEditions() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_FLOAT {
+				p.P(`if `, p.NewImport("math").Use(), `.Float32bits(float32(m.`, fieldname, `)) != 0 {`)
+			} else {
+				p.P(`if m.`, fieldname, ` != 0 {`)
+			}
 			p.In()
 			p.P(`n+=`, strconv.Itoa(key+4))
 			p.Out()
