@@ -394,6 +394,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 
 		tags := f.Tag.Get("protobuf")
 		tagArray := strings.Split(tags, ",")
+
 		if len(tagArray) < 2 {
 			panic("protobuf tag not enough fields in " + t.Name() + "." + f.Name + ": " + tags)
 		}
@@ -547,6 +548,20 @@ func fieldUnmarshaler(f *reflect.StructField) unmarshaler {
 // typeUnmarshaler returns an unmarshaler for the given field type / field tag pair.
 func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 	tagArray := strings.Split(tags, ",")
+	if !unsafeAllowed && optionalCastTags(tagArray) {
+		builtinType := optionalCastType(t)
+		if builtinType != t {
+			unmarshal := typeUnmarshaler(builtinType, tags)
+			return func(data []byte, field pointer, wire int) ([]byte, error) {
+				slot := optionalCastPointer(field, t, builtinType)
+				remaining, err := unmarshal(data, slot, wire)
+				// A decoder may replace the scalar pointer or bytes slice.
+				// Convert that result back without losing its named Go type.
+				field.asPointerTo(t).Elem().Set(slot.asPointerTo(builtinType).Elem().Convert(t))
+				return remaining, err
+			}
+		}
+	}
 	encoding := tagArray[0]
 	name := "unknown"
 	ctype := false

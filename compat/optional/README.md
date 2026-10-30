@@ -52,3 +52,13 @@ ordinary optional files keep Version4. Editions cast mappings remain rejected.
 Optional scalar getters now check field presence before dereferencing the
 pointer, including the previously supported default representation. The maintained
 optional snapshots are regenerated for that fix; frozen v1.3.2 snapshots are unchanged.
+
+The optional mapping gate runs each generated consumer in both the default
+and `purego` configurations. Pure-Go table merging preserves the actual named
+field type rather than asserting a builtin scalar pointer. The per-field
+Clone/Merge checks cover all scalar families, enum casts, string casts and
+nil/empty/nonempty bytes, including copy ownership and explicit zero updates.
+This runtime path is shared with the App Engine and JS pointer implementations;
+Codec tables likewise adapt named fields to temporary builtin slots in pure-Go
+builds and restore their named types after decoding. Legacy fields without
+optional cast metadata keep their existing paths.

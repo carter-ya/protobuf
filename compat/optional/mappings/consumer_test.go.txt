@@ -291,3 +291,43 @@ func TestUnknownCastEnumAndIndependentPresence(t *testing.T) {
 		t.Fatal("cast enum getter default")
 	}
 }
+
+// Exercise each named scalar independently, including the reflective pointer
+// implementation selected by purego, appengine and js builds.
+func TestNamedMappingCloneAndMerge(t *testing.T) {
+	for i := 0; i < 16; i++ {
+		t.Run(reflect.TypeOf(pb.Sample{}).Field(i).Name, func(t *testing.T) {
+			for _, kind := range []int{0, 1} {
+				source := new(pb.Sample)
+				field := reflect.ValueOf(source).Elem().Field(i)
+				field.Set(reflect.ValueOf(populated(kind)).Elem().Field(i))
+				clone := proto.Clone(source).(*pb.Sample)
+				same(t, source, clone)
+				copied := reflect.ValueOf(clone).Elem().Field(i)
+				if field.Kind() == reflect.Ptr && field.Pointer() == copied.Pointer() {
+					t.Fatal("Clone aliases named scalar pointer")
+				}
+				if field.Kind() == reflect.Slice && field.Len() > 0 {
+					copied.Index(0).SetUint(copied.Index(0).Uint() ^ 255)
+					if copied.Index(0).Uint() == field.Index(0).Uint() {
+						t.Fatal("Clone aliases named bytes")
+					}
+				}
+				destination := new(pb.Sample)
+				proto.Merge(destination, source)
+				same(t, source, destination)
+				proto.Merge(destination, new(pb.Sample))
+				same(t, source, destination)
+				zero := new(pb.Sample)
+				reflect.ValueOf(zero).Elem().Field(i).Set(reflect.ValueOf(populated(0)).Elem().Field(i))
+				proto.Merge(destination, zero)
+				same(t, zero, destination)
+				// A message without generated XXX_Merge takes the independent mergeAny path.
+				reflection := proto.Clone((*reflected)(source)).(*reflected)
+				same(t, source, (*pb.Sample)(reflection))
+				proto.Merge(reflection, (*reflected)(zero))
+				same(t, zero, (*pb.Sample)(reflection))
+			}
+		})
+	}
+}

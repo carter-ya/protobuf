@@ -37,6 +37,7 @@ def main():
         test = (ROOT / 'compat/optional/mappings/consumer_test.go.txt').read_text()
         (dest / 'consumer_test.go').write_text(test.replace('FAST', 'false' if backend == 'gogo' else 'true'))
         subprocess.run(['go', 'test', './...'], cwd=dest, check=True)
+        subprocess.run(['go', 'test', '-tags=purego', './...'], cwd=dest, check=True)
 
 
 if __name__ == '__main__':
