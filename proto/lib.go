@@ -966,6 +966,9 @@ const (
 	// Version7 verifies every required field in messages wider than 64 fields.
 	GoGoProtoPackageIsVersion7 = true
 
+	// Version8 supports generated Editions closed-enum filtering.
+	GoGoProtoPackageIsVersion8 = true
+
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.
 	GoGoProtoPackageIsVersion2 = true

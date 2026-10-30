@@ -34,7 +34,7 @@ def main():
             shutil.copyfile(ROOT / 'go.sum', dest / 'go.sum')
             shutil.copyfile(ROOT / 'compat/plugins/consumer_test.go.txt', dest / 'consumer_test.go')
             subprocess.run(['go', 'test', './...'], cwd=dest, check=True)
-    for option in ['(gogoproto.marshaler_all) = true', '(gogoproto.goproto_unrecognized_all) = false', '(gogoproto.face_all) = true']:
+    for option in ['(gogoproto.unsafe_marshaler_all) = true', '(gogoproto.goproto_unrecognized_all) = false', '(gogoproto.face_all) = true']:
         source = original + '\noption ' + option + ';\n'
         (output / 'bad.proto').write_text(source)
         process = subprocess.run(['protoc', '-I' + str(output), '-I' + str(ROOT), '-I' + str(ROOT / 'protobuf'), '--plugin=protoc-gen-test=' + str(gogo), '--test_out=' + str(output), 'bad.proto'], capture_output=True, text=True)

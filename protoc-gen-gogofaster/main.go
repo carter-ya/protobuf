@@ -42,8 +42,8 @@ func main() {
 	vanity.ForEachFile(files, vanity.TurnOnSizerAll)
 	vanity.ForEachFile(files, vanity.TurnOnUnmarshalerAll)
 
-	vanity.ForEachFieldInFilesExcludingExtensions(vanity.OnlyProto2(files), vanity.TurnOffNullableForNativeTypesWithoutDefaultsOnly)
-	vanity.ForEachFile(files, vanity.TurnOffGoUnrecognizedAll)
+	vanity.ForEachFieldInFilesExcludingExtensions(vanity.OnlyProto2(vanity.FilterFiles(files, vanity.NotEditions)), vanity.TurnOffNullableForNativeTypesWithoutDefaultsOnly)
+	vanity.ForEachFile(vanity.FilterFiles(files, vanity.NotEditions), vanity.TurnOffGoUnrecognizedAll)
 	vanity.ForEachFile(files, vanity.TurnOffGoUnkeyedAll)
 	vanity.ForEachFile(files, vanity.TurnOffGoSizecacheAll)
 

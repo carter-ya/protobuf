@@ -36,7 +36,7 @@ func TestEditionOptionAllowlist(t *testing.T) {
 		{gogoproto.E_GostringAll, proto.Bool(true), true},
 		{gogoproto.E_GoprotoUnrecognizedAll, proto.Bool(true), true},
 		{gogoproto.E_GoprotoUnrecognizedAll, proto.Bool(false), false},
-		{gogoproto.E_MarshalerAll, proto.Bool(true), false},
+		{gogoproto.E_MarshalerAll, proto.Bool(true), true},
 		{gogoproto.E_EnumvalueCustomname, proto.String("Name"), true},
 	} {
 		var message proto.Message

@@ -132,3 +132,11 @@ but did not validate required fields beyond the first 64.
 plugin combinations for Editions 2023/2024/2026, including independent GoString
 output. The matrix verifies explicit zero/empty presence, clone/equality/order,
 randomized GoString syntax, raw feature retention and unsupported options.
+
+`sh compat/check-editions-fast.sh` exercises Editions 2023/2024/2026 with gogo,
+gogofast, gogofaster, gogoslick and gogotypes. The initial matrix covers all scalar
+and repeated types, presence, UTF-8 VERIFY/NONE, packed/expanded enums, negative
+enums, required fields, unknown/wrong-wire fields and malformed input. Fresh
+fast bindings use Version8. Fast wire/size results are checked against the
+reflection codec and the pinned official protoc binary/text oracle. Complex
+fields remain rejected until their dedicated matrix is enabled.

@@ -194,6 +194,7 @@ type unmarshal struct {
 	typesPkg   generator.Single
 	binaryPkg  generator.Single
 	localName  string
+	editions   bool
 }
 
 func NewUnmarshal() *unmarshal {
@@ -222,6 +223,9 @@ func (p *unmarshal) decodeVarint(varName string, typName string) {
 	p.Out()
 	p.P(`}`)
 	p.P(`b := dAtA[iNdEx]`)
+	if p.editions {
+		p.P(`if shift == 63 && b > 1 { return ErrIntOverflow` + p.localName + ` }`)
+	}
 	p.P(`iNdEx++`)
 	p.P(varName, ` |= `, typName, `(b&0x7F) << shift`)
 	p.P(`if b < 0x80 {`)
@@ -500,7 +504,7 @@ func (p *unmarshal) noStarOrSliceType(msg *generator.Descriptor, field *descript
 }
 
 func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descriptor, field *descriptor.FieldDescriptorProto, fieldname string, proto3 bool) {
-	proto3 = proto3 && !field.GetProto3Optional()
+	proto3 = p.FieldProto3Value(file, field, proto3)
 	repeated := field.IsRepeated()
 	nullable := gogoproto.IsNullable(field)
 	typ := p.noStarOrSliceType(msg, field)
@@ -653,6 +657,9 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 		p.P(`return `, p.ioPkg.Use(), `.ErrUnexpectedEOF`)
 		p.Out()
 		p.P(`}`)
+		if file.IsEditions() && p.FieldRequiresUTF8(file, field) {
+			p.P("if !", p.NewImport("unicode/utf8").Use(), ".Valid(dAtA[iNdEx:postIndex]) { return fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+		}
 		if oneof {
 			p.P(`m.`, fieldname, ` = &`, p.OneOfTypeName(msg, field), `{`, typ, `(dAtA[iNdEx:postIndex])}`)
 		} else if repeated {
@@ -826,6 +833,9 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			p.P(`entryPreIndex := iNdEx`)
 			p.P(`var wire uint64`)
 			p.decodeVarint("wire", "uint64")
+			if file.IsEditions() {
+				p.P(`if iNdEx-preIndex > 5 || wire >> 3 > 536870911 { return fmt.Errorf("proto: invalid Editions tag") }`)
+			}
 			p.P(`fieldNum := int32(wire >> 3)`)
 
 			p.P(`if fieldNum == 1 {`)
@@ -839,7 +849,11 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			p.P(`} else {`)
 			p.In()
 			p.P(`iNdEx = entryPreIndex`)
-			p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+			if file.IsEditions() {
+				p.P("skippy, err := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".EditionFieldSize(dAtA[iNdEx:])")
+			} else {
+				p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+			}
 			p.P(`if err != nil {`)
 			p.In()
 			p.P(`return err`)
@@ -1298,6 +1312,7 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 }
 
 func (p *unmarshal) Generate(file *generator.FileDescriptor) {
+	p.editions = file.IsEditions()
 	proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
 	p.PluginImports = generator.NewPluginImports(p.Generator)
 	p.atleastOne = false
@@ -1335,8 +1350,36 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		}
 		rfCount := len(rfMap)
 
+		closed := make(map[uint64][]int32)
+		if file.IsEditions() {
+			for _, field := range message.Field {
+				if values := p.FieldClosedEnumValues(file, field); len(values) > 0 {
+					closed[uint64(field.GetNumber())] = values
+				}
+			}
+		}
+		filterName := "editionEnums" + p.localName + ccTypeName
+		if len(closed) > 0 {
+			p.P("var ", filterName, " = map[uint64]*", protoPkg.Use(), ".EditionEnumFilter{")
+			for _, field := range message.Field {
+				if values := closed[uint64(field.GetNumber())]; len(values) > 0 {
+					parts := make([]string, len(values))
+					for i, n := range values {
+						parts[i] = strconv.FormatInt(int64(n), 10)
+					}
+					p.P(strconv.Itoa(int(field.GetNumber())), ": ", protoPkg.Use(), ".NewEditionEnumFilter([]int32{", strings.Join(parts, ","), "}, false, ", field.IsRepeated(), "),")
+				}
+			}
+			p.P("}")
+		}
 		p.P(`func (m *`, ccTypeName, `) Unmarshal(dAtA []byte) error {`)
 		p.In()
+		if len(closed) > 0 {
+			p.P("filtered, unknown, err := ", protoPkg.Use(), ".FilterEditionEnums(dAtA, ", filterName, ")")
+			p.P("if err != nil { return err }")
+			p.P("dAtA = filtered")
+			p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, unknown...)")
+		}
 		if rfCount > 0 {
 			p.P(`var hasFields [`, strconv.Itoa(1+(rfCount-1)/64), `]uint64`)
 		}
@@ -1347,6 +1390,9 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		p.P(`preIndex := iNdEx`)
 		p.P(`var wire uint64`)
 		p.decodeVarint("wire", "uint64")
+		if file.IsEditions() {
+			p.P(`if iNdEx-preIndex > 5 || wire >> 3 > 536870911 { return fmt.Errorf("proto: invalid Editions tag") }`)
+		}
 		p.P(`fieldNum := int32(wire >> 3)`)
 		if len(message.Field) > 0 || !message.IsGroup() {
 			p.P(`wireType := int(wire & 0x7)`)
@@ -1401,6 +1447,13 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.Out()
 				p.P(`}`)
 
+				if file.IsEditions() {
+					// Element decoders use l and dAtA for their bounds checks.
+					// A packed element must not consume the following field.
+					p.P(`outerData, outerLength := dAtA, l`)
+					p.P(`dAtA = dAtA[:postIndex]; l = postIndex`)
+				}
+
 				p.P(`var elementCount int`)
 				switch *field.Type {
 				case descriptor.FieldDescriptorProto_TYPE_DOUBLE, descriptor.FieldDescriptorProto_TYPE_FIXED64, descriptor.FieldDescriptorProto_TYPE_SFIXED64:
@@ -1433,16 +1486,35 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.field(file, message, field, fieldname, false)
 				p.Out()
 				p.P(`}`)
+				if file.IsEditions() {
+					p.P(`dAtA, l = outerData, outerLength`)
+				}
 				p.Out()
 				p.P(`} else {`)
 				p.In()
-				p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				if file.IsEditions() {
+					p.P("size, err := ", protoPkg.Use(), ".EditionFieldSize(dAtA[preIndex:])")
+					p.P("if err != nil { return err }")
+					p.P("iNdEx = preIndex + size")
+					p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[preIndex:iNdEx]...)")
+					p.P("continue")
+				} else {
+					p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				}
 				p.Out()
 				p.P(`}`)
 			} else {
 				p.P(`if wireType != `, strconv.Itoa(wireType), `{`)
 				p.In()
-				p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				if file.IsEditions() {
+					p.P("size, err := ", protoPkg.Use(), ".EditionFieldSize(dAtA[preIndex:])")
+					p.P("if err != nil { return err }")
+					p.P("iNdEx = preIndex + size")
+					p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[preIndex:iNdEx]...)")
+					p.P("continue")
+				} else {
+					p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				}
 				p.Out()
 				p.P(`}`)
 				p.field(file, message, field, fieldname, proto3)
@@ -1505,7 +1577,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			p.In()
 		}
 		p.P(`iNdEx=preIndex`)
-		p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+		if file.IsEditions() {
+			p.P("skippy, err := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".EditionFieldSize(dAtA[iNdEx:])")
+		} else {
+			p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+		}
 		p.P(`if err != nil {`)
 		p.In()
 		p.P(`return err`)
