@@ -131,6 +131,8 @@ func NewPlugin() *plugin {
 	return &plugin{}
 }
 
+func (p *plugin) SupportsEditions() bool { return true }
+
 func (p *plugin) Name() string {
 	return "populate"
 }

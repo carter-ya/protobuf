@@ -110,3 +110,10 @@ bitmap. Files containing such messages require runtime Version7, including
 proto2 files; smaller legacy messages keep their original guard and allocation
 path. The boundary consumer checks 63/64/65/128/129 fields, sparse tags, absent
 fields, explicit zeroes, nested parsing and Merge.
+
+Editions now support an explicit allowlist of getter/naming/tag options,
+Equal/Compare, Populate, Stringer and GoString. Empty bytes retain presence in
+generated equality/ordering. Unknown-field storage cannot be disabled. Custom
+representations, unsafe codecs, face/union and unverified options still fail
+with a scoped diagnostic. Auxiliary plugins advertise Editions only through an
+explicit capability; unrecognized plugins do not inherit it.

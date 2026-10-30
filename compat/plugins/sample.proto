@@ -1,0 +1,26 @@
+edition = "2023";
+package compat.plugins;
+option go_package = "example.com/gogo-plugins/pb";
+import "gogoproto/gogo.proto";
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.equal_all) = true;
+option (gogoproto.compare_all) = true;
+message Sample {
+  int32 value = 1 [(gogoproto.customname) = "CustomValue"];
+  bytes data = 2;
+  int32 implicit_value = 3 [features.field_presence = IMPLICIT];
+  string label = 4;
+  repeated int32 numbers = 5;
+  Child child = 6;
+  map<string, int32> values = 7;
+  oneof choice {
+    string name = 8;
+    int32 id = 9;
+  }
+}
+message Child {
+  int32 value = 1;
+}
