@@ -7,6 +7,8 @@ extend Sample {
   string foreign_raw = 105;
   string foreign_checked = 106 [features.utf8_validation = VERIFY];
   repeated Closed foreign_enums = 107;
+  fixed32 fixed32_ext = 109;
+  fixed64 fixed64_ext = 110;
 }
 message Declaring {
   extend Sample {

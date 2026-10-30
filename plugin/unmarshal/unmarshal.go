@@ -1609,19 +1609,25 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			}
 			p.P(`if `, strings.Join(c, "||"), `{`)
 			p.In()
-			p.P(`var sizeOfWire int`)
-			p.P(`for {`)
-			p.In()
-			p.P(`sizeOfWire++`)
-			p.P(`wire >>= 7`)
-			p.P(`if wire == 0 {`)
-			p.In()
-			p.P(`break`)
-			p.Out()
-			p.P(`}`)
-			p.Out()
-			p.P(`}`)
-			p.P(`iNdEx-=sizeOfWire`)
+			if file.IsEditions() {
+				// preIndex records the consumed tag bytes, including a valid
+				// non-minimal varint representation.
+				p.P(`iNdEx = preIndex`)
+			} else {
+				p.P(`var sizeOfWire int`)
+				p.P(`for {`)
+				p.In()
+				p.P(`sizeOfWire++`)
+				p.P(`wire >>= 7`)
+				p.P(`if wire == 0 {`)
+				p.In()
+				p.P(`break`)
+				p.Out()
+				p.P(`}`)
+				p.Out()
+				p.P(`}`)
+				p.P(`iNdEx-=sizeOfWire`)
+			}
 			if file.IsEditions() {
 				p.P("skippy, err := ", protoPkg.Use(), ".EditionFieldSize(dAtA[iNdEx:])")
 			} else {

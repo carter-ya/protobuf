@@ -106,3 +106,53 @@ func TestWrongWireExtensions(t *testing.T){
   wire,err:=proto.Marshal(&value);if err!=nil||!bytes.Equal(data,wire){t.Fatalf("wrong-wire extension lost: %x %x %v",data,wire,err)}
  }
 }
+
+func extendedTag(number,wire,extra int)[]byte{
+ tag:=proto.EncodeVarint(uint64(number<<3|wire))
+ if extra==0{return tag}
+ tag[len(tag)-1]|=0x80
+ for n:=1;n<extra;n++{tag=append(tag,0x80)}
+ return append(tag,0)
+}
+func TestExtensionNonMinimalTags(t *testing.T){
+ cases:=[]struct{name string;number,wire int;payload []byte;desc *proto.ExtensionDesc}{
+  {"closed_enum",100,0,[]byte{1},pb.E_EnumExt},
+  {"packed_enum",101,2,[]byte{2,1,2},pb.E_EnumList},
+  {"delimited",102,3,scalar(1,1),pb.E_GroupExt},
+  {"string",104,2,[]byte{1,'x'},pb.E_CheckedExt},
+  {"nested_int32",108,0,[]byte{1},pb.E_Declaring_NestedExt},
+  {"fixed32",109,5,[]byte{1,0,0,0},pb.E_Fixed32Ext},
+  {"fixed64",110,1,[]byte{1,0,0,0,0,0,0,0},pb.E_Fixed64Ext},
+  {"unregistered_middle",128,0,[]byte{1},nil},
+  {"unregistered_last",199,0,[]byte{1},nil},
+ }
+ for _,c:=range cases{t.Run(c.name,func(t *testing.T){
+  for extra:=0;extra<=3;extra++{for _,prefix:=range [][]byte{nil,encode(5,scalar(1,3))}{
+   field:=append(extendedTag(c.number,c.wire,extra),c.payload...)
+   if c.wire==3{field=append(field,extendedTag(c.number,4,extra)...)}
+   input:=append(append(append([]byte{},prefix...),field...),scalar(250,11)...)
+   var value pb.Sample
+   if err:=proto.Unmarshal(input,&value);err!=nil{t.Fatalf("tag extra=%d offset=%d input=%x: %v",extra,len(prefix),input,err)}
+   if len(prefix)>0&&(value.Prefixed==nil||value.Prefixed.GetX()!=3){t.Fatal("preceding field changed")}
+   // Generated codecs preserve the original raw extension before lazy decoding.
+   // The historical reflection codec may canonicalize the tag's varint bytes.
+   wire,err:=proto.Marshal(&value);if err!=nil{t.Fatal(err)}
+   if FAST&&!bytes.Equal(wire,input){t.Fatalf("raw extension changed: %x / %x",input,wire)}
+   if proto.Size(&value)!=len(wire){t.Fatal("extension size differs")}
+   expected:=canonicalUnknowns(t,input)
+   if !FAST&&expected!=canonicalUnknowns(t,wire){t.Fatalf("official extension semantics differ: %x / %x",input,wire)}
+   if c.desc!=nil{
+    ext,err:=proto.GetExtension(&value,c.desc);if err!=nil{t.Fatalf("extension access: %v",err)}
+    switch c.number{
+    case 100: if got,ok:=ext.(*pb.Closed);!ok||*got!=1{t.Fatalf("enum extension=%v",ext)}
+    case 101: if got,ok:=ext.([]pb.Closed);!ok||len(got)!=2||got[0]!=1||got[1]!=2{t.Fatalf("packed enum extension=%v",ext)}
+    case 102: if got,ok:=ext.(*pb.Child);!ok||got.GetX()!=1{t.Fatalf("group extension=%v",ext)}
+    case 104: if got,ok:=ext.(*string);!ok||*got!="x"{t.Fatalf("string extension=%v",ext)}
+    case 108: if got,ok:=ext.(*int32);!ok||*got!=1{t.Fatalf("integer extension=%v",ext)}
+    case 109: if got,ok:=ext.(*uint32);!ok||*got!=1{t.Fatalf("fixed32 extension=%v",ext)}
+    case 110: if got,ok:=ext.(*uint64);!ok||*got!=1{t.Fatalf("fixed64 extension=%v",ext)}
+    }
+   }
+  }}
+ })}
+}
