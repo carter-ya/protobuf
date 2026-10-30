@@ -1,0 +1,38 @@
+syntax = "proto3";
+package compat.optional.mapping;
+option go_package = "example.com/optional-mappings/pb";
+import "gogoproto/gogo.proto";
+option (gogoproto.equal_all) = true;
+option (gogoproto.compare_all) = true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/wrappers.proto";
+message Sample {
+  optional bytes value_1 = 1
+      [(gogoproto.customtype) = "example.com/optional-mappings/types.Raw"];
+  optional google.protobuf.Timestamp value_2 = 2 [(gogoproto.stdtime) = true];
+  optional google.protobuf.Duration value_3 = 3
+      [(gogoproto.stdduration) = true];
+  optional google.protobuf.DoubleValue value_4 = 4
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.FloatValue value_5 = 5
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.Int64Value value_6 = 6
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.UInt64Value value_7 = 7
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.Int32Value value_8 = 8
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.UInt32Value value_9 = 9
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.BoolValue value_10 = 10
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.StringValue value_11 = 11
+      [(gogoproto.wktpointer) = true];
+  optional google.protobuf.BytesValue value_12 = 12
+      [(gogoproto.wktpointer) = true];
+}

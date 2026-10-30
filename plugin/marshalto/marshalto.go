@@ -1123,6 +1123,14 @@ func (p *marshalto) reverseListRange(expression ...string) string {
 }
 
 func (p *marshalto) marshalAllSizeOf(field *descriptor.FieldDescriptorProto, varName, num string) bool {
+	if field.GetProto3Optional() && gogoproto.IsStdType(field) {
+		p.P("body", num, ", err", num, " := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".MarshalOptionalStd(", varName, ")")
+		p.P("if err", num, " != nil { return 0, err", num, " }")
+		p.P("i -= len(body", num, ")")
+		p.P("copy(dAtA[i:], body", num, ")")
+		p.callVarint("len(body" + num + ")")
+		return true
+	}
 	if gogoproto.IsStdTime(field) {
 		p.marshalSizeOf(`StdTimeMarshalTo`, `SizeOfStdTime`, varName, num)
 	} else if gogoproto.IsStdDuration(field) {

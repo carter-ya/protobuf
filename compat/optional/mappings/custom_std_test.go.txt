@@ -1,0 +1,351 @@
+package consumer_test
+
+import (
+	"bytes"
+	"compress/gzip"
+	"go/parser"
+	"go/token"
+	"io/ioutil"
+	"math"
+	"math/rand"
+	"os/exec"
+	"reflect"
+	"testing"
+	"time"
+
+	pb "example.com/optional-mappings/pb"
+	mapped "example.com/optional-mappings/types"
+	"github.com/gogo/protobuf/gogoproto"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb/standard"
+	"github.com/gogo/protobuf/proto"
+	d "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+)
+
+type reflected pb.Sample
+
+func (m *reflected) Reset()                      { *m = reflected{} }
+func (m *reflected) String() string              { return proto.CompactTextString(m) }
+func (*reflected) ProtoMessage()                 {}
+func (m *reflected) Descriptor() ([]byte, []int) { return (*pb.Sample)(m).Descriptor() }
+func same(t *testing.T, a, b *pb.Sample) {
+	t.Helper()
+	if !proto.Equal(a, b) || !a.Equal(b) || a.Compare(b) != 0 {
+		t.Fatalf("value/presence mismatch: %s %s", a, b)
+	}
+}
+func populated(nonzero bool) *pb.Sample {
+	value := new(pb.Sample)
+	v := reflect.ValueOf(value).Elem()
+	for i := 0; i < 12; i++ {
+		f := v.Field(i)
+		f.Set(reflect.New(f.Type().Elem()))
+	}
+	value.Value_1 = mapped.NewRaw(nil)
+	if nonzero {
+		value.Value_1 = mapped.NewRaw([]byte{0, 255, 1})
+		timestamp := time.Date(2026, 1, 2, 3, 4, 5, 123456789, time.UTC)
+		value.Value_2 = &timestamp
+		duration := -time.Second - time.Nanosecond
+		value.Value_3 = &duration
+		*value.Value_4 = -1.5
+		*value.Value_5 = 1.25
+		*value.Value_6 = -1 << 63
+		*value.Value_7 = ^uint64(0)
+		*value.Value_8 = -1 << 31
+		*value.Value_9 = ^uint32(0)
+		*value.Value_10 = true
+		*value.Value_11 = "雪"
+		*value.Value_12 = []byte{1, 2, 255}
+	}
+	return value
+}
+func TestCustomAndStandardMappings(t *testing.T) {
+	for _, value := range []*pb.Sample{new(pb.Sample), populated(false), populated(true)} {
+		wire, err := proto.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		slow, err := proto.Marshal((*reflected)(value))
+		if err != nil || !bytes.Equal(wire, slow) {
+			t.Fatalf("reflection differs: %x %x %v", wire, slow, err)
+		}
+		if proto.Size(value) != len(wire) {
+			t.Fatal("size mismatch")
+		}
+		var back pb.Sample
+		if err := proto.Unmarshal(wire, &back); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, &back)
+		var reflectedBack reflected
+		if err := proto.Unmarshal(wire, &reflectedBack); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, (*pb.Sample)(&reflectedBack))
+		if FAST {
+			codec := interface{}(value).(interface {
+				Marshal() ([]byte, error)
+				Size() int
+				MarshalTo([]byte) (int, error)
+				MarshalToSizedBuffer([]byte) (int, error)
+			})
+			direct, err := codec.Marshal()
+			if err != nil || codec.Size() != len(wire) || !bytes.Equal(direct, wire) {
+				t.Fatal("direct fast differs")
+			}
+			for _, fn := range []func([]byte) (int, error){codec.MarshalTo, codec.MarshalToSizedBuffer} {
+				buffer := make([]byte, len(wire))
+				n, err := fn(buffer)
+				if err != nil || n != len(wire) || !bytes.Equal(buffer, wire) {
+					t.Fatalf("direct buffer: %v", err)
+				}
+			}
+		}
+		clone := proto.Clone(value).(*pb.Sample)
+		same(t, value, clone)
+		for _, mode := range []bool{false, true} {
+			var text string
+			if mode {
+				text, err = (&standard.Marshaler{}).MarshalToString(value)
+			} else {
+				text, err = (&jsonpb.Marshaler{}).MarshalToString(value)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var parsed pb.Sample
+			if mode {
+				err = standard.UnmarshalString(text, &parsed)
+			} else {
+				err = jsonpb.UnmarshalString(text, &parsed)
+			}
+			if err != nil {
+				t.Fatalf("JSON %s: %v", text, err)
+			}
+			same(t, value, &parsed)
+		}
+		text := proto.CompactTextString(value)
+		var parsed pb.Sample
+		if err := proto.UnmarshalText(text, &parsed); err != nil {
+			t.Fatalf("text %s: %v", text, err)
+		}
+		same(t, value, &parsed)
+		command := exec.Command("protoc", "-I.", "-IINCLUDE", "--decode=compat.optional.mapping.Sample", "sample.proto")
+		command.Stdin = bytes.NewReader(wire)
+		official, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("official decode: %s %v", official, err)
+		}
+		command = exec.Command("protoc", "-I.", "-IINCLUDE", "--encode=compat.optional.mapping.Sample", "sample.proto")
+		command.Stdin = bytes.NewReader(official)
+		encoded, err := command.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var oracle pb.Sample
+		if err := proto.Unmarshal(encoded, &oracle); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, &oracle)
+	}
+	zero, old := populated(false), populated(true)
+	proto.Merge(old, new(pb.Sample))
+	same(t, old, populated(true))
+	proto.Merge(old, zero)
+	same(t, old, zero)
+	clone := proto.Clone(populated(true)).(*pb.Sample)
+	original := populated(true)
+	clone.Value_1.Mutate()
+	(*clone.Value_12)[0] ^= 255
+	if original.Equal(clone) {
+		t.Fatal("mutation ineffective")
+	}
+	// The source must not alias its clone, including private custom state.
+	original = populated(true)
+	clone = proto.Clone(original).(*pb.Sample)
+	clone.Value_1.Mutate()
+	(*clone.Value_12)[0] ^= 255
+	same(t, original, populated(true))
+	for i := 0; i < 12; i++ {
+		value := new(pb.Sample)
+		reflect.ValueOf(value).Elem().Field(i).Set(reflect.ValueOf(zero).Elem().Field(i))
+		if proto.Equal(value, new(pb.Sample)) || value.Equal(new(pb.Sample)) || value.Compare(new(pb.Sample)) == 0 {
+			t.Fatalf("field %d lost presence", i+1)
+		}
+	}
+	for _, marshaler := range []interface {
+		MarshalToString(proto.Message) (string, error)
+	}{&jsonpb.Marshaler{EmitDefaults: true}, &standard.Marshaler{EmitDefaults: true}} {
+		text, err := marshaler.MarshalToString(new(pb.Sample))
+		if err != nil || text != "{}" {
+			t.Fatalf("invented presence: %s %v", text, err)
+		}
+	}
+}
+func TestMappingDescriptorsAndAuxiliary(t *testing.T) {
+	data, _ := new(pb.Sample).Descriptor()
+	z, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := ioutil.ReadAll(z)
+	z.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file d.FileDescriptorProto
+	if err := proto.Unmarshal(raw, &file); err != nil {
+		t.Fatal(err)
+	}
+	message := file.MessageType[0]
+	if len(message.OneofDecl) != 12 {
+		t.Fatal("oneofs lost")
+	}
+	for i, field := range message.Field {
+		switch i {
+		case 0:
+			value, err := proto.GetExtension(field.Options, gogoproto.E_Customtype)
+			if err != nil || *value.(*string) != "example.com/optional-mappings/types.Raw" {
+				t.Fatalf("custom descriptor lost: %v", err)
+			}
+		case 1:
+			if !gogoproto.IsStdTime(field) {
+				t.Fatal("stdtime descriptor lost")
+			}
+		case 2:
+			if !gogoproto.IsStdDuration(field) {
+				t.Fatal("duration descriptor lost")
+			}
+		default:
+			if !gogoproto.IsWktPtr(field) {
+				t.Fatal("wrapper descriptor lost")
+			}
+		}
+		if !field.GetProto3Optional() || !message.IsSyntheticOneof(field.GetOneofIndex()) || field.Options == nil {
+			t.Fatal("mapping descriptor lost")
+		}
+	}
+	for seed := int64(0); seed < 20; seed++ {
+		value := pb.NewPopulatedSample(rand.New(rand.NewSource(seed)), false)
+		wire, err := proto.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var back pb.Sample
+		if err := proto.Unmarshal(wire, &back); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, &back)
+		if _, err := parser.ParseExprFrom(token.NewFileSet(), "", value.GoString(), 0); err != nil {
+			t.Fatalf("GoString %s: %v", value.GoString(), err)
+		}
+	}
+}
+
+func frame(field int, body []byte) []byte {
+	wire := proto.EncodeVarint(uint64(field<<3 | 2))
+	wire = append(wire, proto.EncodeVarint(uint64(len(body)))...)
+	return append(wire, body...)
+}
+func TestMappedWireMergingAndInvalidInput(t *testing.T) {
+	// Timestamp seconds/nanos arriving in separate message occurrences must merge.
+	input := append(frame(2, []byte{8, 7}), frame(2, []byte{16, 9})...)
+	input = append(input, frame(2, nil)...)
+	// Duration and wrappers also preserve prior known fields across empty bodies.
+	input = append(input, frame(3, []byte{8, 3})...)
+	input = append(input, frame(3, []byte{16, 5})...)
+	input = append(input, frame(8, []byte{8, 7})...)
+	input = append(input, frame(8, nil)...)
+	input = append(input, frame(11, []byte{10, 1, 'x'})...)
+	input = append(input, frame(11, nil)...)
+	input = append(input, frame(12, []byte{10, 1, 3})...)
+	input = append(input, frame(12, nil)...)
+	for _, message := range []proto.Message{new(pb.Sample), new(reflected)} {
+		if err := proto.Unmarshal(input, message); err != nil {
+			t.Fatal(err)
+		}
+		var value *pb.Sample
+		switch m := message.(type) {
+		case *pb.Sample:
+			value = m
+		case *reflected:
+			value = (*pb.Sample)(m)
+		}
+		if value.Value_2 == nil || !value.Value_2.Equal(time.Unix(7, 9)) || value.Value_3 == nil || *value.Value_3 != 3*time.Second+5 || value.Value_8 == nil || *value.Value_8 != 7 || value.Value_11 == nil || *value.Value_11 != "x" || value.Value_12 == nil || !bytes.Equal(*value.Value_12, []byte{3}) {
+			t.Fatalf("partial messages lost: %s", value)
+		}
+		if err := proto.UnmarshalMerge(append(frame(8, []byte{8, 0}), frame(12, []byte{10, 0})...), message); err != nil {
+			t.Fatal(err)
+		}
+		if *value.Value_8 != 0 || len(*value.Value_12) != 0 {
+			t.Fatal("explicit wire zero did not replace prior value")
+		}
+	}
+	// Opaque custom bytes are scalar replacements, including empty payloads.
+	input = append(frame(1, []byte{1, 2}), frame(1, nil)...)
+	var value pb.Sample
+	if err := proto.Unmarshal(input, &value); err != nil {
+		t.Fatal(err)
+	}
+	if value.Value_1 == nil || !value.Value_1.Equal(*mapped.NewRaw(nil)) {
+		t.Fatal("custom empty payload lost")
+	}
+	for _, bad := range [][]byte{frame(11, []byte{10, 1, 255}), frame(2, []byte{16, 128}), frame(8, []byte{8, 128}), {0x12, 2, 8}, {0x62, 128}} {
+		for _, message := range []proto.Message{new(pb.Sample), new(reflected)} {
+			if err := proto.Unmarshal(bad, message); err == nil {
+				t.Fatalf("%T accepted %x", message, bad)
+			}
+		}
+	}
+	// A present wrapper may have nil or empty inner bytes; both denote value "".
+	nilBytes := new([]byte)
+	emptyBytes := []byte{}
+	same(t, &pb.Sample{Value_12: nilBytes}, &pb.Sample{Value_12: &emptyBytes})
+}
+
+func TestMappedStringMarshalValidation(t *testing.T) {
+	bad := string([]byte{255})
+	value := &pb.Sample{Value_11: &bad}
+	for _, message := range []proto.Message{value, (*reflected)(value)} {
+		if _, err := proto.Marshal(message); err == nil {
+			t.Fatalf("%T marshaled invalid wrapper UTF-8", message)
+		}
+	}
+	// Empty Timestamp wire body denotes the Unix epoch, not Go's zero time.
+	var empty pb.Sample
+	if err := proto.Unmarshal(frame(2, nil), &empty); err != nil || empty.Value_2 == nil || !empty.Value_2.Equal(time.Unix(0, 0)) {
+		t.Fatalf("empty Timestamp: %s %v", &empty, err)
+	}
+}
+
+func TestWrapperNegativeZero(t *testing.T) {
+	d, f := math.Copysign(0, -1), float32(math.Copysign(0, -1))
+	value := &pb.Sample{Value_4: &d, Value_5: &f}
+	wire, err := proto.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slow, err := proto.Marshal((*reflected)(value))
+	if err != nil || !bytes.Equal(wire, slow) || proto.Size(value) != len(wire) {
+		t.Fatalf("negative zero wire/size differs: %x %x %v", wire, slow, err)
+	}
+	var back pb.Sample
+	if err := proto.Unmarshal(wire, &back); err != nil {
+		t.Fatal(err)
+	}
+	if back.Value_4 == nil || back.Value_5 == nil || !math.Signbit(*back.Value_4) || !math.Signbit(float64(*back.Value_5)) {
+		t.Fatal("wrapper negative zero sign lost")
+	}
+}
+
+func TestMappedReflectionCloneAndMerge(t *testing.T) {
+	original := (*reflected)(populated(true))
+	clone := proto.Clone(original).(*reflected)
+	same(t, (*pb.Sample)(original), (*pb.Sample)(clone))
+	clone.Value_1.Mutate()
+	(*clone.Value_12)[0] ^= 255
+	same(t, (*pb.Sample)(original), populated(true))
+	proto.Merge(original, (*reflected)(populated(false)))
+	same(t, (*pb.Sample)(original), populated(false))
+}

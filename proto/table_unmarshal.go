@@ -568,11 +568,15 @@ func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 	isTime := false
 	isDuration := false
 	isWktPointer := false
+	proto3Optional := false
 	proto3 := false
 	validateUTF8 := true
 	for _, tag := range tagArray[3:] {
 		if strings.HasPrefix(tag, "name=") {
 			name = tag[5:]
+		}
+		if tag == "proto3_optional" {
+			proto3Optional = true
 		}
 		if tag == "utf8_none" {
 			validateUTF8 = false
@@ -594,6 +598,10 @@ func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 		}
 	}
 	validateUTF8 = validateUTF8 && proto3
+
+	if proto3Optional && (isTime || isDuration || isWktPointer) {
+		return makeOptionalStdUnmarshaler(t)
+	}
 
 	// Figure out packaging (pointer, slice, or both)
 	slice := false

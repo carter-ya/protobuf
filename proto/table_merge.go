@@ -198,10 +198,9 @@ func (mi *mergeInfo) computeMergeInfo() {
 			}
 		}
 
-		if prop := props.Prop[i]; !unsafeAllowed && prop.Proto3Optional && prop.CastType != "" {
-			// Reflective builtin pointer accessors cannot assert *NamedScalar
-			// as *float64, *string, etc. Keep the actual field type when merging
-			// newly supported optional casts, including nil/empty bytes.
+		if prop := props.Prop[i]; prop.Proto3Optional && ((!unsafeAllowed && prop.CastType != "") || prop.CustomType != "" || prop.StdTime || prop.StdDuration || prop.WktPointer) {
+			// Preserve named types for pure-Go casts and use the complete-value
+			// copy operations required by optional custom/std mappings.
 			fieldType := f.Type
 			mfi.merge = func(dst, src pointer) {
 				mergeAny(dst.asPointerTo(fieldType).Elem(), src.asPointerTo(fieldType).Elem(), false, prop)

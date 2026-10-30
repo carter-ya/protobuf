@@ -147,6 +147,26 @@ func (p *plugin) generateMsgNullAndTypeCheck(ccTypeName string) {
 func (p *plugin) generateField(file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto) {
 	proto3 := p.FieldProto3Value(file, field, gogoproto.IsProto3(file.FileDescriptorProto))
 	fieldname := p.GetOneOfFieldName(message, field)
+	if field.GetProto3Optional() && gogoproto.IsStdType(field) {
+		p.P("if this.", fieldname, " == nil && that1.", fieldname, " != nil { return -1 }")
+		p.P("if this.", fieldname, " != nil && that1.", fieldname, " == nil { return 1 }")
+		p.P("if this.", fieldname, " != nil && that1.", fieldname, " != nil {")
+		switch {
+		case gogoproto.IsStdTime(field):
+			p.P("if this.", fieldname, ".Before(*that1.", fieldname, ") { return -1 }")
+			p.P("if this.", fieldname, ".After(*that1.", fieldname, ") { return 1 }")
+		case gogoproto.IsStdBytes(field):
+			p.P("if c := ", p.bytesPkg.Use(), ".Compare(*this.", fieldname, ", *that1.", fieldname, "); c != 0 { return c }")
+		case gogoproto.IsStdBool(field):
+			p.P("if !*this.", fieldname, " && *that1.", fieldname, " { return -1 }")
+			p.P("if *this.", fieldname, " && !*that1.", fieldname, " { return 1 }")
+		default:
+			p.P("if *this.", fieldname, " < *that1.", fieldname, " { return -1 }")
+			p.P("if *this.", fieldname, " > *that1.", fieldname, " { return 1 }")
+		}
+		p.P("}")
+		return
+	}
 	repeated := field.IsRepeated()
 	ctype := gogoproto.IsCustomType(field)
 	nullable := gogoproto.IsNullable(field)
