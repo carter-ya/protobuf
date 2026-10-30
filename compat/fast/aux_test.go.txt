@@ -1,0 +1,10 @@
+package consumer_test
+import("testing";"math/rand";"fmt";"go/parser";"go/token";pb "example.com/gogo-complex/pb";"github.com/gogo/protobuf/proto")
+func TestAuxiliaryCombinations(t *testing.T){
+ for seed:=int64(0);seed<50;seed++{
+  value:=pb.NewPopulatedSample(rand.New(rand.NewSource(seed)),false)
+  clone:=proto.Clone(value).(*pb.Sample)
+  if !value.Equal(clone)||value.Compare(clone)!=0{t.Fatalf("aux clone differs at seed %d",seed)}
+  if _,err:=parser.ParseExprFrom(token.NewFileSet(),"gostring",fmt.Sprintf("%#v",value),0);err!=nil{t.Fatalf("GoString: %v",err)}
+ }
+}

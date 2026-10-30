@@ -1,0 +1,41 @@
+edition = "2023";
+package compat.complex;
+import "imported.proto";
+option go_package = "example.com/gogo-complex/pb";
+enum Closed {
+  option features.enum_type = CLOSED;
+  ZERO = 0;
+  FIRST = 1;
+  SECOND = 2;
+}
+message Child {
+  int32 x = 1;
+  int32 y = 2;
+}
+message Sample {
+  map<string, Closed> enums = 1;
+  map<string, string> checked = 2;
+  map<string, string> raw = 3 [features.utf8_validation = NONE];
+  map<int32, Child> children = 4;
+  Child prefixed = 5;
+  Child delimited = 6 [features.message_encoding = DELIMITED];
+  repeated Child groups = 7 [features.message_encoding = DELIMITED];
+  oneof choice {
+    Child selected = 8;
+    string label = 9;
+    Closed state = 10;
+    Child selected_group = 11 [features.message_encoding = DELIMITED];
+    string unchecked = 12 [features.utf8_validation = NONE];
+  }
+  compat.imported.Foreign imported = 13;
+  map<string, compat.imported.Foreign> imported_map = 14;
+  compat.imported.ForeignChild imported_child = 15;
+  extensions 100 to 199;
+}
+extend Sample {
+  Closed enum_ext = 100;
+  repeated Closed enum_list = 101;
+  Child group_ext = 102 [features.message_encoding = DELIMITED];
+  string raw_ext = 103 [features.utf8_validation = NONE];
+  string checked_ext = 104;
+}

@@ -227,9 +227,6 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 	if err := visit(file.MessageType, file.GetPackage()); err != nil {
 		return nil, nil, err
 	}
-	if err := validateEditionFast(file); err != nil {
-		return nil, nil, err
-	}
 	return file, out, nil
 }
 

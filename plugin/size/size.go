@@ -233,6 +233,13 @@ func (p *size) std(field *descriptor.FieldDescriptorProto, name string) (string,
 func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto, sizeName string) {
 	proto3 = p.FieldProto3Value(file, field, proto3)
 	fieldname := p.GetOneOfFieldName(message, field)
+	if file.IsEditions() && field.IsRealOneof() && (field.IsMessage() || field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP) {
+		minimum := keySize(field.GetNumber(), proto.WireBytes) + 1
+		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP {
+			minimum = 2 * keySize(field.GetNumber(), proto.WireStartGroup)
+		}
+		p.P("if m.", fieldname, " == nil { return ", strconv.Itoa(minimum), " }")
+	}
 	nullable := gogoproto.IsNullable(field)
 	repeated := field.IsRepeated()
 	doNilCheck := gogoproto.NeedsNilCheck(proto3, field)
@@ -365,7 +372,14 @@ func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, messag
 			p.P(`n+=`, strconv.Itoa(key), `+l+sov`, p.localName, `(uint64(l))`)
 		}
 	case descriptor.FieldDescriptorProto_TYPE_GROUP:
-		panic(fmt.Errorf("size does not support group %v", fieldname))
+		if !file.IsEditions() {
+			panic(fmt.Errorf("size does not support group %v", fieldname))
+		}
+		if repeated {
+			p.P("for _, value := range m.", fieldname, " { n += ", strconv.Itoa(2*key), " + value.", sizeName, "() }")
+		} else {
+			p.P("n += ", strconv.Itoa(2*key), " + m.", fieldname, ".", sizeName, "()")
+		}
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 		if p.IsMap(field) {
 			m := p.GoMapType(nil, field)
@@ -668,6 +682,9 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 
 		//Generate Size methods for oneof fields
 		m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
+		for index, field := range m.Field {
+			p.CopyFieldSemantics(file, message.Field[index], field)
+		}
 		for _, f := range m.Field {
 			oneof := f.IsRealOneof()
 			if !oneof {
@@ -683,7 +700,9 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 			p.P(`}`)
 			p.P(`var l int`)
 			p.P(`_ = l`)
-			vanity.TurnOffNullableForNativeTypes(f)
+			if !file.IsEditions() || f.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
+				vanity.TurnOffNullableForNativeTypes(f)
+			}
 			p.generateField(false, file, message, f, sizeName)
 			p.P(`return n`)
 			p.Out()
