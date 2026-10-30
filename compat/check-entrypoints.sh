@@ -29,7 +29,7 @@ if protoc -I "$tmp/negative" -I . -I protobuf --gogo_out="$tmp/negative" nullabl
   echo 'nullable=false unexpectedly accepted' >&2; exit 1
 fi
 grep -q 'nullable=false cannot preserve proto3 optional presence' "$tmp/negative/error"
-sed 's/optional int32 value = 1;/optional int32 value = 1 [(gogoproto.casttype) = "CustomInt"];/' compat/optional/reflection/sample.proto > "$tmp/negative/custom.proto"
+sed 's/optional Child child = 17;/optional Child child = 17 [(gogoproto.casttype) = "CustomChild"];/' compat/optional/reflection/sample.proto > "$tmp/negative/custom.proto"
 if protoc -I "$tmp/negative" -I . -I protobuf --gogo_out="$tmp/negative" custom.proto > "$tmp/negative/error" 2>&1; then
   echo 'unsupported casttype unexpectedly accepted' >&2; exit 1
 fi

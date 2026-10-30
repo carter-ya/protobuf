@@ -1,0 +1,333 @@
+package consumer_test
+
+import (
+	"bytes"
+	"compress/gzip"
+	"go/parser"
+	"go/token"
+	"io/ioutil"
+	"math"
+	"math/rand"
+	"os/exec"
+	"reflect"
+	"strings"
+	"testing"
+
+	pb "example.com/optional-mappings/pb"
+	mapped "example.com/optional-mappings/types"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb/standard"
+	"github.com/gogo/protobuf/proto"
+	d "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+)
+
+type reflected pb.Sample
+
+func (m *reflected) Reset()                      { *m = reflected{} }
+func (m *reflected) String() string              { return proto.CompactTextString(m) }
+func (*reflected) ProtoMessage()                 {}
+func (m *reflected) Descriptor() ([]byte, []int) { return (*pb.Sample)(m).Descriptor() }
+
+func same(t *testing.T, a, b *pb.Sample) {
+	t.Helper()
+	if !proto.Equal(a, b) || !a.Equal(b) || a.Compare(b) != 0 {
+		t.Fatalf("presence/value mismatch: %#v %#v", a, b)
+	}
+}
+func populated(kind int) *pb.Sample {
+	value := new(pb.Sample)
+	v := reflect.ValueOf(value).Elem()
+	for i := 0; i < 16; i++ {
+		f := v.Field(i)
+		if f.Kind() == reflect.Slice {
+			b := []byte{}
+			if kind != 0 {
+				b = []byte{0, 1, 255}
+			}
+			f.SetBytes(b)
+			continue
+		}
+		f.Set(reflect.New(f.Type().Elem()))
+		f = f.Elem()
+		if kind == 0 {
+			continue
+		}
+		switch f.Kind() {
+		case reflect.Bool:
+			f.SetBool(true)
+		case reflect.String:
+			f.SetString("雪\"\\")
+		case reflect.Int32:
+			if i == 11 {
+				f.SetInt(1)
+			} else {
+				f.SetInt(math.MinInt32)
+			}
+		case reflect.Int64:
+			f.SetInt(math.MinInt64)
+		case reflect.Uint32:
+			f.SetUint(math.MaxUint32)
+		case reflect.Uint64:
+			f.SetUint(math.MaxUint64)
+		case reflect.Float32:
+			f.SetFloat(1.25)
+		case reflect.Float64:
+			f.SetFloat(-1.5)
+		}
+	}
+	return value
+}
+func TestMappingPresence(t *testing.T) {
+	for _, value := range []*pb.Sample{new(pb.Sample), populated(0), populated(1)} {
+		wire, err := proto.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reflection, err := proto.Marshal((*reflected)(value))
+		if err != nil || !bytes.Equal(wire, reflection) {
+			t.Fatalf("reflection encode differs: %x %x %v", wire, reflection, err)
+		}
+		if proto.Size(value) != len(wire) {
+			t.Fatal("size mismatch")
+		}
+		var back pb.Sample
+		if err := proto.Unmarshal(wire, &back); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, &back)
+		var slow reflected
+		if err := proto.Unmarshal(wire, &slow); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, (*pb.Sample)(&slow))
+		if FAST {
+			codec := interface{}(value).(interface {
+				Marshal() ([]byte, error)
+				Unmarshal([]byte) error
+				Size() int
+				MarshalTo([]byte) (int, error)
+				MarshalToSizedBuffer([]byte) (int, error)
+			})
+			direct, err := codec.Marshal()
+			if err != nil || !bytes.Equal(direct, wire) || codec.Size() != len(wire) {
+				t.Fatalf("direct codec: %v", err)
+			}
+			for _, fn := range []func([]byte) (int, error){codec.MarshalTo, codec.MarshalToSizedBuffer} {
+				buffer := make([]byte, len(wire))
+				n, err := fn(buffer)
+				if err != nil || n != len(wire) || !bytes.Equal(buffer, wire) {
+					t.Fatalf("direct buffer: %v", err)
+				}
+			}
+		}
+		same(t, value, proto.Clone(value).(*pb.Sample))
+		clone := proto.Clone(value).(*pb.Sample)
+		if clone.Value_10 != nil && len(clone.Value_10) > 0 {
+			clone.Value_10[0] ^= 255
+			if clone.Value_10[0] == value.Value_10[0] {
+				t.Fatal("clone aliases bytes")
+			}
+		}
+		for _, standardMode := range []bool{false, true} {
+			var text string
+			if standardMode {
+				text, err = (&standard.Marshaler{}).MarshalToString(value)
+			} else {
+				text, err = (&jsonpb.Marshaler{}).MarshalToString(value)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var parsed pb.Sample
+			if standardMode {
+				err = standard.UnmarshalString(text, &parsed)
+			} else {
+				err = jsonpb.UnmarshalString(text, &parsed)
+			}
+			if err != nil {
+				t.Fatalf("JSON %s: %v", text, err)
+			}
+			same(t, value, &parsed)
+		}
+		text := proto.CompactTextString(value)
+		var parsed pb.Sample
+		if err := proto.UnmarshalText(text, &parsed); err != nil {
+			t.Fatalf("text %s: %v", text, err)
+		}
+		same(t, value, &parsed)
+		command := exec.Command("protoc", "-I.", "--decode=compat.optional.mapping.Sample", "sample.proto")
+		command.Stdin = bytes.NewReader(wire)
+		official, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("official decode: %s %v", official, err)
+		}
+		command = exec.Command("protoc", "-I.", "--encode=compat.optional.mapping.Sample", "sample.proto")
+		command.Stdin = bytes.NewReader(official)
+		encoded, err := command.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var oracle pb.Sample
+		if err := proto.Unmarshal(encoded, &oracle); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, &oracle)
+	}
+	absent, zero := new(pb.Sample), populated(0)
+	if proto.Equal(absent, zero) || absent.Equal(zero) || absent.Compare(zero) == 0 {
+		t.Fatal("absence equals explicit zero")
+	}
+	for _, marshaler := range []interface {
+		MarshalToString(proto.Message) (string, error)
+	}{&jsonpb.Marshaler{EmitDefaults: true}, &standard.Marshaler{EmitDefaults: true}} {
+		text, err := marshaler.MarshalToString(absent)
+		if err != nil || text != "{}" {
+			t.Fatalf("invented presence: %s %v", text, err)
+		}
+	}
+	old := populated(1)
+	proto.Merge(old, absent)
+	same(t, old, populated(1))
+	proto.Merge(old, zero)
+	same(t, old, zero)
+}
+func TestMappingUTF8(t *testing.T) {
+	bad := new(pb.Sample)
+	reflect.ValueOf(bad).Elem().Field(8).Set(reflect.New(reflect.TypeOf(bad.Value_9).Elem()))
+	reflect.ValueOf(bad).Elem().Field(8).Elem().SetString(string([]byte{255}))
+	for _, value := range []proto.Message{bad, (*reflected)(bad)} {
+		if _, err := proto.Marshal(value); err == nil {
+			t.Fatalf("%T accepted bad UTF-8", value)
+		}
+	}
+	for _, value := range []proto.Message{new(pb.Sample), new(reflected)} {
+		if err := proto.Unmarshal([]byte{0x4a, 1, 255}, value); err == nil {
+			t.Fatalf("%T decoded bad UTF-8", value)
+		}
+	}
+}
+func TestMappingDescriptorAndAuxiliary(t *testing.T) {
+	data, _ := new(pb.Sample).Descriptor()
+	z, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := ioutil.ReadAll(z)
+	z.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file d.FileDescriptorProto
+	if err := proto.Unmarshal(raw, &file); err != nil {
+		t.Fatal(err)
+	}
+	message := file.MessageType[0]
+	if len(message.OneofDecl) != 16 {
+		t.Fatal("synthetic oneofs lost")
+	}
+	for _, f := range message.Field {
+		if !f.GetProto3Optional() || f.OneofIndex == nil || !message.IsSyntheticOneof(*f.OneofIndex) || !strings.Contains(f.GetOptions().String(), "casttype") {
+			t.Fatalf("mapping metadata lost: %v", f)
+		}
+	}
+	for seed := int64(0); seed < 20; seed++ {
+		value := pb.NewPopulatedSample(rand.New(rand.NewSource(seed)), false)
+		wire, err := proto.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var back pb.Sample
+		if err := proto.Unmarshal(wire, &back); err != nil {
+			t.Fatal(err)
+		}
+		same(t, value, &back)
+		if _, err := parser.ParseExprFrom(token.NewFileSet(), "", value.GoString(), 0); err != nil {
+			t.Fatalf("invalid GoString: %s %v", value.GoString(), err)
+		}
+	}
+}
+
+func TestUnknownCastEnumAndIndependentPresence(t *testing.T) {
+	for _, n := range []int32{-1, 0, 1, 12345} {
+		v := mapped.Enum(n)
+		value := &pb.Sample{Value_12: &v}
+		for _, mode := range []bool{false, true} {
+			var text string
+			var err error
+			if mode {
+				text, err = (&standard.Marshaler{}).MarshalToString(value)
+			} else {
+				text, err = (&jsonpb.Marshaler{}).MarshalToString(value)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var back pb.Sample
+			if mode {
+				err = standard.UnmarshalString(text, &back)
+			} else {
+				err = jsonpb.UnmarshalString(text, &back)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			same(t, value, &back)
+		}
+	}
+	// Every individual optional field distinguishes absence from a typed zero.
+	for i := 0; i < 16; i++ {
+		value := new(pb.Sample)
+		target := reflect.ValueOf(value).Elem().Field(i)
+		target.Set(reflect.ValueOf(populated(0)).Elem().Field(i))
+		if value.Equal(new(pb.Sample)) || value.Compare(new(pb.Sample)) == 0 || proto.Equal(value, new(pb.Sample)) {
+			t.Fatalf("field %d lost presence", i+1)
+		}
+		proto.Merge(value, new(pb.Sample))
+		if target.IsNil() {
+			t.Fatal("absent source erased presence")
+		}
+	}
+	if new(pb.Sample).GetValue_12() != mapped.Enum(0) {
+		t.Fatal("cast enum getter default")
+	}
+}
+
+// Exercise each named scalar independently, including the reflective pointer
+// implementation selected by purego, appengine and js builds.
+func TestNamedMappingCloneAndMerge(t *testing.T) {
+	for i := 0; i < 16; i++ {
+		t.Run(reflect.TypeOf(pb.Sample{}).Field(i).Name, func(t *testing.T) {
+			for _, kind := range []int{0, 1} {
+				source := new(pb.Sample)
+				field := reflect.ValueOf(source).Elem().Field(i)
+				field.Set(reflect.ValueOf(populated(kind)).Elem().Field(i))
+				clone := proto.Clone(source).(*pb.Sample)
+				same(t, source, clone)
+				copied := reflect.ValueOf(clone).Elem().Field(i)
+				if field.Kind() == reflect.Ptr && field.Pointer() == copied.Pointer() {
+					t.Fatal("Clone aliases named scalar pointer")
+				}
+				if field.Kind() == reflect.Slice && field.Len() > 0 {
+					copied.Index(0).SetUint(copied.Index(0).Uint() ^ 255)
+					if copied.Index(0).Uint() == field.Index(0).Uint() {
+						t.Fatal("Clone aliases named bytes")
+					}
+				}
+				destination := new(pb.Sample)
+				proto.Merge(destination, source)
+				same(t, source, destination)
+				proto.Merge(destination, new(pb.Sample))
+				same(t, source, destination)
+				zero := new(pb.Sample)
+				reflect.ValueOf(zero).Elem().Field(i).Set(reflect.ValueOf(populated(0)).Elem().Field(i))
+				proto.Merge(destination, zero)
+				same(t, zero, destination)
+				// A message without generated XXX_Merge takes the independent mergeAny path.
+				reflection := proto.Clone((*reflected)(source)).(*reflected)
+				same(t, source, (*pb.Sample)(reflection))
+				proto.Merge(reflection, (*reflected)(zero))
+				same(t, zero, (*pb.Sample)(reflection))
+			}
+		})
+	}
+}

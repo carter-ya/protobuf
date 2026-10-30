@@ -162,14 +162,14 @@ func (m *Sample) GetChoice() isSample_Choice {
 }
 
 func (m *Sample) GetValue() int32 {
-	if m != nil {
+	if m != nil && m.Value != nil {
 		return *m.Value
 	}
 	return 0
 }
 
 func (m *Sample) GetLabel() string {
-	if m != nil {
+	if m != nil && m.Label != nil {
 		return *m.Label
 	}
 	return ""
@@ -183,91 +183,91 @@ func (m *Sample) GetData() []byte {
 }
 
 func (m *Sample) GetEnabled() bool {
-	if m != nil {
+	if m != nil && m.Enabled != nil {
 		return *m.Enabled
 	}
 	return false
 }
 
 func (m *Sample) GetSignedValue() int64 {
-	if m != nil {
+	if m != nil && m.SignedValue != nil {
 		return *m.SignedValue
 	}
 	return 0
 }
 
 func (m *Sample) GetUnsignedValue() uint32 {
-	if m != nil {
+	if m != nil && m.UnsignedValue != nil {
 		return *m.UnsignedValue
 	}
 	return 0
 }
 
 func (m *Sample) GetLargeValue() uint64 {
-	if m != nil {
+	if m != nil && m.LargeValue != nil {
 		return *m.LargeValue
 	}
 	return 0
 }
 
 func (m *Sample) GetZigzag32() int32 {
-	if m != nil {
+	if m != nil && m.Zigzag32 != nil {
 		return *m.Zigzag32
 	}
 	return 0
 }
 
 func (m *Sample) GetZigzag64() int64 {
-	if m != nil {
+	if m != nil && m.Zigzag64 != nil {
 		return *m.Zigzag64
 	}
 	return 0
 }
 
 func (m *Sample) GetFixed32Value() uint32 {
-	if m != nil {
+	if m != nil && m.Fixed32Value != nil {
 		return *m.Fixed32Value
 	}
 	return 0
 }
 
 func (m *Sample) GetFixed64Value() uint64 {
-	if m != nil {
+	if m != nil && m.Fixed64Value != nil {
 		return *m.Fixed64Value
 	}
 	return 0
 }
 
 func (m *Sample) GetSfixed32Value() int32 {
-	if m != nil {
+	if m != nil && m.Sfixed32Value != nil {
 		return *m.Sfixed32Value
 	}
 	return 0
 }
 
 func (m *Sample) GetSfixed64Value() int64 {
-	if m != nil {
+	if m != nil && m.Sfixed64Value != nil {
 		return *m.Sfixed64Value
 	}
 	return 0
 }
 
 func (m *Sample) GetFloatValue() float32 {
-	if m != nil {
+	if m != nil && m.FloatValue != nil {
 		return *m.FloatValue
 	}
 	return 0
 }
 
 func (m *Sample) GetDoubleValue() float64 {
-	if m != nil {
+	if m != nil && m.DoubleValue != nil {
 		return *m.DoubleValue
 	}
 	return 0
 }
 
 func (m *Sample) GetState() State {
-	if m != nil {
+	if m != nil && m.State != nil {
 		return *m.State
 	}
 	return State_STATE_ZERO

@@ -568,6 +568,18 @@ func (fi *marshalFieldInfo) setMarshaler(f *reflect.StructField, tags []string) 
 // If nozero is true, zero value is not marshaled to the wire.
 // If oneof is true, it is a oneof field.
 func typeMarshaler(t reflect.Type, tags []string, nozero, oneof bool) (sizer, marshaler) {
+	if !unsafeAllowed && optionalCastTags(tags) {
+		builtinType := optionalCastType(t)
+		if builtinType != t {
+			size, marshal := typeMarshaler(builtinType, tags, nozero, oneof)
+			return func(field pointer, tagSize int) int {
+					return size(optionalCastPointer(field, t, builtinType), tagSize)
+				}, func(buffer []byte, field pointer, wireTag uint64, deterministic bool) ([]byte, error) {
+					return marshal(buffer, optionalCastPointer(field, t, builtinType), wireTag, deterministic)
+				}
+		}
+	}
+
 	encoding := tags[0]
 
 	pointer := false

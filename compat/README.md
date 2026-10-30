@@ -33,9 +33,11 @@ unmodified v1.3.2 runtime. Custom auxiliary plugins must explicitly implement
 SupportsProto3Optional before GeneratePlugin advertises that capability.
 
 Proto3 optional currently requires the gogo runtime and default pointer-based
-scalar representations. nullable=false, customtype/casttype, embedded fields,
+scalar representations. nullable=false, customtype, message casttype, embedded fields,
 standard-type mappings, face and union combinations are rejected for optional
-fields. Existing proto2/proto3 configurations keep their historical behavior.
+fields. Scalar/enum/bytes casttype mappings are validated separately by
+`check-optional-mappings.sh`; see `optional/README.md` for the representation contract.
+Existing proto2/proto3 configurations keep their historical behavior.
 Editions reflection support is advertised as described below.
 
 The Editions foundation adds protocol declarations from protobuf 36.2 while

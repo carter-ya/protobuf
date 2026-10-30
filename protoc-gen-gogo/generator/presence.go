@@ -42,7 +42,7 @@ func validateOptional(file *descriptor.FileDescriptorProto) error {
 				if !gogoproto.IsNullable(f) {
 					return fail("nullable=false cannot preserve proto3 optional presence")
 				}
-				if gogoproto.IsCustomType(f) || gogoproto.IsCastType(f) || gogoproto.IsEmbed(f) || gogoproto.IsStdType(f) || gogoproto.IsFace(file, m) || gogoproto.IsUnion(file, m) {
+				if gogoproto.IsCustomType(f) || (gogoproto.IsCastType(f) && f.IsMessage()) || gogoproto.IsEmbed(f) || gogoproto.IsStdType(f) || gogoproto.IsFace(file, m) || gogoproto.IsUnion(file, m) {
 					return fail("this gogo extension combination is not yet supported for proto3 optional")
 				}
 			}
@@ -53,4 +53,23 @@ func validateOptional(file *descriptor.FileDescriptorProto) error {
 		return nil
 	}
 	return visit(file.MessageType, "")
+}
+
+// Optional casts require named-type-safe runtime equality and JSON handling.
+func fileNeedsOptionalMapping(file *descriptor.FileDescriptorProto) bool {
+	var visit func([]*descriptor.DescriptorProto) bool
+	visit = func(messages []*descriptor.DescriptorProto) bool {
+		for _, m := range messages {
+			for _, f := range m.Field {
+				if f.GetProto3Optional() && gogoproto.IsCastType(f) {
+					return true
+				}
+			}
+			if visit(m.NestedType) {
+				return true
+			}
+		}
+		return false
+	}
+	return visit(file.MessageType)
 }

@@ -349,7 +349,11 @@ func (p *marshalto) generateField(proto3 bool, numGen NumGen, file *generator.Fi
 		if field.IsRepeated() {
 			p.P("for _, value := range m.", name, " { if !", utf8, ".ValidString(value) { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") } }")
 		} else if p.FieldHasPresence(file, field) && !field.IsRealOneof() {
-			p.P("if m.", name, " != nil && !", utf8, ".ValidString(*m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+			value := "*m." + name
+			if field.GetProto3Optional() && gogoproto.IsCastType(field) {
+				value = "string(" + value + ")"
+			}
+			p.P("if m.", name, " != nil && !", utf8, ".ValidString(", value, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
 		} else {
 			p.P("if !", utf8, ".ValidString(m.", name, ") { return 0, fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
 		}

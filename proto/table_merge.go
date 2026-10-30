@@ -198,6 +198,18 @@ func (mi *mergeInfo) computeMergeInfo() {
 			}
 		}
 
+		if prop := props.Prop[i]; !unsafeAllowed && prop.Proto3Optional && prop.CastType != "" {
+			// Reflective builtin pointer accessors cannot assert *NamedScalar
+			// as *float64, *string, etc. Keep the actual field type when merging
+			// newly supported optional casts, including nil/empty bytes.
+			fieldType := f.Type
+			mfi.merge = func(dst, src pointer) {
+				mergeAny(dst.asPointerTo(fieldType).Elem(), src.asPointerTo(fieldType).Elem(), false, prop)
+			}
+			mi.fields = append(mi.fields, mfi)
+			continue
+		}
+
 		// Unwrap tf to get at its most basic type.
 		var isPointer, isSlice bool
 		if tf.Kind() == reflect.Slice && tf.Elem().Kind() != reflect.Uint8 {

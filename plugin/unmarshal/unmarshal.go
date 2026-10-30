@@ -1280,6 +1280,10 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 		}
 	case descriptor.FieldDescriptorProto_TYPE_ENUM:
 		typName := p.TypeName(p.ObjectNamed(field.GetTypeName()))
+		if field.GetProto3Optional() && gogoproto.IsCastType(field) {
+			typName, _ = p.GoType(nil, field)
+			typName = strings.TrimPrefix(typName, "*")
+		}
 		if oneof {
 			p.P(`var v `, typName)
 			p.decodeVarint("v", typName)
@@ -1587,7 +1591,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.P(`}`)
 				p.field(file, message, field, fieldname, proto3)
 				if field.GetProto3Optional() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING {
-					p.P("if !", p.NewImport("unicode/utf8").Use(), ".ValidString(*m.", fieldname, ") { return ", fmtPkg.Use(), ".Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+					value := "*m." + fieldname
+					if gogoproto.IsCastType(field) {
+						value = "string(" + value + ")"
+					}
+					p.P("if !", p.NewImport("unicode/utf8").Use(), ".ValidString(", value, ") { return ", fmtPkg.Use(), ".Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
 				}
 			}
 

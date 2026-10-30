@@ -194,3 +194,17 @@ func TestOriginalSyntheticDescriptors(t *testing.T) {
 		}
 	}
 }
+
+// Getters must return schema defaults without dereferencing an absent optional.
+func TestAbsentGetters(t *testing.T) {
+	for _, m := range samples() {
+		for _, receiver := range []reflect.Value{reflect.ValueOf(m), reflect.Zero(reflect.TypeOf(m))} {
+			for i := 0; i < receiver.NumMethod(); i++ {
+				method := receiver.Type().Method(i)
+				if strings.HasPrefix(method.Name, "Get") && method.Type.NumIn() == 1 {
+					receiver.Method(i).Call(nil)
+				}
+			}
+		}
+	}
+}
