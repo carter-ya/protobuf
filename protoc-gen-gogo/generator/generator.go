@@ -1216,7 +1216,7 @@ func (g *Generator) runPlugins(file *FileDescriptor) {
 func (g *Generator) generate(file *FileDescriptor) {
 	g.customImports = make([]string, 0)
 	g.file = file
- g.validateEditionFastDependencies(file)
+	g.validateEditionFastDependencies(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
