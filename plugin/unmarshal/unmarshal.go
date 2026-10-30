@@ -1447,6 +1447,13 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.Out()
 				p.P(`}`)
 
+				if file.IsEditions() {
+					// Element decoders use l and dAtA for their bounds checks.
+					// A packed element must not consume the following field.
+					p.P(`outerData, outerLength := dAtA, l`)
+					p.P(`dAtA = dAtA[:postIndex]; l = postIndex`)
+				}
+
 				p.P(`var elementCount int`)
 				switch *field.Type {
 				case descriptor.FieldDescriptorProto_TYPE_DOUBLE, descriptor.FieldDescriptorProto_TYPE_FIXED64, descriptor.FieldDescriptorProto_TYPE_SFIXED64:
@@ -1479,6 +1486,9 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.field(file, message, field, fieldname, false)
 				p.Out()
 				p.P(`}`)
+				if file.IsEditions() {
+					p.P(`dAtA, l = outerData, outerLength`)
+				}
 				p.Out()
 				p.P(`} else {`)
 				p.In()

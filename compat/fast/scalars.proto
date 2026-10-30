@@ -42,3 +42,23 @@ message Required {
   int32 value = 1 [features.field_presence = LEGACY_REQUIRED];
   State state = 2 [features.field_presence = LEGACY_REQUIRED];
 }
+
+// No closed enum fields: their whole-message prefilter must not hide a packed
+// element decoder that reads beyond its declared payload.
+message Packed {
+  repeated double doubles = 1;
+  repeated fixed32 fixed32s = 2;
+  repeated int64 int64s = 3;
+  repeated uint64 uint64s = 4;
+  repeated int32 int32s = 5;
+  repeated fixed64 fixed64s = 6;
+  repeated float floats = 7;
+  repeated bool bools = 8;
+  repeated uint32 uint32s = 9;
+  repeated OpenState opens = 10;
+  repeated sfixed32 sfixed32s = 11;
+  repeated sfixed64 sfixed64s = 12;
+  repeated sint32 sint32s = 13;
+  repeated sint64 sint64s = 14 [features.repeated_field_encoding = EXPANDED];
+  int32 following = 20;
+}

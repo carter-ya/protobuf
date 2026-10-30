@@ -70,3 +70,63 @@ func TestMalformedFastInput(t *testing.T){
  if !FAST{return}
  for _,data:=range [][]byte{{0},{8},{15},{12},{11,20},{26,2,1},{24,128,128,128,128,128,128,128,128,128,2},{128,128,128,128,128,1,0},{162,1,1,128}}{if err:=proto.Unmarshal(data,new(pb.Sample));err==nil{t.Fatalf("accepted %x",data)}}
 }
+
+type reflectionPacked pb.Packed
+func(m *reflectionPacked)Reset(){*m=reflectionPacked{}}
+func(m *reflectionPacked)String()string{return proto.CompactTextString(m)}
+func(*reflectionPacked)ProtoMessage(){}
+func(m *reflectionPacked)Descriptor()([]byte,[]int){return (*pb.Packed)(m).Descriptor()}
+
+func TestPackedPayloadBoundary(t *testing.T){
+ // A one-byte fixed32 payload used to consume the entire following wire fragment.
+ data:=[]byte{0x12,0x01,0x01,0x18,0x01,0x00}
+ var value pb.Packed
+ if err:=proto.Unmarshal(data,&value);err==nil{t.Fatalf("incomplete fixed32 accepted: %v",&value)}
+ command:=exec.Command("protoc","-I.","--decode=compat.fast.Packed","scalars.proto")
+ command.Stdin=bytes.NewReader(data)
+ if out,err:=command.CombinedOutput();err==nil{t.Fatalf("official decoder accepted regression input: %s",out)}
+}
+
+func TestPackedScalarPayloadBounds(t *testing.T){
+ cases:=[]struct{name string;number,width,wire int}{
+  {"double",1,8,1},{"fixed32",2,4,5},{"int64",3,0,0},{"uint64",4,0,0},
+  {"int32",5,0,0},{"fixed64",6,8,1},{"float",7,4,5},{"bool",8,0,0},
+  {"uint32",9,0,0},{"open_enum",10,0,0},{"sfixed32",11,4,5},
+  {"sfixed64",12,8,1},{"sint32",13,0,0},{"expanded_sint64",14,0,0},
+ }
+ for _,c:=range cases{t.Run(c.name,func(t *testing.T){
+  var incomplete [][]byte
+  valid:=[]byte{1,0}
+  unpacked:=[]byte{1}
+  if c.width!=0{
+   valid=make([]byte,c.width)
+   unpacked=valid
+   for n:=1;n<c.width;n++{incomplete=append(incomplete,make([]byte,n))}
+  }else{incomplete=[][]byte{{0x80}}}
+  suffixes:=[][]byte{nil,scalar(20,7),bytes.Repeat([]byte{8,1},8)}
+  for _,prefix:=range [][]byte{nil,valid}{for _,fragment:=range incomplete{for _,suffix:=range suffixes{
+   payload:=append(append([]byte{},prefix...),fragment...)
+   data:=append(encode(c.number,payload),suffix...)
+   var expected reflectionPacked
+   if err:=proto.Unmarshal(data,&expected);err==nil{t.Fatalf("reflection accepted malformed packed input %x",data)}
+   var actual pb.Packed
+   if err:=proto.Unmarshal(data,&actual);err==nil{t.Fatalf("accepted packed element outside payload: %x: %v",data,&actual)}
+  }}}
+  // Empty/nonempty and repeated packed segments must restore the outer bounds.
+  // A decoder configured for EXPANDED must also accept packed wire input.
+  one:=append(proto.EncodeVarint(uint64(c.number<<3|c.wire)),unpacked...)
+  validInputs:=[][]byte{
+   append(encode(c.number,nil),scalar(20,7)...),
+   append(encode(c.number,valid),scalar(20,7)...),
+   append(append(encode(c.number,valid),scalar(20,7)...),encode(c.number,valid)...),
+   append(append(one,encode(c.number,valid)...),scalar(20,7)...),
+   append(append(encode(c.number,valid),scalar(20,7)...),scalar(100,11)...),
+  }
+  for _,data:=range validInputs{
+   var actual pb.Packed;var expected reflectionPacked
+   if err:=proto.Unmarshal(data,&actual);err!=nil{t.Fatalf("valid packed input %x: %v",data,err)}
+   if err:=proto.Unmarshal(data,&expected);err!=nil{t.Fatal(err)}
+   if actual.GetFollowing()!=7||!proto.Equal(&actual,(*pb.Packed)(&expected)){t.Fatalf("packed/following values differ: %x: %v / %v",data,&actual,&expected)}
+  }
+ })}
+}
