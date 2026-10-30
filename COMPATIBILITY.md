@@ -33,7 +33,10 @@ The ordinary enum name maps and `String` methods retain proto names.
 ## Deliberate generation errors
 
 - Optional requires the gogo runtime. `nullable=false` and unsupported custom,
-  cast, embedded, standard-type, face and union combinations are rejected.
+  message cast, embedded, standard-type, face and union combinations are rejected.
+  Scalar/enum/bytes casttype mappings with matching underlying Go types are
+  supported by all five optional backends and require runtime Version10.
+  See `compat/optional/README.md` for the exact presence contract.
 - Editions currently use reflection output. Fast generators and gogo custom
   extensions are rejected until their feature combinations are validated.
 - Gogo preserves its Open Struct API in every edition. Explicit API_OPEN and

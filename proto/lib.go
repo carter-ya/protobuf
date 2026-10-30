@@ -970,6 +970,8 @@ const (
 	GoGoProtoPackageIsVersion8 = true
 	// Version9 adds generated group bodies and declaration-scoped extensions.
 	GoGoProtoPackageIsVersion9 = true
+	// Version10 adds presence-preserving optional field mappings.
+	GoGoProtoPackageIsVersion10 = true
 
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.

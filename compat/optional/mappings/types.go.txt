@@ -1,0 +1,18 @@
+package types
+
+type Double float64
+type Float float32
+type Int64 int64
+type Uint64 uint64
+type Int32 int32
+type Fixed64 uint64
+type Fixed32 uint32
+type Bool bool
+type String string
+type Bytes []byte
+type Uint32 uint32
+type Enum int32
+type Sfixed32 int32
+type Sfixed64 int64
+type Sint32 int32
+type Sint64 int64

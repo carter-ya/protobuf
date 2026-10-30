@@ -57,120 +57,119 @@ And benchmarks given it is enabled using one of the following extensions:
 
 Let us look at:
 
-  github.com/gogo/protobuf/test/example/example.proto
+	github.com/gogo/protobuf/test/example/example.proto
 
 Btw all the output can be seen at:
 
-  github.com/gogo/protobuf/test/example/*
+	github.com/gogo/protobuf/test/example/*
 
 The following message:
 
-  option (gogoproto.unmarshaler_all) = true;
+	  option (gogoproto.unmarshaler_all) = true;
 
-  message B {
-	option (gogoproto.description) = true;
-	optional A A = 1 [(gogoproto.nullable) = false, (gogoproto.embed) = true];
-	repeated bytes G = 2 [(gogoproto.customtype) = "github.com/gogo/protobuf/test/custom.Uint128", (gogoproto.nullable) = false];
-  }
+	  message B {
+		option (gogoproto.description) = true;
+		optional A A = 1 [(gogoproto.nullable) = false, (gogoproto.embed) = true];
+		repeated bytes G = 2 [(gogoproto.customtype) = "github.com/gogo/protobuf/test/custom.Uint128", (gogoproto.nullable) = false];
+	  }
 
 given to the unmarshal plugin, will generate the following code:
 
-  func (m *B) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return proto.ErrWrongType
-			}
-			var msglen int
+	  func (m *B) Unmarshal(dAtA []byte) error {
+		l := len(dAtA)
+		iNdEx := 0
+		for iNdEx < l {
+			var wire uint64
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				wire |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.A.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return proto.ErrWrongType
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
+			fieldNum := int32(wire >> 3)
+			wireType := int(wire & 0x7)
+			switch fieldNum {
+			case 1:
+				if wireType != 2 {
+					return proto.ErrWrongType
+				}
+				var msglen int
+				for shift := uint(0); ; shift += 7 {
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					msglen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				postIndex := iNdEx + msglen
+				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
+				if err := m.A.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+					return err
 				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.G = append(m.G, github_com_gogo_protobuf_test_custom.Uint128{})
-			if err := m.G[len(m.G)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
+				iNdEx = postIndex
+			case 2:
+				if wireType != 2 {
+					return proto.ErrWrongType
 				}
+				var byteLen int
+				for shift := uint(0); ; shift += 7 {
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					byteLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				postIndex := iNdEx + byteLen
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				m.G = append(m.G, github_com_gogo_protobuf_test_custom.Uint128{})
+				if err := m.G[len(m.G)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				iNdEx = postIndex
+			default:
+				var sizeOfWire int
+				for {
+					sizeOfWire++
+					wire >>= 7
+					if wire == 0 {
+						break
+					}
+				}
+				iNdEx -= sizeOfWire
+				skippy, err := skip(dAtA[iNdEx:])
+				if err != nil {
+					return err
+				}
+				if (iNdEx + skippy) > l {
+					return io.ErrUnexpectedEOF
+				}
+				m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+				iNdEx += skippy
 			}
-			iNdEx -= sizeOfWire
-			skippy, err := skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
 		}
-	}
-	return nil
-  }
+		return nil
+	  }
 
 Remember when using this code to call proto.Unmarshal.
 This will call m.Reset and invoke the generated Unmarshal method for you.
 If you call m.Unmarshal without m.Reset you could be merging protocol buffers.
-
 */
 package unmarshal
 
@@ -1280,6 +1279,10 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 		}
 	case descriptor.FieldDescriptorProto_TYPE_ENUM:
 		typName := p.TypeName(p.ObjectNamed(field.GetTypeName()))
+		if field.GetProto3Optional() && gogoproto.IsCastType(field) {
+			typName, _ = p.GoType(nil, field)
+			typName = strings.TrimPrefix(typName, "*")
+		}
 		if oneof {
 			p.P(`var v `, typName)
 			p.decodeVarint("v", typName)
@@ -1587,7 +1590,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.P(`}`)
 				p.field(file, message, field, fieldname, proto3)
 				if field.GetProto3Optional() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING {
-					p.P("if !", p.NewImport("unicode/utf8").Use(), ".ValidString(*m.", fieldname, ") { return ", fmtPkg.Use(), ".Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+					value := "*m." + fieldname
+					if gogoproto.IsCastType(field) {
+						value = "string(" + value + ")"
+					}
+					p.P("if !", p.NewImport("unicode/utf8").Use(), ".ValidString(", value, ") { return ", fmtPkg.Use(), ".Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
 				}
 			}
 

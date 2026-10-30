@@ -1246,6 +1246,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		if file.IsEditions() && fileHasFastCodec(file.FileDescriptorProto) {
 			codeVersion = 9
 		}
+		if fileNeedsOptionalMapping(file.FileDescriptorProto) {
+			codeVersion = 10
+		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
 		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
@@ -2535,7 +2538,7 @@ func (g *Generator) generateGet(mc *msgCtx, protoField *descriptor.FieldDescript
 		g.Out()
 		g.P("}")
 	} else if !oneof {
-		if mc.message.proto3() {
+		if mc.message.proto3() && !protoField.GetProto3Optional() {
 			g.P("if m != nil {")
 		} else {
 			g.P("if m != nil && m." + fname + " != nil {")
@@ -2977,6 +2980,11 @@ func (g *Generator) generateMessage(message *Descriptor) {
 			fieldDeprecated = deprecationComment
 		}
 		dvalue := g.getterDefault(field, goTypeName, GoTypeToName(goTyp))
+		if field.GetProto3Optional() && gogoproto.IsCastType(field) && field.GetType() == descriptor.FieldDescriptorProto_TYPE_ENUM {
+			// The enum constant has the schema enum's Go type, whereas a cast
+			// getter returns the user's named integer type.
+			dvalue = strings.TrimPrefix(goTyp, "*") + "(" + dvalue + ")"
+		}
 		if oneof {
 			tname := goTypeName + "_" + fieldName
 			// It is possible for this to collide with a message or enum

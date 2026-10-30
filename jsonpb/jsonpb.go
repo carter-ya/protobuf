@@ -666,7 +666,14 @@ func (m *jsonEncoder) marshalValue(out *errWriter, prop *proto.Properties, v ref
 		// Unknown enum values will are stringified by the proto library as their
 		// value. Such values should _not_ be quoted or they will be interpreted
 		// as an enum string instead of their value.
-		enumStr := v.Interface().(fmt.Stringer).String()
+		stringer, ok := v.Interface().(fmt.Stringer)
+		if prop.Proto3Optional && prop.CastType != "" && !ok {
+			// A named integer cast need not implement the schema enum's
+			// String method. Numeric enum JSON preserves unknown values too.
+			out.write(strconv.FormatInt(number.Int(), 10))
+			return out.err
+		}
+		enumStr := stringer.String()
 		var valStr string
 		if v.Kind() == reflect.Ptr {
 			valStr = strconv.Itoa(int(v.Elem().Int()))

@@ -32,7 +32,8 @@ func TestOptionalRepresentationContract(t *testing.T) {
 		{"default", nil, nil, "", ""},
 		{"nullable", gogoproto.E_Nullable, proto.Bool(true), "field", ""},
 		{"value", gogoproto.E_Nullable, proto.Bool(false), "field", "nullable=false"},
-		{"cast", gogoproto.E_Casttype, proto.String("Value"), "field", "extension combination"},
+		{"cast", gogoproto.E_Casttype, proto.String("Value"), "field", ""},
+		{"cast-message", gogoproto.E_Casttype, proto.String("Message"), "field", "extension combination"},
 		{"custom", gogoproto.E_Customtype, proto.String("Value"), "field", "extension combination"},
 		{"embed", gogoproto.E_Embed, proto.Bool(true), "field", "extension combination"},
 		{"stdtime", gogoproto.E_Stdtime, proto.Bool(true), "field", "extension combination"},
@@ -47,7 +48,7 @@ func TestOptionalRepresentationContract(t *testing.T) {
 			file := optionalFile()
 			message := file.MessageType[0].NestedType[0]
 			field := message.Field[0]
-			if tc.name == "wktpointer" {
+			if tc.name == "wktpointer" || tc.name == "cast-message" {
 				field.Type = d.FieldDescriptorProto_TYPE_MESSAGE.Enum()
 				field.TypeName = proto.String(".google.protobuf.Int32Value")
 			}

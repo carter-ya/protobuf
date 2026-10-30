@@ -10,7 +10,8 @@ frozen generated files keep their historical contract.
 | Default scalar or enum | nil pointer | non-nil pointer to zero | Supported |
 | Default bytes | nil slice | non-nil empty slice | Supported |
 | Default message | nil pointer | non-nil empty message | Supported |
-| `casttype` | nil pointer, or nil slice for bytes | typed zero pointer / non-nil empty bytes | Pending validation |
+| Scalar/enum/bytes `casttype` | nil pointer, or nil slice for bytes | typed zero pointer / non-nil empty bytes | Supported; same underlying Go kind and width as the schema field |
+| Message `casttype` | unvalidated message API | unvalidated codec methods | Rejected |
 | `customtype` | nil pointer | non-nil custom value whose wire payload may be empty | Pending validation |
 | `stdtime`, `stdduration` | nil pointer | non-nil zero Go value; wire meaning follows the WKT mapping | Pending validation |
 | `wktpointer` | nil pointer (nil slice for bytes wrapper) | non-nil zero / empty value | Pending validation |
@@ -40,3 +41,14 @@ Each enabled combination must verify:
 validation rules. Integration tests exercise only combinations listed as
 supported. Further rows are opened only together with their implementation and
 consumer tests, not by removing the representation guard wholesale.
+
+`sh compat/check-optional-mappings.sh` generates isolated mapping consumers for
+all five public backends under both CI protoc versions. Scalar casts require
+the matching underlying Go kind and width (including int32 for enums); arbitrary
+narrowing casts are not covered by this guarantee. Named enum integers without a
+String method use legal numeric JSON. New mapping files require runtime Version10;
+ordinary optional files keep Version4. Editions cast mappings remain rejected.
+
+Optional scalar getters now check field presence before dereferencing the
+pointer, including the previously supported default representation. The maintained
+optional snapshots are regenerated for that fix; frozen v1.3.2 snapshots are unchanged.
