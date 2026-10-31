@@ -50,10 +50,15 @@ func validateEditionMessageGraph(message Message, required bool) error {
 			if !reflect.PtrTo(value.Type()).Implements(protoMessageType) {
 				return nil
 			}
-			if value.CanAddr() {
-				if err := ValidateEditionMessageExtensions(value.Addr().Interface().(Message)); err != nil {
-					return err
-				}
+			if !value.CanAddr() {
+				// Non-nullable map message values are struct copies. Keep the
+				// decoded map unchanged while making its methods available.
+				copy := reflect.New(value.Type())
+				copy.Elem().Set(value)
+				value = copy.Elem()
+			}
+			if err := ValidateEditionMessageExtensions(value.Addr().Interface().(Message)); err != nil {
+				return err
 			}
 			properties := GetProperties(value.Type())
 			for i, property := range properties.Prop {

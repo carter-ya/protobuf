@@ -329,3 +329,32 @@ func TestEditionExtensionEnclosingFragments(t *testing.T) {
 		t.Fatal("incomplete nested extension was accepted")
 	}
 }
+
+type extensionValidationValueMap struct {
+	Values map[string]extensionValidationRecord `protobuf:"bytes,1,rep,name=values" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+}
+
+func (m *extensionValidationValueMap) Reset()         { *m = extensionValidationValueMap{} }
+func (m *extensionValidationValueMap) String() string { return CompactTextString(m) }
+func (*extensionValidationValueMap) ProtoMessage()    {}
+func TestEditionExtensionNonNullableMapValues(t *testing.T) {
+	for _, complete := range []bool{false, true} {
+		body := []byte{8, 1}
+		if complete {
+			body = append(body, 16, 2)
+		}
+		value := extensionWire(104, body)
+		entry := append(extensionWire(1, []byte("x")), extensionWire(2, value)...)
+		var got extensionValidationValueMap
+		err := Unmarshal(extensionWire(1, entry), &got)
+		if (err == nil) != complete {
+			t.Fatalf("complete=%v: %v", complete, err)
+		}
+		// Reading the same map value must agree with outer validation.
+		child := got.Values["x"]
+		_, err = GetExtension(&child, validationRequired)
+		if (err == nil) != complete {
+			t.Fatalf("GetExtension complete=%v: %v", complete, err)
+		}
+	}
+}
