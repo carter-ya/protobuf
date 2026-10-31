@@ -40,3 +40,27 @@ func TestLegacyNamedScalarEquality(t *testing.T) {
 		t.Fatal("proto2 named bytes lost nil/empty distinction")
 	}
 }
+
+var legacyNamedMergeInfo proto.InternalMessageInfo
+
+func (m *legacyNamedValues) XXX_Merge(src proto.Message) { legacyNamedMergeInfo.Merge(m, src) }
+
+func TestLegacyNamedScalarTableMerge(t *testing.T) {
+	original := &legacyNamedValues{Name: "uid", Data: legacyBytes{1, 2}, Names: []legacyName{"name"}, Values: map[string]legacyName{"key": "value"}, Other: legacyNamedByteSlice{3, 4}}
+	cloned := proto.Clone(original).(*legacyNamedValues)
+	if !proto.Equal(original, cloned) {
+		t.Fatal("table clone changed named fields")
+	}
+	cloned.Data[0]++
+	cloned.Names[0] = "other"
+	cloned.Values["key"] = "other"
+	cloned.Other[0]++
+	if original.Data[0] != 1 || original.Names[0] != "name" || original.Values["key"] != "value" || original.Other[0] != 3 {
+		t.Fatal("clone aliases mutable named storage")
+	}
+	dst := &legacyNamedValues{Name: "keep", Data: legacyBytes{9}}
+	proto.Merge(dst, &legacyNamedValues{Data: legacyBytes{}})
+	if dst.Name != "keep" || dst.Data == nil || len(dst.Data) != 0 {
+		t.Fatal("legacy scalar zero/bytes presence changed")
+	}
+}
