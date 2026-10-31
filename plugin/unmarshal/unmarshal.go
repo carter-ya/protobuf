@@ -820,7 +820,7 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 				}
 			} else {
 				p.P(`v := &`, msgname, `{}`)
-				if file.IsEditions() {
+				if file.IsEditions() || p.MergeOneofMessage(field) {
 					p.P("if previous, ok := m.", fieldname, ".(*", p.OneOfTypeName(msg, field), "); ok && previous != nil && previous.", p.GetOneOfFieldName(msg, field), " != nil { v = previous.", p.GetOneOfFieldName(msg, field), " }")
 				}
 				p.P(`if err := v.Unmarshal(`, buf, `); err != nil {`)
@@ -1580,11 +1580,13 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			} else {
 				p.P(`if wireType != `, strconv.Itoa(wireType), `{`)
 				p.In()
-				if file.IsEditions() {
+				if file.IsEditions() || p.MergeOneofMessage(field) {
 					p.P("size, err := ", protoPkg.Use(), ".EditionFieldSize(dAtA[preIndex:])")
 					p.P("if err != nil { return err }")
 					p.P("iNdEx = preIndex + size")
-					p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[preIndex:iNdEx]...)")
+					if gogoproto.HasUnrecognized(file.FileDescriptorProto, message.DescriptorProto) {
+						p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[preIndex:iNdEx]...)")
+					}
 					p.P("continue")
 				} else {
 					p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)

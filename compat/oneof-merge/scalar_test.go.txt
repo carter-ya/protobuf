@@ -1,0 +1,56 @@
+
+func TestSelectedScalarZero(t *testing.T) {
+	message := &pb.Root{Choice: &pb.Root_Number{Number: 0}}
+	wire, err := proto.Marshal(message)
+	if err != nil {
+		t.Fatalf("selected scalar zero: %x %v", wire, err)
+	}
+	if proto.Size(message) != len(wire) {
+		t.Fatal("scalar size mismatch")
+	}
+	if FAST {
+		buffer := make([]byte, 2)
+		count, err := interface{}(message.Choice).(interface{ MarshalToSizedBuffer([]byte) (int, error) }).MarshalToSizedBuffer(buffer)
+		if err != nil || count != 2 || buffer[0] != 16 || buffer[1] != 0 {
+			t.Fatalf("direct scalar zero %x %v", buffer, err)
+		}
+	}
+	var back pb.Root
+	if err := proto.Unmarshal(wire, &back); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := back.Choice.(*pb.Root_Number); !ok {
+		t.Fatal("selected scalar zero lost presence")
+	}
+}
+
+func TestScalarAuxiliaryHelpers(t *testing.T) {
+	message := &pb.Root{Choice: &pb.Root_Number{Number: 0}}
+	clone := proto.Clone(message)
+	if equal, ok := interface{}(message).(interface{ Equal(interface{}) bool }); ok && !equal.Equal(clone) {
+		t.Fatal("scalar clone equality")
+	}
+	if output, ok := interface{}(message).(interface{ GoString() string }); ok && output.GoString() == "" {
+		t.Fatal("empty GoString")
+	}
+	if message.String() == "" {
+		t.Fatal("selected scalar missing in String")
+	}
+}
+
+func TestScalarPopulateAndCompare(t *testing.T) {
+	first := &pb.Root{Choice: &pb.Root_Number{Number: 0}}
+	second := &pb.Root{Choice: &pb.Root_Number{Number: 1}}
+	if first.Compare(second) >= 0 || second.Compare(first) <= 0 {
+		t.Fatal("scalar order")
+	}
+	if err := first.VerboseEqual(proto.Clone(first)); err != nil {
+		t.Fatal(err)
+	}
+	for i := int64(0); i < 16; i++ {
+		populated := pb.NewPopulatedRoot(rand.New(rand.NewSource(i)), true)
+		if !populated.Equal(proto.Clone(populated)) {
+			t.Fatal("populated clone")
+		}
+	}
+}

@@ -1087,6 +1087,7 @@ func (p *marshalto) Generate(file *generator.FileDescriptor) {
 			p.P(`i := len(dAtA)`)
 			if !file.IsEditions() || field.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
 				vanity.TurnOffNullableForNativeTypes(field)
+				vanity.TurnOffNullableForNativeOneof(field)
 			}
 			p.generateField(false, numGen, file, message, field)
 			p.P(`return len(dAtA) - i, nil`)

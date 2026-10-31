@@ -163,3 +163,18 @@ fields. Mixed encodings retain wire order and output remains in MessageSet
 format. Merging after SetExtension or GetExtension retains decoded payloads.
 Unknown extension bodies remain opaque. The explicit V2 snapshot experiment
 continues to reject MessageSet because its target runtime does not support it.
+
+## Opt-in oneof message merging
+
+`merge_oneof_messages=true` emits Version12 metadata and merges repeated native
+oneof message members in regenerated proto2/proto3 files. Default generation
+retains historical replacement behavior. Custom/cast/standard representations
+are rejected for this policy; imported bindings keep their own decoding policy.
+The standard conformance profile uses a separately generated binary with this
+parameter. See `compat/oneof-merge/README.md` for the qualified scope.
+
+Native scalar oneof wrappers retain their value layout under proto2 fast
+entrypoints and explicit `nullable=true`. Codec and auxiliary generators use
+normalized cloned metadata; input descriptors and ordinary nullable fields retain
+their declaration policy. The five-backend gate covers selected zero, direct
+encoding, Clone/Equal/VerboseEqual/Compare/Populate and String/GoString.

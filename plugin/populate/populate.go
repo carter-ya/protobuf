@@ -691,6 +691,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 			p.P(`this := &`, ccTypeName, `{}`)
 			if !file.IsEditions() || f.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
 				vanity.TurnOffNullableForNativeTypes(f)
+			vanity.TurnOffNullableForNativeOneof(f)
 			}
 			p.GenerateField(file, message, f)
 			p.P(`return this`)

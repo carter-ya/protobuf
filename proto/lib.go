@@ -974,6 +974,8 @@ const (
 	GoGoProtoPackageIsVersion10 = true
 	// Version11 adds optional custom and standard type presence operations.
 	GoGoProtoPackageIsVersion11 = true
+	// Version12 adds explicit oneof message merge metadata.
+	GoGoProtoPackageIsVersion12 = true
 
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.

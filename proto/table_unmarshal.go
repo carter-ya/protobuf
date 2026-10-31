@@ -508,7 +508,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 					// when we encounter it during unmarshaling.
 					var policy Properties
 					policy.Parse(f.Tag.Get("protobuf"))
-					unmarshal := makeUnmarshalOneof(typ, of.ityp, baseUnmarshal, policy.ExplicitPresence)
+					unmarshal := makeUnmarshalOneof(typ, of.ityp, baseUnmarshal, policy.ExplicitPresence || policy.oneofMerge)
 					u.setTag(fieldNum, of.field, unmarshal, 0, name)
 					u.setClosedEnum(fieldNum, &f)
 				}
@@ -2178,10 +2178,21 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler, mergeMessage bool) unmarshaler {
 	sf := typ.Field(0)
 	field0 := toField(&sf)
+	mergeMessage = mergeMessage && sf.Type.Kind() == reflect.Ptr && sf.Type.Elem().Kind() == reflect.Struct
+	var policy Properties
+	if mergeMessage {
+		policy.Parse(sf.Tag.Get("protobuf"))
+		if policy.Wire == "group" {
+			policy.WireType = WireStartGroup
+		}
+	}
 	return func(b []byte, f pointer, w int) ([]byte, error) {
+		if mergeMessage && w != policy.WireType {
+			return b, errInternalBadWireType
+		}
 		// Allocate holder for value.
 		v := reflect.New(typ)
-		if mergeMessage && sf.Type.Kind() == reflect.Ptr && sf.Type.Elem().Kind() == reflect.Struct {
+		if mergeMessage {
 			previous := f.asPointerTo(ityp).Elem()
 			if !previous.IsNil() && previous.Elem().Type() == v.Type() && !previous.Elem().IsNil() {
 				v = previous.Elem()

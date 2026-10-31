@@ -80,11 +80,26 @@ func TurnOffNullableForNativeTypes(field *descriptor.FieldDescriptorProto) {
 }
 
 func TurnOffNullableForNativeTypesWithoutDefaultsOnly(field *descriptor.FieldDescriptorProto) {
-	if field.IsRepeated() || field.IsMessage() {
+	if field.IsRepeated() || field.IsMessage() || field.IsRealOneof() {
 		return
 	}
 	if field.DefaultValue != nil {
 		return
 	}
 	SetBoolFieldOption(gogoproto.E_Nullable, false)(field)
+}
+
+// TurnOffNullableForNativeOneof prepares a cloned wrapper field for generation.
+// Native oneof wrappers hold values even when the schema's nullable option is
+// explicitly true. Message, group and custom representations keep their policy.
+func TurnOffNullableForNativeOneof(field *descriptor.FieldDescriptorProto) {
+	if !field.IsRealOneof() || field.IsMessage() || field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP || gogoproto.IsCustomType(field) {
+		return
+	}
+	if field.Options == nil {
+		field.Options = new(descriptor.FieldOptions)
+	}
+	if err := proto.SetExtension(field.Options, gogoproto.E_Nullable, proto.Bool(false)); err != nil {
+		panic(err)
+	}
 }
