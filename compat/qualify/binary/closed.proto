@@ -39,12 +39,14 @@ message Record {
     Payload message = 8;
     State enum = 9;
     int32 scalar = 10;
+    Record recursive_message = 17;
   }
   repeated int32 unpacked = 11 [features.repeated_field_encoding = EXPANDED];
   repeated Payload children = 12;
   string text = 13;
   bytes data = 14;
   map<string, Payload> messages = 15;
+  map<string, Record> recursive_messages = 16;
   extensions 100 to 199;
 }
 
@@ -57,4 +59,5 @@ extend Record {
   repeated RequiredPayload extension_required_list = 105;
   Payload extension_group = 106 [features.message_encoding = DELIMITED];
   RequiredContainer extension_nested_required = 110;
+  Record extension_recursive = 112;
 }

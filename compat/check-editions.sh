@@ -47,6 +47,10 @@ MOD
  if (cd "$consumer" && go build ./...) > "$tmp/error" 2>&1; then
   echo "Edition $edition compiled with original runtime" >&2; exit 1
  fi
- if [ "$edition" = 2026 ]; then required=6; else required=5; fi
+ case "$edition" in
+  2023) required=13 ;; # The maintained fixture declares Editions extensions.
+  2026) required=6 ;;
+  *) required=5 ;;
+ esac
  grep -q "GoGoProtoPackageIsVersion$required" "$tmp/error"
 done

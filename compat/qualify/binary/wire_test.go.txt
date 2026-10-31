@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"sync"
 	"testing"
+	"time"
 
 	closed "example.com/gogo-wire-qualification/closed"
 	official "example.com/gogo-wire-qualification/official"
@@ -392,4 +393,59 @@ func strictEnvelope(data []byte, schema protoreflect.MessageDescriptor, group pr
 		return 0, fmt.Errorf("unterminated group")
 	}
 	return offset, nil
+}
+
+func TestRecursiveEditionExtensions(t *testing.T) {
+	var input []byte
+	for i := 0; i < 64; i++ {
+		input = append(field(112, proto.WireBytes, input), field(112, proto.WireBytes, nil)...)
+	}
+	done := make(chan error, 1)
+	go func() { done <- proto.Unmarshal(input, new(closed.Record)) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("recursive extension validation exceeded five seconds")
+	}
+	checkWire(t, 1, input)
+	partial := field(112, proto.WireBytes, field(104, proto.WireBytes, []byte{8, 1}))
+	complete := field(112, proto.WireBytes, field(104, proto.WireBytes, []byte{16, 2}))
+	checkWire(t, 1, append(partial, complete...))
+	// Invalid wire must be rejected even when a later map entry or oneof
+	// selection removes the offending child from the final message graph.
+	bad := field(100, proto.WireBytes, []byte{26, 3, 'A'})
+	key := field(1, proto.WireBytes, []byte("x"))
+	mapEntry := append(key, field(2, proto.WireBytes, bad)...)
+	replacement := append(append([]byte(nil), key...), field(2, proto.WireBytes, nil)...)
+	cases := [][]byte{
+		append(field(16, proto.WireBytes, mapEntry), field(16, proto.WireBytes, replacement)...),
+		append(field(17, proto.WireBytes, bad), field(10, proto.WireVarint, []byte{1})...),
+	}
+	for _, body := range cases {
+		checkWire(t, 1, field(112, proto.WireBytes, body))
+	}
+}
+func TestEmptyRepeatedEditionExtension(t *testing.T) {
+	var got closed.Record
+	if err := proto.SetExtension(&got, closed.E_ExtensionRequiredList, []*closed.RequiredPayload{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := proto.UnmarshalMerge(nil, &got); err != nil {
+		t.Fatal(err)
+	}
+	value, err := proto.GetExtension(&got, closed.E_ExtensionRequiredList)
+	if _, byteStorage := interface{}(&got).(interface{ GetExtensions() *[]byte }); byteStorage {
+		// An empty repeated value has no wire occurrences. Byte storage retains
+		// its historical absence policy rather than inventing a presence bit.
+		if err != proto.ErrMissingExtension {
+			t.Fatalf("empty byte store: %v", err)
+		}
+		return
+	}
+	if err != nil || len(value.([]*closed.RequiredPayload)) != 0 {
+		t.Fatalf("empty repeated extension: %v", err)
+	}
 }

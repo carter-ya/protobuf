@@ -3,6 +3,7 @@ package proto
 import (
 	"bytes"
 	"testing"
+	"time"
 )
 
 type extensionValidationPayload struct {
@@ -251,5 +252,57 @@ func TestEditionRequiredMapDefaultValue(t *testing.T) {
 	SetRawExtension(&got, 111, input)
 	if _, err := GetExtension(&got, validationMap); err == nil {
 		t.Fatal("map default GetExtension bypassed required checks")
+	}
+}
+
+var validationRecursive = &ExtensionDesc{ExtendedType: (*extensionValidationRecord)(nil), ExtensionType: (*extensionValidationRecord)(nil), Field: 112, Name: "validation.recursive", Tag: "bytes,112,opt,edition_ext,name=recursive,proto3,explicit"}
+
+func init() { RegisterExtension(validationRecursive) }
+func TestEditionRecursiveExtensionWork(t *testing.T) {
+	for _, depth := range []int{12, 16, 64} {
+		var input []byte
+		for i := 0; i < depth; i++ {
+			input = append(extensionWire(112, input), extensionWire(112, nil)...)
+		}
+		done := make(chan error, 1)
+		start := time.Now()
+		go func() { done <- Unmarshal(input, new(extensionValidationRecord)) }()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("recursive extension decoding did not finish at depth %d", depth)
+		}
+		t.Logf("depth=%d bytes=%d elapsed=%v", depth, len(input), time.Since(start))
+	}
+}
+func TestEditionEmptyRepeatedExtensionMerge(t *testing.T) {
+	var message extensionValidationRecord
+	if err := SetExtension(&message, validationRepeated, []*extensionValidationRequired{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := UnmarshalMerge(nil, &message); err != nil {
+		t.Fatal(err)
+	}
+	value, err := GetExtension(&message, validationRepeated)
+	if err != nil || len(value.([]*extensionValidationRequired)) != 0 {
+		t.Fatalf("empty repeated extension: %v", err)
+	}
+}
+
+func TestEditionNestedExtensionRequiredFragments(t *testing.T) {
+	partial := extensionWire(112, extensionWire(104, []byte{8, 1}))
+	complete := extensionWire(112, extensionWire(104, []byte{16, 2}))
+	if err := Unmarshal(append(partial, complete...), new(extensionValidationRecord)); err != nil {
+		t.Fatal(err)
+	}
+	if err := Unmarshal(partial, new(extensionValidationRecord)); err == nil {
+		t.Fatal("nested extension required fields were not checked")
+	}
+	bad := extensionWire(112, append(extensionWire(100, []byte{26, 3, 'A'}), extensionWire(100, []byte{8, 1})...))
+	if err := Unmarshal(bad, new(extensionValidationRecord)); err == nil {
+		t.Fatal("nested extension consumed following occurrence")
 	}
 }

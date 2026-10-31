@@ -34,19 +34,26 @@ func nativeEditionMessageExtension(extension *ExtensionDesc) (reflect.Type, bool
 // Decode each repeated element independently. Singular message fragments must
 // merge before checking required fields, including fragments from earlier calls.
 func decodeEditionMessageExtension(data []byte, extension *ExtensionDesc) (interface{}, error) {
+	return decodeEditionMessageExtensionPartial(data, extension, true)
+}
+
+// Fragment mode validates wire errors at their original occurrence boundaries,
+// including payloads later overwritten by maps or oneofs. It defers completeness
+// until the logical message has merged, without reparsing concatenated bodies.
+func decodeEditionMessageExtensionPartial(data []byte, extension *ExtensionDesc, complete bool) (interface{}, error) {
 	element, _ := nativeEditionMessageExtension(extension)
 	repeated := reflect.TypeOf(extension.ExtensionType).Kind() == reflect.Slice
 	var result reflect.Value
 	if repeated {
 		result = reflect.MakeSlice(reflect.TypeOf(extension.ExtensionType), 0, 0)
 	}
-	var merged []byte
-	var first reflect.Value
-	var firstError error
-	fragments := 0
 	if len(data) == 0 {
+		if repeated {
+			return result.Interface(), nil
+		}
 		return nil, io.ErrUnexpectedEOF
 	}
+	value := reflect.New(element.Elem())
 	properties := extensionProperties(extension)
 	expected := WireBytes
 	if properties.Wire == "group" {
@@ -72,37 +79,27 @@ func decodeEditionMessageExtension(data []byte, extension *ExtensionDesc) (inter
 			}
 			body = body[prefix:]
 		}
-		value := reflect.New(element.Elem())
-		decodeError := unmarshalEditionExtensionValue(body, value.Interface().(Message))
-		if decodeError != nil {
-			if _, required := decodeError.(*RequiredNotSetError); repeated || !required {
-				return nil, decodeError
-			}
+		if err := unmarshalEditionExtensionValue(body, value.Interface().(Message)); err != nil {
+			return nil, err
 		}
 		if repeated {
-			result = reflect.Append(result, value)
-		} else {
-			fragments++
-			if fragments == 1 {
-				first, firstError = value, decodeError
-				// Capping capacity prevents a subsequent append from modifying
-				// the original encoded store through this temporary body slice.
-				merged = body[:len(body):len(body)]
-			} else {
-				merged = append(merged, body...)
+			if complete {
+				if err := validateEditionExtensionValue(value.Interface().(Message)); err != nil {
+					return nil, err
+				}
 			}
+			result = reflect.Append(result, value)
+			value = reflect.New(element.Elem())
 		}
 		data = data[end:]
 	}
 	if repeated {
 		return result.Interface(), nil
 	}
-	if fragments == 1 {
-		return first.Interface(), firstError
-	}
-	value := reflect.New(element.Elem())
-	if err := unmarshalEditionExtensionValue(merged, value.Interface().(Message)); err != nil {
-		return nil, err
+	if complete {
+		if err := validateEditionExtensionValue(value.Interface().(Message)); err != nil {
+			return nil, err
+		}
 	}
 	return value.Interface(), nil
 }
@@ -222,27 +219,19 @@ func editionExtensionsFromBytes(data []byte) (map[int32]Extension, error) {
 	return values, nil
 }
 
-// Generated fast decoders may stop at a missing-required error in an early
-// submessage fragment. The table decoder consumes every fragment and preserves
-// nonfatal required errors; final encoding then checks the complete merged graph.
+// Use a separate table cache so partial decoding propagates through ordinary
+// message, group, map and oneof fields without changing legacy codec policy.
 func unmarshalEditionExtensionValue(data []byte, message Message) error {
-	err := Unmarshal(data, message)
-	if err == nil {
-		return validateEditionMapMessageDefaults(message)
+	table := getUnmarshalInfoWithPolicy(reflect.TypeOf(message).Elem(), true)
+	err := table.unmarshal(toPointer(&message), data)
+	if _, required := err.(*RequiredNotSetError); required {
+		return nil
 	}
-	if _, required := err.(*RequiredNotSetError); !required {
-		return err
-	}
-	message.Reset()
-	var table InternalMessageInfo
-	err = table.Unmarshal(message, data)
-	if err != nil {
-		if _, required := err.(*RequiredNotSetError); !required {
-			return err
-		}
-	}
-	_, err = Marshal(message)
-	if err != nil {
+	return err
+}
+
+func validateEditionExtensionValue(message Message) error {
+	if _, err := Marshal(message); err != nil {
 		return err
 	}
 	return validateEditionMapMessageDefaults(message)

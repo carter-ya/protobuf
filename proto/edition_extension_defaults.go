@@ -42,6 +42,11 @@ func validateEditionMapMessageDefaults(message Message) error {
 			if !reflect.PtrTo(value.Type()).Implements(protoMessageType) {
 				return nil
 			}
+			if value.CanAddr() {
+				if err := ValidateEditionMessageExtensions(value.Addr().Interface().(Message)); err != nil {
+					return err
+				}
+			}
 			properties := GetProperties(value.Type())
 			for i, property := range properties.Prop {
 				field := value.Type().Field(i)

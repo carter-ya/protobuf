@@ -18,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion5 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion13 // please upgrade the proto package
 
 type Open int32
 
@@ -469,7 +469,7 @@ var E_Declaring_NestedExt = &proto.ExtensionDesc{
 	ExtensionType: (*int32)(nil),
 	Field:         104,
 	Name:          "compat.editions.v2023.Declaring.nested_ext",
-	Tag:           "varint,104,opt,name=nested_ext,proto3,explicit",
+	Tag:           "varint,104,edition_ext,opt,name=nested_ext,proto3,explicit",
 	Filename:      "compat/editions/edition2023/sample.proto",
 }
 
@@ -478,7 +478,7 @@ var E_ExtClosed = &proto.ExtensionDesc{
 	ExtensionType: (*Closed)(nil),
 	Field:         100,
 	Name:          "compat.editions.v2023.ext_closed",
-	Tag:           "varint,100,opt,name=ext_closed,proto3,explicit,enum_closed=0:1,enum=compat.editions.v2023.Closed,def=0",
+	Tag:           "varint,100,edition_ext,opt,name=ext_closed,proto3,explicit,enum_closed=0:1,enum=compat.editions.v2023.Closed,def=0",
 	Filename:      "compat/editions/edition2023/sample.proto",
 }
 
@@ -487,7 +487,7 @@ var E_ExtPacked = &proto.ExtensionDesc{
 	ExtensionType: ([]Closed)(nil),
 	Field:         101,
 	Name:          "compat.editions.v2023.ext_packed",
-	Tag:           "varint,101,rep,packed,name=ext_packed,proto3,enum_closed=0:1,enum=compat.editions.v2023.Closed",
+	Tag:           "varint,101,edition_ext,rep,packed,name=ext_packed,proto3,enum_closed=0:1,enum=compat.editions.v2023.Closed",
 	Filename:      "compat/editions/edition2023/sample.proto",
 }
 
@@ -496,7 +496,7 @@ var E_ExtDelimited = &proto.ExtensionDesc{
 	ExtensionType: (*Child)(nil),
 	Field:         102,
 	Name:          "compat.editions.v2023.ext_delimited",
-	Tag:           "group,102,opt,name=ext_delimited,proto3,explicit",
+	Tag:           "group,102,edition_ext,opt,name=ext_delimited,proto3,explicit",
 	Filename:      "compat/editions/edition2023/sample.proto",
 }
 
@@ -505,7 +505,7 @@ var E_ExtUnchecked = &proto.ExtensionDesc{
 	ExtensionType: (*string)(nil),
 	Field:         103,
 	Name:          "compat.editions.v2023.ext_unchecked",
-	Tag:           "bytes,103,opt,name=ext_unchecked,proto3,explicit,utf8_none",
+	Tag:           "bytes,103,edition_ext,opt,name=ext_unchecked,proto3,explicit,utf8_none",
 	Filename:      "compat/editions/edition2023/sample.proto",
 }
 
