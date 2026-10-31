@@ -1,0 +1,12 @@
+edition = "2023";
+package qualification.legacyenum;
+option go_package = "example.com/legacy-enums/pb";
+enum EditionClosed {
+  option features.enum_type = CLOSED;
+  EDITION_CLOSED_FIRST = 3;
+  EDITION_CLOSED_SECOND = 4;
+}
+
+message EditionRecord {
+  EditionClosed state = 1;
+}

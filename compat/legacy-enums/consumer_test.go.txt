@@ -1,0 +1,176 @@
+package qualify
+
+import (
+	"bytes"
+	pb "example.com/legacy-enums/pb"
+	jsonstandard "github.com/gogo/protobuf/jsonpb/standard"
+	"github.com/gogo/protobuf/proto"
+	textstandard "github.com/gogo/protobuf/textpb/standard"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+const standard = STANDARD
+const editionImport = EDITION_IMPORT
+
+func enumPointer(v pb.Proto2Closed) *pb.Proto2Closed { return &v }
+func TestClosedEnums(t *testing.T) {
+	var got pb.Record
+	if err := proto.Unmarshal([]byte{8, 99}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !standard {
+		if got.GetStatus() != pb.Proto2Closed(99) {
+			t.Fatal("legacy enum policy changed")
+		}
+		return
+	}
+	if got.Status != nil || got.GetStatus() != pb.Proto2Closed(5) {
+		t.Fatal("unknown became a present closed enum")
+	}
+	encoded, err := proto.Marshal(&got)
+	if err != nil || !bytes.Equal(encoded, []byte{8, 99}) {
+		t.Fatal("unknown singular enum lost", encoded, err)
+	}
+	if err := proto.Unmarshal([]byte{18, 3, 5, 99, 6}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Values) != 2 || got.Values[0] != 5 || got.Values[1] != 6 {
+		t.Fatal("packed closed enum routing")
+	}
+	encoded, err = proto.Marshal(&got)
+	if err != nil || !bytes.Contains(encoded, []byte{16, 99}) {
+		t.Fatal("packed unknown enum lost", encoded, err)
+	}
+	if err := proto.Unmarshal([]byte{26, 5, 10, 1, 'x', 16, 99}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Mapping) != 0 {
+		t.Fatal("unknown map entry became present")
+	}
+	encoded, err = proto.Marshal(&got)
+	if err != nil || !bytes.Equal(encoded, []byte{26, 5, 10, 1, 'x', 16, 99}) {
+		t.Fatal("unknown map entry lost", encoded, err)
+	}
+	if err := proto.Unmarshal([]byte{26, 0}, &got); err != nil || len(got.Mapping) != 1 || got.Mapping[""] != 0 {
+		t.Fatal("omitted map value must use first declared enum", got.Mapping, err)
+	}
+	if err := proto.Unmarshal([]byte{32, 99}, &got); err != nil || got.Choice != nil {
+		t.Fatal("unknown closed enum selected a oneof", err)
+	}
+	if err := proto.Unmarshal([]byte{40, 1, 32, 99}, &got); err != nil || got.GetScalar() != 1 {
+		t.Fatal("unknown closed enum cleared earlier oneof", err)
+	}
+	if err := proto.Unmarshal([]byte{48, 99}, &got); err != nil || got.GetImportedOpen() != pb.Proto3Open(99) {
+		t.Fatal("enum openness came from reference syntax", err)
+	}
+	// BEGIN EDITION
+	if editionImport {
+		if err := proto.Unmarshal([]byte{56, 99}, &got); err != nil || got.ImportedClosed != nil {
+			t.Fatal("imported closed enum became present", err)
+		}
+	}
+	// END EDITION
+	var required pb.RequiredRecord
+	if err := proto.Unmarshal([]byte{8, 99}, &required); err == nil {
+		t.Fatal("unknown closed enum satisfied required presence")
+	}
+	// The direct generated entrypoint must select the shared closed-enum policy.
+	if direct, ok := interface{}(&got).(interface{ Unmarshal([]byte) error }); ok {
+		got.Reset()
+		if err := direct.Unmarshal([]byte{8, 99}); err != nil || got.Status != nil {
+			t.Fatal("direct codec bypassed policy", err)
+		}
+	}
+	// Two fragments and prior state retain known enum values after unknown input.
+	got.Status = enumPointer(pb.Proto2Closed(6))
+	if err := proto.UnmarshalMerge([]byte{8, 99}, &got); err != nil || got.GetStatus() != 6 {
+		t.Fatal("unknown overwrote known prior enum", err)
+	}
+}
+func TestClosedEnumExtensions(t *testing.T) {
+	if !standard {
+		return
+	}
+	var got pb.Record
+	if err := proto.Unmarshal([]byte{0xa0, 6, 99}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if proto.HasExtension(&got, pb.E_OptionalEnum) {
+		t.Fatal("unknown became known enum extension")
+	}
+	encoded, err := proto.Marshal(&got)
+	if err != nil || !bytes.Equal(encoded, []byte{0xa0, 6, 99}) {
+		t.Fatal("unknown extension bytes lost", encoded, err)
+	}
+	if err := proto.Unmarshal([]byte{0xaa, 6, 3, 5, 99, 6}, &got); err != nil {
+		t.Fatal(err)
+	}
+	value, err := proto.GetExtension(&got, pb.E_RepeatedEnum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := value.([]pb.Proto2Closed)
+	if len(values) != 2 || values[0] != 5 || values[1] != 6 {
+		t.Fatal("repeated extension routing", values)
+	}
+	encoded, err = proto.Marshal(&got)
+	if err != nil || !bytes.Contains(encoded, []byte{0xa8, 6, 99}) {
+		t.Fatal("packed extension unknown lost", encoded, err)
+	}
+}
+
+func TestOtherLegacySemantics(t *testing.T) {
+	if !standard {
+		return
+	}
+	var got pb.Record
+	if err := proto.Unmarshal([]byte{66, 2, 8, 99}, &got); err != nil || got.Child == nil || got.Child.Status != nil || got.Child.GetStatus() != 5 {
+		t.Fatal("nested enum policy", err)
+	}
+	// Adopting closed enums does not turn on proto3 UTF-8 validation in proto2.
+	if err := proto.Unmarshal([]byte{74, 1, 255}, &got); err != nil || got.GetText() != string([]byte{255}) {
+		t.Fatal("proto2 UTF-8 policy changed", err)
+	}
+	if err := jsonstandard.UnmarshalString(`{"status":99}`, &got); err == nil {
+		t.Fatal("standard JSON accepted unknown closed enum")
+	}
+	if err := textstandard.UnmarshalString("status: 99", &got); err == nil {
+		t.Fatal("standard text accepted unknown closed enum")
+	}
+	if err := jsonstandard.UnmarshalString(`{"importedOpen":99}`, &got); err != nil || got.GetImportedOpen() != 99 {
+		t.Fatal("standard JSON closed imported proto3 enum", err)
+	}
+}
+
+func TestCPPReadback(t *testing.T) {
+	if !standard {
+		return
+	}
+	cases := [][]byte{
+		{8, 99}, {8, 6, 8, 99}, {18, 3, 5, 99, 6}, {16, 99, 18, 2, 5, 6},
+		{26, 5, 10, 1, 'x', 16, 99}, {26, 0}, {32, 99}, {40, 1, 32, 99},
+		{66, 2, 8, 99}, {0xa0, 6, 99}, {0xaa, 6, 3, 5, 99, 6},
+	}
+	for i, wire := range cases {
+		var got pb.Record
+		if err := proto.Unmarshal(wire, &got); err != nil {
+			t.Fatal(err)
+		}
+		encoded, err := proto.Marshal(&got)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dir := os.Getenv("GOGO_ENUM_CORPUS"); dir != "" {
+			name := filepath.Join(dir, string(rune('a'+i)))
+			if err := ioutil.WriteFile(name+".input", wire, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := ioutil.WriteFile(name+".output", encoded, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}

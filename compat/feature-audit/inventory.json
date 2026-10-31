@@ -193,10 +193,11 @@
     {
       "name": "legacy_proto2_closed_enum_policy",
       "number": 0,
-      "status": "gap",
-      "owner": "explicit regeneration policy; preserve frozen bindings",
+      "status": "implemented",
+      "owner": "explicit regeneration policy; frozen bindings retain historical behavior",
       "evidence": [
-        "protoc-gen-gogo/generator/editions.go"
+        "compat/check-legacy-enums.sh",
+        "compat/legacy-enums/README.md"
       ]
     },
     {

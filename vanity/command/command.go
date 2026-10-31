@@ -72,6 +72,7 @@ func Read() *plugin.CodeGeneratorRequest {
 	if len(g.Request.FileToGenerate) == 0 {
 		g.Fail("no files to generate")
 	}
+	prepareClosedEnumPolicy(g.Request)
 	return g.Request
 }
 

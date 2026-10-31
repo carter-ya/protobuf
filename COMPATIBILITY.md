@@ -197,3 +197,14 @@ Required-reachable files assert Version14, including dependency-only enclosing
 files. Malformed occurrence boundaries and checked UTF-8 still fail immediately.
 The [required merge contract](compat/required-merge/README.md) lists presence
 restrictions, regeneration requirements and the five-backend qualification matrix.
+
+## Explicit legacy closed-enum policy
+
+`enforce_closed_enums=true` qualifies native closed enums in regenerated legacy
+files without changing frozen bindings. Unknown values retain unknown bytes
+instead of setting singular/required/oneof fields. Packed lists, maps, nested
+messages, definition-scoped imports and registered enum extensions share the
+policy; late registrations are consulted after an immutable table-cache miss.
+The option asserts Version15. Explicit unknown-storage/presence conflicts and
+alternate runtimes are rejected. See the
+[contract and independent cross-reads](compat/legacy-enums/README.md).

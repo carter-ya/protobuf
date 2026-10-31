@@ -294,12 +294,13 @@ func (id *ImportedDescriptor) TypeName() []string { return id.o.TypeName() }
 // Those slices are constructed by WrapTypes.
 type FileDescriptor struct {
 	*descriptor.FileDescriptorProto
-	original *descriptor.FileDescriptorProto
-	edition  *editionMetadata
-	desc     []*Descriptor          // All the messages defined in this file.
-	enum     []*EnumDescriptor      // All the enums defined in this file.
-	ext      []*ExtensionDescriptor // All the top-level extensions defined in this file.
-	imp      []*ImportedDescriptor  // All types defined in files publicly imported by this file.
+	original    *descriptor.FileDescriptorProto
+	edition     *editionMetadata
+	legacyEnums map[string]editionEnum
+	desc        []*Descriptor          // All the messages defined in this file.
+	enum        []*EnumDescriptor      // All the enums defined in this file.
+	ext         []*ExtensionDescriptor // All the top-level extensions defined in this file.
+	imp         []*ImportedDescriptor  // All types defined in files publicly imported by this file.
 
 	// Comments, stored as a map of path (comma-separated integers) to the comment.
 	comments map[string]*descriptor.SourceCodeInfo_Location
@@ -538,7 +539,7 @@ func (g *Generator) CommandLineParameters(parameter string) {
 			if v == "true" {
 				g.annotateCode = true
 			}
-		case "merge_oneof_messages", "merge_required_fields":
+		case "merge_oneof_messages", "merge_required_fields", "enforce_closed_enums":
 			if v != "true" && v != "false" {
 				g.Fail(k + " must be true or false")
 			}
@@ -791,7 +792,7 @@ func (g *Generator) WrapTypes() {
 	}
 	var enumInfo map[string]editionEnum
 	for _, f := range g.Request.ProtoFile {
-		if f.GetSyntax() == "editions" {
+		if f.GetSyntax() == "editions" || g.Param["enforce_closed_enums"] == "true" {
 			var err error
 			enumInfo, err = editionEnums(g.Request.ProtoFile)
 			if err != nil {
@@ -819,6 +820,9 @@ func (g *Generator) WrapTypes() {
 			edition:             metadata,
 			exported:            make(map[Object][]symbol),
 			proto3:              fileIsProto3(f),
+		}
+		if g.Param["enforce_closed_enums"] == "true" {
+			fd.legacyEnums = enumInfo
 		}
 		// The import path may be set in a number of ways.
 		if substitution, ok := g.ImportMap[f.GetName()]; ok {
@@ -1223,6 +1227,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 	g.validateEditionFastDependencies(file)
 	oneofMerge := g.validateOneofMessageMerging(file)
 	requiredMerge := g.validateRequiredMerging(file)
+	g.validateClosedEnumPolicy(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
@@ -1266,6 +1271,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		}
 		if requiredMerge {
 			codeVersion = 14
+		}
+		if g.EnforceClosedEnums(file) {
+			codeVersion = 15
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
@@ -1827,6 +1835,18 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_ENUM {
 			if e, ok := info.enums[field.GetTypeName()]; ok && e.closed != "" {
 				name += ",enum_closed=" + e.closed
+			}
+		}
+	}
+	if field.GetType() == descriptor.FieldDescriptorProto_TYPE_ENUM && g.file.edition == nil && g.EnforceClosedEnums(g.file) {
+		if e := g.file.legacyEnums[field.GetTypeName()]; e.closed != "" {
+			name += ",enum_closed=" + e.closed
+			if field.DefaultValue == nil {
+				object := g.ObjectNamed(field.GetTypeName())
+				if imported, ok := object.(*ImportedDescriptor); ok {
+					object = imported.o
+				}
+				defaultValue = ",def=" + object.(*EnumDescriptor).integerValueAsString(e.first)
 			}
 		}
 	}

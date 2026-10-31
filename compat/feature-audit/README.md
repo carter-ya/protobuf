@@ -33,10 +33,11 @@ handoff are tracked alongside the runtime tests.
 
 ## Remaining differences at this baseline
 
-* Legacy proto2 enum decoding preserves historical open treatment for unmarked
-  bindings. The specification calls for closed treatment. Regeneration needs an
-  explicit standard policy, including imported enum definitions, packed values,
-  map entries, oneofs and extensions, without changing frozen consumers.
+Legacy proto2 closed enums are now available through explicit
+[`enforce_closed_enums=true`](../legacy-enums/README.md) regeneration, including
+imports, packed values, map entries, oneofs and extensions. Unmarked/frozen
+bindings retain historical decoding. The remaining implementation gaps are:
+
 * Explicit Go `legacy_unmarshal_json_enum`, non-OPEN `api_level`, non-KEEP
   `strip_enum_prefix` and `optimize_mode` are diagnosed rather than implemented.
   Their individual fields/values remain in the inventory as gaps. Core Editions

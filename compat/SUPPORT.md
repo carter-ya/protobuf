@@ -18,6 +18,7 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Real project consumers | Prometheus v0.315.1, Kubernetes v0.31.4, BuildKit v0.12.5 and CockroachDB errors v1.14.0 | [Pinned runtime/regeneration matrix](downstream/projects/README.md) |
 | Stable compiler | protoc 3.21.8 (release asset 21.8) and 36.2 | Compatibility CI on Go 1.23/1.27; Go 1.15.15 with 36.2 |
 | Production backends | gogo, gogofast, gogofaster, gogoslick, gogotypes | Optional, Editions, auxiliary and binary differential matrices |
+| Legacy closed enums | Explicit `enforce_closed_enums=true`; definition-scoped imports, unknown retention and extensions | [Five-backend matrix and migration contract](legacy-enums/README.md) |
 | Proto3 optional | Scalar/enum/message/bytes presence, synthetic oneofs, supported cast/custom/std rows | [Representation contract](optional/README.md) and five-backend default/purego tests |
 | Editions | 2023, 2024 and 2026; gogo Open Struct API | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
 | Core Editions semantics | Presence, LEGACY_REQUIRED, UTF8 VERIFY/NONE, packed/expanded, open/closed enums, maps, oneofs, DELIMITED, extensions and option retention | `check-editions.sh`, `check-editions-fast.sh`, required-boundary and binary checks |
@@ -123,6 +124,7 @@ module release versions; keep the generated guard and use the matching runtime.
 | Version12 | Explicit oneof message merge metadata |
 | Version13 | Native Editions extension validation, cached merges and deferred enclosing-graph completeness |
 | Version14 | Required initialization after final logical-message merging |
+| Version15 | Explicit legacy closed-enum policy and late extension registration |
 
 Version13 also applies to a newly generated enclosing Editions file that reaches
 extensible children but declares no ranges itself. Its fast decoder uses the
@@ -136,6 +138,12 @@ graph and retain independent presence for every required field. Non-nullable
 required scalars, flattened singular message fields and mapped message paths
 with required descendants are rejected.
 See [required merge qualification](required-merge/README.md).
+
+For regenerated proto2/proto3 bindings, `enforce_closed_enums=true` selects the
+enum definition's open/closed policy. Unknown storage and independent enum
+presence are preserved before convenience backend defaults; explicit conflicting
+source options are diagnosed. Unmarked/frozen bindings keep historical enum
+behavior. See [closed-enum qualification](legacy-enums/README.md).
 
 An older runtime must fail to compile new feature code. Frozen legacy bindings
 continue to compile without regeneration.

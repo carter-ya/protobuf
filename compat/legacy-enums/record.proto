@@ -1,0 +1,35 @@
+syntax = "proto2";
+package qualification.legacyenum;
+option go_package = "example.com/legacy-enums/pb";
+import "gogoproto/gogo.proto";
+import "open.proto";
+import "edition.proto";
+enum Proto2Closed {
+  PROTO2_CLOSED_FIRST = 5;
+  PROTO2_CLOSED_SECOND = 6;
+}
+enum Proto2Map {
+  PROTO2_MAP_DEFAULT = 0;
+  PROTO2_MAP_KNOWN = 1;
+}
+message Record {
+  optional Proto2Closed status = 1;
+  repeated Proto2Closed values = 2 [packed = true];
+  map<string, Proto2Map> mapping = 3;
+  oneof choice {
+    Proto2Closed selected = 4;
+    int32 scalar = 5;
+  }
+  optional Proto3Open imported_open = 6;
+  optional EditionClosed imported_closed = 7;
+  optional Record child = 8;
+  optional string text = 9 [(gogoproto.nullable) = true];
+  extensions 100 to max;
+}
+message RequiredRecord {
+  required Proto2Closed status = 1;
+}
+extend Record {
+  optional Proto2Closed optional_enum = 100;
+  repeated Proto2Closed repeated_enum = 101 [packed = true];
+}

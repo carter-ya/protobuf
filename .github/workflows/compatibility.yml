@@ -149,6 +149,7 @@ jobs:
       - run: sh compat/check-wkt-metadata.sh
       - run: sh compat/check-required.sh
       - run: sh compat/check-required-merge.sh
+      - run: sh compat/check-legacy-enums.sh
       - run: sh compat/check-editions-plugins.sh
       - run: sh compat/check-editions-fast.sh
       - run: sh compat/check-editions.sh
