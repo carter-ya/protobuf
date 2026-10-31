@@ -541,6 +541,16 @@ func (mi *mergeInfo) computeMergeInfo() {
 			}
 		case reflect.Struct:
 			switch {
+			case tf == timeType && !isSlice && !isPointer:
+				// Native Go time values are atomic. Recursing into their private
+				// state panics in purego and can mix two timestamps in unsafe mode.
+				fieldType := f.Type
+				mfi.merge = func(dst, src pointer) {
+					value := src.asPointerTo(fieldType).Elem()
+					if !value.IsZero() {
+						dst.asPointerTo(fieldType).Elem().Set(value)
+					}
+				}
 			case isSlice && !isPointer: // E.g. []pb.T
 				mergeInfo := getMergeInfo(tf)
 				zero := reflect.Zero(tf)
