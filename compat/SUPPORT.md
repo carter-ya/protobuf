@@ -15,6 +15,7 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Area | Qualified scope | Evidence |
 | --- | --- | --- |
 | Legacy consumers | Frozen v1.3.2 output and regenerated original schemas; original gogo plugin suite | `check.sh`; frozen etcd raft v3.5.0 and CockroachDB errors v1.8.1 consumers |
+| Real project consumers | Prometheus v0.315.1, Kubernetes v0.31.4, BuildKit v0.12.5 and CockroachDB errors v1.14.0 | [Pinned runtime/regeneration matrix](downstream/projects/README.md) |
 | Stable compiler | protoc 3.21.8 (release asset 21.8) and 36.2 | Compatibility CI on Go 1.23/1.27; Go 1.15.15 with 36.2 |
 | Production backends | gogo, gogofast, gogofaster, gogoslick, gogotypes | Optional, Editions, auxiliary and binary differential matrices |
 | Proto3 optional | Scalar/enum/message/bytes presence, synthetic oneofs, supported cast/custom/std rows | [Representation contract](optional/README.md) and five-backend default/purego tests |
