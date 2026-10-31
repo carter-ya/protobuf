@@ -142,6 +142,11 @@ func skipVarint(buf []byte) []byte {
 // unmarshalMessageSet decodes the extension map encoded in buf in the message set wire format.
 // It is called by Unmarshal methods on protocol buffer messages with the message_set_wire_format option.
 func unmarshalMessageSet(buf []byte, exts interface{}) error {
+	var err error
+	buf, err = normalizeMessageSetInput(buf)
+	if err != nil {
+		return err
+	}
 	var m map[int32]Extension
 	switch exts := exts.(type) {
 	case *XXX_InternalExtensions:
@@ -164,13 +169,33 @@ func unmarshalMessageSet(buf []byte, exts interface{}) error {
 		// Be careful to preserve duplicate items.
 		b := EncodeVarint(uint64(id)<<3 | WireBytes)
 		if ext, ok := m[id]; ok {
-			// Existing data; rip off the tag and length varint
-			// so we join the new data correctly.
-			// We can assume that ext.enc is set because we are unmarshaling.
-			o := ext.enc[len(b):]   // skip wire type and field number
-			_, n := DecodeVarint(o) // calculate length of length varint
-			o = o[n:]               // skip length varint
-			msg = append(o, msg...) // join old data and new data
+			var old []byte
+			if ext.value != nil {
+				// GetExtension discards enc, and SetExtension starts decoded.
+				// Materialize that message before concatenating incoming fields.
+				value, ok := ext.value.(Message)
+				if !ok {
+					return errors.New("proto: invalid decoded MessageSet extension")
+				}
+				old, err = Marshal(value)
+				if err != nil {
+					return err
+				}
+			} else {
+				end, header, _, err := editionField(ext.enc)
+				if err != nil {
+					return err
+				}
+				key, _ := DecodeVarint(ext.enc)
+				if key != uint64(id)<<3|WireBytes || end != len(ext.enc) {
+					return errors.New("proto: invalid encoded MessageSet extension")
+				}
+				_, length := DecodeVarint(ext.enc[header:])
+				old = ext.enc[header+length:]
+			}
+			joined := make([]byte, 0, len(old)+len(msg))
+			joined = append(joined, old...)
+			msg = append(joined, msg...)
 		}
 		b = append(b, EncodeVarint(uint64(len(msg)))...)
 		b = append(b, msg...)
@@ -178,4 +203,37 @@ func unmarshalMessageSet(buf []byte, exts interface{}) error {
 		m[id] = Extension{enc: b}
 	}
 	return nil
+}
+
+// A writer unaware of message_set_wire_format may emit ordinary length-delimited
+// extension fields. Rewrite those to items before parsing, in place in the field
+// sequence, so mixed encodings preserve merge order. Pure group input is reused.
+func normalizeMessageSetInput(buf []byte) ([]byte, error) {
+	var normalized []byte
+	for offset := 0; offset < len(buf); {
+		field := buf[offset:]
+		end, header, _, err := editionField(field)
+		if err != nil {
+			return nil, err
+		}
+		key, _ := DecodeVarint(field)
+		if key&7 == WireBytes {
+			if normalized == nil {
+				normalized = make([]byte, 0, len(buf))
+				normalized = append(normalized, buf[:offset]...)
+			}
+			normalized = append(normalized, 11, 16) // item group, type_id
+			normalized = append(normalized, EncodeVarint(key>>3)...)
+			normalized = append(normalized, 26) // message, with original length/body
+			normalized = append(normalized, field[header:end]...)
+			normalized = append(normalized, 12) // end item
+		} else if normalized != nil {
+			normalized = append(normalized, field[:end]...)
+		}
+		offset += end
+	}
+	if normalized == nil {
+		return buf, nil
+	}
+	return normalized, nil
 }
