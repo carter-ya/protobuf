@@ -18,9 +18,10 @@ type editionEnum struct {
 	first  string
 }
 type editionMetadata struct {
-	fields     map[*d.FieldDescriptorProto]fieldmeta.Features
-	enums      map[string]editionEnum
-	legacyJSON map[*d.EnumDescriptorProto]bool
+	fields       map[*d.FieldDescriptorProto]fieldmeta.Features
+	enums        map[string]editionEnum
+	legacyJSON   map[*d.EnumDescriptorProto]bool
+	enumPrefixes map[*d.EnumValueDescriptorProto]int32
 }
 
 // Collect enums from their definition scopes, including imported proto2 enums.
@@ -110,8 +111,12 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 	if err := checkOptions(file.Options, file.GetOptions().GetFeatures(), file.GetName()); err != nil {
 		return nil, nil, err
 	}
-	out := &editionMetadata{fields: state.Fields, enums: enums, legacyJSON: make(map[*d.EnumDescriptorProto]bool)}
+	out := &editionMetadata{fields: state.Fields, enums: enums, legacyJSON: make(map[*d.EnumDescriptorProto]bool), enumPrefixes: make(map[*d.EnumValueDescriptorProto]int32)}
 	fileLegacyJSON, err := enumLegacyJSON(file.GetOptions().GetFeatures(), false)
+	if err != nil {
+		return nil, nil, err
+	}
+	fileEnumPrefix, err := enumPrefixFeature(file.GetOptions().GetFeatures(), 1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -153,10 +158,22 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 			return err
 		}
 		out.legacyJSON[e] = value
+		enumPrefix, err := enumPrefixFeature(e.GetOptions().GetFeatures(), fileEnumPrefix)
+		if err != nil {
+			return err
+		}
 		for _, v := range e.Value {
 			if err := checkOptions(v.Options, v.GetOptions().GetFeatures(), scope+"."+v.GetName()); err != nil {
 				return err
 			}
+			mode, err := enumPrefixFeature(v.GetOptions().GetFeatures(), enumPrefix)
+			if err != nil {
+				return err
+			}
+			if mode > 1 && (gogoproto.IsEnumCustomName(e) || gogoproto.IsEnumValueCustomName(v)) {
+				return fmt.Errorf("%s: %s.%s: enum prefix stripping conflicts with a custom Go enum name", file.GetName(), scope, v.GetName())
+			}
+			out.enumPrefixes[v] = mode
 		}
 		return nil
 	}

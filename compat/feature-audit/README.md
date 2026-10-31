@@ -42,7 +42,10 @@ The [legacy enum JSON API](../go-enum-json/README.md) now implements its officia
 false default and file/enum overrides, with independent official-generator
 method and behavior checks. The remaining Go generation gaps are:
 
-* Non-OPEN `api_level`, non-KEEP `strip_enum_prefix` and `optimize_mode` are
+The [enum prefix API](../go-enum-prefix/README.md) implements KEEP, STRIP and
+GENERATE_BOTH with file/enum/entry inheritance and migration aliases.
+
+* Non-OPEN `api_level` and `optimize_mode` are
   diagnosed rather than implemented.
   Their individual fields/values remain in the inventory as gaps. Core Editions
   support is not equivalent to support for all official Go generator APIs.

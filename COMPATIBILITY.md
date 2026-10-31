@@ -47,8 +47,9 @@ The ordinary enum name maps and `String` methods retain proto names.
   Custom field representations, unsafe codecs and other unverified extensions
   remain rejected. See `compat/README.md` for the exercised combinations.
 - Gogo preserves its Open Struct API in every edition. Explicit API_OPEN and
-  keeping enum prefixes are accepted. HYBRID/OPAQUE, prefix stripping and other
-  unimplemented explicit Go feature requests are rejected.
+  keeping enum prefixes are accepted. KEEP/STRIP/GENERATE_BOTH naming is
+  qualified separately. HYBRID/OPAQUE and other unimplemented explicit Go
+  feature requests are rejected.
 - Unvalidated auxiliary plugins do not inherit Editions support.
 - Unsupported/future editions fail instead of using the latest known defaults.
 
@@ -218,3 +219,9 @@ relies on the deprecated `UnmarshalJSON` method. Frozen bindings and legacy
 proto2/proto3 generation keep their existing method policy. A local Go 1.15
 `gofeatures` binding handles ordinary Edition 2023 feature imports without a V2
 runtime dependency. See [the generated API contract](compat/go-enum-json/README.md).
+
+Go enum prefix settings now support file/enum/entry overrides, stripped names
+and dual-name migration aliases across all five backends. Defaults/getters and
+cross-file/public imports use the resolved Go constants; raw proto names and
+binary/JSON encodings are unchanged. Ambiguous custom Go names and collisions
+are diagnosed. See [prefix compatibility](compat/go-enum-prefix/README.md).

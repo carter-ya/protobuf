@@ -151,6 +151,7 @@ jobs:
       - run: sh compat/check-required-merge.sh
       - run: sh compat/check-legacy-enums.sh
       - run: sh compat/check-go-enum-json.sh
+      - run: sh compat/check-go-enum-prefix.sh
       - run: sh compat/check-editions-plugins.sh
       - run: sh compat/check-editions-fast.sh
       - run: sh compat/check-editions.sh
@@ -277,3 +278,4 @@ jobs:
         run: |
           (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go)
           python3 compat/go-enum-json/prepare.py "$RUNNER_TEMP/official-enum-json" --official-generator "$RUNNER_TEMP/protoc-gen-go"
+          python3 compat/go-enum-prefix/prepare.py "$RUNNER_TEMP/official-enum-prefix" --official-generator "$RUNNER_TEMP/protoc-gen-go"

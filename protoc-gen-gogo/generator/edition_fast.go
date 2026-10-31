@@ -44,7 +44,10 @@ func (g *Generator) validateEditionFastDependencies(file *FileDescriptor) {
 		for _, field := range message.Field {
 			target := field
 			if g.IsMap(field) {
-				target = g.GoMapType(nil, field).ValueAliasField
+				// Dependency validation needs descriptor metadata only. GoMapType
+				// also records imports before per-file emission state exists.
+				entry := g.ObjectNamed(field.GetTypeName()).(*Descriptor)
+				target = g.GetMapValueField(field, entry.Field[1])
 			}
 			if !target.IsMessage() && target.GetType() != d.FieldDescriptorProto_TYPE_GROUP {
 				continue

@@ -163,10 +163,11 @@
     {
       "name": "strip_enum_prefix",
       "number": 3,
-      "status": "gap",
+      "status": "implemented",
       "owner": "Go enum names",
       "evidence": [
-        "protoc-gen-gogo/generator/go_features.go"
+        "compat/check-go-enum-prefix.sh",
+        "compat/go-enum-prefix/README.md"
       ],
       "values": {
         "STRIP_ENUM_PREFIX_UNSPECIFIED": 0,

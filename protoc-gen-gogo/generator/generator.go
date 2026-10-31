@@ -1233,6 +1233,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 	oneofMerge := g.validateOneofMessageMerging(file)
 	requiredMerge := g.validateRequiredMerging(file)
 	g.validateClosedEnumPolicy(file)
+	g.validateEnumNames(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
@@ -1555,7 +1556,6 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 	typeName := enum.alias()
 	// The full type name, CamelCased.
 	ccTypeName := CamelCaseSlice(typeName)
-	ccPrefix := enum.prefix()
 
 	deprecatedEnum := ""
 	if enum.GetOptions().GetDeprecated() {
@@ -1563,10 +1563,6 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 	}
 
 	g.PrintComments(enum.path)
-	if !gogoproto.EnabledGoEnumPrefix(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
-		ccPrefix = ""
-	}
-
 	if gogoproto.HasEnumDecl(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
 		g.P("type ", Annotate(enum.file, enum.path, ccTypeName), " int32", deprecatedEnum)
 		g.file.addExport(enum, enumSymbol{ccTypeName, enum.proto3()})
@@ -1580,14 +1576,13 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 			if e.GetOptions().GetDeprecated() {
 				deprecatedValue = deprecationComment
 			}
-			name := *e.Name
-			if gogoproto.IsEnumValueCustomName(e) {
-				name = gogoproto.GetEnumValueCustomName(e)
-			}
-			name = ccPrefix + name
-
+			name, alias := enum.valueNames(e)
 			g.P(Annotate(enum.file, etorPath, name), " ", ccTypeName, " = ", e.Number, " ", deprecatedValue)
 			g.file.addExport(enum, constOrVarSymbol{name, "const", ccTypeName})
+			if alias != "" {
+				g.P(alias, " ", ccTypeName, " = ", name)
+				g.file.addExport(enum, constOrVarSymbol{alias, "const", ccTypeName})
+			}
 		}
 		g.Out()
 		g.P(")")
@@ -2240,15 +2235,8 @@ func (g *Generator) getterDefault(field *descriptor.FieldDescriptorProto, goMess
 		if len(enum.Value) == 0 {
 			return "0 // empty enum"
 		} else {
-			first := enum.Value[0].GetName()
-			if gogoproto.IsEnumValueCustomName(enum.Value[0]) {
-				first = gogoproto.GetEnumValueCustomName(enum.Value[0])
-			}
-			if gogoproto.EnabledGoEnumPrefix(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
-				return g.DefaultPackageName(obj) + enum.prefix() + first
-			} else {
-				return g.DefaultPackageName(obj) + first
-			}
+			first, _ := enum.valueNames(enum.Value[0])
+			return g.DefaultPackageName(obj) + first
 		}
 	default:
 		return "0"
@@ -2530,19 +2518,11 @@ func (g *Generator) generateDefaultConstants(mc *msgCtx, topLevelFields []topLev
 				}
 			}
 
-			if enumValue != nil {
-				if gogoproto.IsEnumValueCustomName(enumValue) {
-					def = gogoproto.GetEnumValueCustomName(enumValue)
-				}
-			} else {
+			if enumValue == nil {
 				g.Fail(fmt.Sprintf("could not resolve default enum value for %v.%v", g.DefaultPackageName(obj), def))
 			}
-
-			if gogoproto.EnabledGoEnumPrefix(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
-				def = g.DefaultPackageName(obj) + enum.prefix() + def
-			} else {
-				def = g.DefaultPackageName(obj) + def
-			}
+			name, _ := enum.valueNames(enumValue)
+			def = g.DefaultPackageName(obj) + name
 		}
 		g.P(kind, fieldname, " ", typename, " = ", def)
 		g.file.addExport(mc.message, constOrVarSymbol{fieldname, kind, ""})

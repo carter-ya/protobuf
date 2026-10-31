@@ -113,10 +113,12 @@ def main():
         run('build-official-generator', ['go', 'build', '-mod=mod', '-o', output / 'protoc-gen-go', 'google.golang.org/protobuf/cmd/protoc-gen-go'], audit)
         run('official-enum-json', ['python3', ROOT / 'compat/go-enum-json/prepare.py', output / 'official-enum-json',
             '--official-generator', output / 'protoc-gen-go', '--official-module', GO_RELEASE])
+        run('official-enum-prefix', ['python3', ROOT / 'compat/go-enum-prefix/prepare.py', output / 'official-enum-prefix',
+            '--official-generator', output / 'protoc-gen-go', '--official-module', GO_RELEASE])
         report['schema_audit'] = json.loads((output / 'schema-audit.json').read_text())
         report['schema_audit']['raw_sha256'] = {name: hashlib.sha256((output / (name + '.pb')).read_bytes()).hexdigest() for name in ['stable', 'preview']}
         record()
-        for name in ['check.sh', 'check-entrypoints.sh', 'check-optional-mappings.sh', 'check-oneof-merge.sh', 'check-compare-floats.sh', 'check-required.sh', 'check-required-merge.sh', 'check-legacy-enums.sh', 'check-go-enum-json.sh', 'check-feature-inventory.sh']:
+        for name in ['check.sh', 'check-entrypoints.sh', 'check-optional-mappings.sh', 'check-oneof-merge.sh', 'check-compare-floats.sh', 'check-required.sh', 'check-required-merge.sh', 'check-legacy-enums.sh', 'check-go-enum-json.sh', 'check-go-enum-prefix.sh', 'check-feature-inventory.sh']:
             run(name.removesuffix('.sh'), ['sh', ROOT / 'compat' / name])
         run('editions-all-backends', ['python3', ROOT / 'compat/fast/prepare.py', output / 'editions'])
 

@@ -22,6 +22,7 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Proto3 optional | Scalar/enum/message/bytes presence, synthetic oneofs, supported cast/custom/std rows | [Representation contract](optional/README.md) and five-backend default/purego tests |
 | Editions | 2023, 2024 and 2026; gogo Open Struct API | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
 | Core Editions semantics | Presence, LEGACY_REQUIRED, UTF8 VERIFY/NONE, packed/expanded, open/closed enums, maps, oneofs, DELIMITED, extensions and option retention | `check-editions.sh`, `check-editions-fast.sh`, required-boundary and binary checks |
+| Go enum prefixes | KEEP/STRIP/GENERATE_BOTH, inherited and per-entry settings; imported defaults and aliases | [Five-backend naming/interop matrix](go-enum-prefix/README.md) |
 | Go enum JSON API | `legacy_unmarshal_json_enum` inheritance/overrides; native gogo feature metadata | [Five-backend method/behavior matrix](go-enum-json/README.md) |
 | Edition 2026 JSON | Custom enum names, aliases and empty strings | Pinned 36.2 descriptors, independent Go development oracle and Go 1.37 preview oracle |
 | Native message extensions | Original occurrence boundaries, singular merges, required completeness after outer merges, decoded caches, map and byte storage | Runtime/direct-codec regressions; all five binary backends, both storage forms |
@@ -170,7 +171,7 @@ previous Editions output; frozen bindings and legacy proto2/proto3 methods retai
 their original behavior. Local `gofeatures` metadata avoids a V2 dependency for
 ordinary feature imports in Edition 2023.
 
-Explicit Go HYBRID/OPAQUE API requests, enum-prefix stripping and unsupported Go
+Explicit Go HYBRID/OPAQUE API requests and unsupported Go
 features produce diagnostics. This backend preserves its Open Struct API. The
 C02 conversion experiment rejects MessageSet, unknown closed-enum reflection
 mismatches, lossy mappings and incomplete descriptor metadata; it is not a

@@ -1,0 +1,41 @@
+edition = "2024";
+package qualification.prefix;
+import option "google/protobuf/go_features.proto";
+option go_package = "example.com/enum-prefix/pb";
+option features.(pb.go).api_level = API_OPEN;
+option features.enforce_naming_style = STYLE_LEGACY;
+option features.enum_type = CLOSED;
+// FILE_PREFIX
+
+enum Color {
+  option allow_alias = true;
+  COLOR_UNSPECIFIED = 0;
+  COLOR_RED = 1;
+  COLOR_RED_ALIAS = 1;
+  COLOR_GREEN = 2 [features.(pb.go).strip_enum_prefix = STRIP_ENUM_PREFIX_KEEP];
+  COLOR_BLUE = 3 [features.(pb.go).strip_enum_prefix = STRIP_ENUM_PREFIX_STRIP];
+  COLOR_PURPLE = 4
+      [features.(pb.go).strip_enum_prefix = STRIP_ENUM_PREFIX_GENERATE_BOTH];
+  COLOR_YELLOW = 5
+      [features.(pb.go).strip_enum_prefix = STRIP_ENUM_PREFIX_UNSPECIFIED];
+}
+enum Kept {
+  option features.(pb.go).strip_enum_prefix = STRIP_ENUM_PREFIX_KEEP;
+  KEPT_DEFAULT = 0;
+  KEPT_VALUE = 1;
+}
+enum MixedCase {
+  M_i_X_E_D_C_A_S_E_ZERO = 0;
+  M_i_X_E_D_C_A_S_E_ONE = 1;
+  MIXEDCASE = 2;
+  OTHER = 3;
+}
+message Container {
+  enum Direction {
+    DIRECTION_ORIGIN = 5;
+    DIRECTION_UP = 6;
+  }
+  Color color = 1 [default = COLOR_RED];
+  Direction direction = 2;
+  map<string, Color> colors = 3;
+}
