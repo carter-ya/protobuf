@@ -91,3 +91,12 @@ registered after a type's first use. Wrong-wire checked strings remain unknown
 fields. UTF8_NONE and historical extension tags retain their prior behavior.
 The corresponding Editions failure is removed from both inventories; standard
 binary/JSON now has 7 failures (text still has 223).
+
+Standard-mode text requests now use `textpb/standard`; legacy-mode text keeps
+`proto`'s original entrypoints. Standard float grammar/range/negative-zero,
+closed-enum, UTF-8 and unknown-field handling removes 125 text failures (98 remain). The
+legacy text baseline remains at 223; binary/JSON remains at 7 standard failures.
+
+The standard text Unicode-escape follow-up rejects surrogate code points before
+Go rune conversion, removing 32 more failures and leaving 66 standard text cases.
+Legacy parsing retains its historical replacement behavior.
