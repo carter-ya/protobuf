@@ -419,3 +419,38 @@ func TestMappedTextInteroperability(t *testing.T) {
 		}
 	}
 }
+
+func TestOptionalFloatWrapperOrdering(t *testing.T) {
+	values := []float64{math.NaN(), math.Inf(-1), -5, math.Copysign(0, -1), 0, 5, math.Inf(1)}
+	for _, field := range []int{3, 4} {
+		message := func(value float64) *pb.Sample {
+			m := new(pb.Sample)
+			v := reflect.ValueOf(m).Elem().Field(field)
+			v.Set(reflect.New(v.Type().Elem()))
+			v.Elem().SetFloat(value)
+			return m
+		}
+		for i, a := range values {
+			for j, b := range values {
+				left, right := message(a), message(b)
+				expected := 0
+				if i < j {
+					expected = -1
+				} else if i > j {
+					expected = 1
+				}
+				if a == b {
+					expected = 0
+				} // signed zeroes share an ordering class
+				if left.Compare(right) != expected || right.Compare(left) != -expected {
+					t.Fatalf("field %d: Compare(%v, %v)=%d, want %d", field+1, a, b, left.Compare(right), expected)
+				}
+			}
+		}
+	}
+	// Two NaNs tie for this field, so following fields must still participate.
+	nan, one, two := math.NaN(), float32(1), float32(2)
+	if (&pb.Sample{Value_4: &nan, Value_5: &one}).Compare(&pb.Sample{Value_4: &nan, Value_5: &two}) != -1 {
+		t.Fatal("NaN tie prevented comparison of subsequent fields")
+	}
+}

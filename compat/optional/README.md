@@ -104,3 +104,8 @@ shape (`field { value: ... }`), including an empty body and a colon-free string
 or bytes wrapper. Compact and expanded text interoperate in both directions with
 protoc; flattened scalar input is rejected for these mapped message fields.
 Historical non-optional mapping text and generated equality remain unchanged.
+
+Optional FloatValue/DoubleValue Compare orders NaNs before numbers, with all
+NaNs in the same ordering class; signed zeroes also share an ordering class.
+A tied field still permits comparison of subsequent fields. Equal retains its
+historical IEEE equality semantics, under which NaN is not equal to itself.
