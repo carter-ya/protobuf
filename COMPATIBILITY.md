@@ -172,3 +172,9 @@ retains historical replacement behavior. Custom/cast/standard representations
 are rejected for this policy; imported bindings keep their own decoding policy.
 The standard conformance profile uses a separately generated binary with this
 parameter. See `compat/oneof-merge/README.md` for the qualified scope.
+
+Native scalar oneof wrappers retain their value layout under proto2 fast
+entrypoints and explicit `nullable=true`. Codec and auxiliary generators use
+normalized cloned metadata; input descriptors and ordinary nullable fields retain
+their declaration policy. The five-backend gate covers selected zero, direct
+encoding, Clone/Equal/VerboseEqual/Compare/Populate and String/GoString.

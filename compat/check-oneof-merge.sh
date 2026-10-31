@@ -5,6 +5,8 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 python3 "$repo/compat/oneof-merge/prepare.py" "$tmp/consumers"
 python3 "$repo/compat/oneof-merge/negative.py" "$tmp/consumers"
+python3 "$repo/compat/oneof-merge/prepare.py" "$tmp/scalars" --scalar-members auto
+python3 "$repo/compat/oneof-merge/prepare.py" "$tmp/scalars-nullable" --scalar-members nullable
 mkdir -p "$tmp/old"
 introduction=$(git -C "$repo" log --reverse --format=%H -S GoGoProtoPackageIsVersion12 HEAD -- proto/lib.go | sed -n '1p')
 revision=HEAD

@@ -19,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', type=pathlib.Path)
     parser.add_argument('--backend', action='append')
+    parser.add_argument('--scalar-members', choices=['auto', 'nullable'])
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True)
@@ -30,7 +31,15 @@ def main():
                 dest = output / (syntax + '-' + mode + '-' + backend)
                 print(dest.name, flush=True)
                 (dest / 'pb').mkdir(parents=True)
-                (dest / 'sample.proto').write_text(SCHEMA.replace('SYNTAX', syntax).replace('LABEL', 'optional' if syntax == 'proto2' else ''))
+                schema = SCHEMA.replace('SYNTAX', syntax).replace('LABEL', 'optional' if syntax == 'proto2' else '')
+                if args.scalar_members:
+                    schema = schema.replace('package oneofmerge;', 'import "gogoproto/gogo.proto";\npackage oneofmerge;')
+                    schema += '\noption (gogoproto.equal_all) = true;\noption (gogoproto.verbose_equal_all) = true;\noption (gogoproto.compare_all) = true;\noption (gogoproto.populate_all) = true;\noption (gogoproto.gostring_all) = true;\n'
+                    scalar = 'int32 number = 2;'
+                    if args.scalar_members == 'nullable':
+                        scalar = 'int32 number = 2 [(gogoproto.nullable) = true];'
+                    schema = schema.replace('Child replacement = 2;', scalar)
+                (dest / 'sample.proto').write_text(schema)
                 parameters = 'paths=source_relative,merge_oneof_messages=' + ('true' if mode == 'standard' else 'false')
                 subprocess.run(['protoc', '-I' + str(dest), '-I' + str(ROOT), '-I' + str(ROOT / 'protobuf'), '--plugin=protoc-gen-test=' + str(driver),
                                 '--test_out=' + parameters + ':' + str(dest / 'pb'), 'sample.proto'], check=True)
@@ -42,6 +51,10 @@ def main():
                 (dest / 'go.mod').write_text('module example.com/oneof-merge\ngo 1.15\nrequire github.com/gogo/protobuf v1.3.2\nreplace github.com/gogo/protobuf => ' + str(ROOT) + '\n')
                 shutil.copyfile(ROOT / 'go.sum', dest / 'go.sum')
                 test = (ROOT / 'compat/oneof-merge/consumer_test.go.txt').read_text()
+                if args.scalar_members:
+                    test = test.replace('import (', 'import (\n"math/rand"')
+                    test = test.replace('10, 2, 8, 1, 18, 0, 10, 2, 16, 2', '10, 2, 8, 1, 16, 0, 10, 2, 16, 2')
+                    test += (ROOT / 'compat/oneof-merge/scalar_test.go.txt').read_text()
                 (dest / 'consumer_test.go').write_text(test.replace('MERGE', 'true' if mode == 'standard' else 'false').replace('FAST', 'false' if backend == 'gogo' else 'true'))
                 subprocess.run(['go', 'test', './...'], cwd=dest, check=True)
                 subprocess.run(['go', 'test', '-tags=purego', './...'], cwd=dest, check=True)

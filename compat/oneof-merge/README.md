@@ -22,3 +22,9 @@ families run this gate in CI; a pre-Version12 runtime must reject opted-in code.
 The official conformance profiles use separately generated binaries: legacy code
 uses historical oneof semantics and the standard binary uses this parameter.
 This prevents a standard-profile improvement from changing the legacy inventory.
+
+The scalar-member qualification also covers proto2/proto3 oneofs with automatic
+nullability and explicit `nullable=true`. Fast entrypoints retain wrapper-value
+layout, and cloned field metadata is normalized for marshal/size, Equal/Compare
+and Populate generation. Selected zero retains oneof presence. Auxiliary Clone,
+VerboseEqual, ordering, Populate, String and GoString checks run in both modes.

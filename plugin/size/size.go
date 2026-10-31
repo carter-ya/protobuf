@@ -705,6 +705,7 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 			p.P(`_ = l`)
 			if !file.IsEditions() || f.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
 				vanity.TurnOffNullableForNativeTypes(f)
+				vanity.TurnOffNullableForNativeOneof(f)
 			}
 			p.generateField(false, file, message, f, sizeName)
 			p.P(`return n`)
