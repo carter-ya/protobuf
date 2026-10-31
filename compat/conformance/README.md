@@ -84,3 +84,10 @@ collection elements and map entries rather than inventing zero/presence; ignored
 oneof enum names do not conflict with a real selection. Its explicit 100-container
 JSON limit rejects the recommended deep-WKT cases. Twenty-six standard-only
 binary/JSON failures are removed (8 remain); legacy JSON results are unchanged.
+
+Registered string extensions carrying UTF-8-checking metadata are validated
+when the enclosing message is parsed, including repeated strings and extensions
+registered after a type's first use. Wrong-wire checked strings remain unknown
+fields. UTF8_NONE and historical extension tags retain their prior behavior.
+The corresponding Editions failure is removed from both inventories; standard
+binary/JSON now has 7 failures (text still has 223).

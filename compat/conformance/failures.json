@@ -6,11 +6,6 @@
     "inventory_sha256": "49a5e8ae087e2c8a0df0f59add56e73b3c5f023b8dfb538f21cc5842980e0ed0",
     "failures": [
       {
-        "test": "Recommended.Editions.ProtobufInput.RejectInvalidUtf8.String.Extension",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Recommended.Editions_Proto2.JsonInput.FieldNameDuplicate",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"

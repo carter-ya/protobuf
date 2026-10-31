@@ -234,6 +234,18 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		// Registered Editions closed-enum extensions need the same unknown-value
 		// routing as ordinary fields before the bytes enter the extension store.
 		invalidExtension := false
+		// String extension payloads are otherwise decoded lazily. Consult
+		// the live registry so registration after table initialization also
+		// honors explicit UTF-8 policy, while legacy tags keep their rules.
+		if len(u.extensionRanges) != 0 {
+			if ext := extensionMaps[u.typ][int32(tag)]; checkedStringExtensionType(ext) {
+				if wire != WireBytes {
+					invalidExtension = true
+				} else if err := validateStringExtension(b, ext.Name); err != nil {
+					return err
+				}
+			}
+		}
 		if c := u.closedExtensions[tag]; c != nil {
 			filtered, unknown, err := c.filter(b, wire, tag)
 			if err == errInternalBadWireType {
@@ -328,6 +340,30 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		}
 	}
 	return errLater
+}
+
+func checkedStringExtensionType(ext *ExtensionDesc) bool {
+	if ext == nil || !strings.Contains(ext.Tag, ",proto3") {
+		return false
+	}
+	t := reflect.TypeOf(ext.ExtensionType)
+	if t == nil || (t.Kind() != reflect.Ptr && t.Kind() != reflect.Slice) || t.Elem().Kind() != reflect.String {
+		return false
+	}
+	var policy Properties
+	policy.Parse(ext.Tag)
+	return policy.proto3 && !policy.UTF8None
+}
+
+func validateStringExtension(data []byte, name string) error {
+	length, n := decodeVarint(data)
+	if n == 0 || length > uint64(len(data)-n) {
+		return io.ErrUnexpectedEOF
+	}
+	if !utf8.Valid(data[n : n+int(length)]) {
+		return &invalidUTF8Error{name}
+	}
+	return nil
 }
 
 // computeUnmarshalInfo fills in u with information for use
