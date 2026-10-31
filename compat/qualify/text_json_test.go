@@ -3,6 +3,7 @@ package qualify
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -164,6 +165,13 @@ func FuzzJSON(f *testing.F) {
 		sdkErr := jsonstandard.UnmarshalString(input, got)
 		want := dynamicpb.NewMessage(messageDescriptor)
 		officialErr := (protojson.UnmarshalOptions{RecursionLimit: 100}).Unmarshal([]byte(input), want)
+		// The reference parser accepts some malformed numbers (e.g. 0e).
+		// RFC 8259 syntax remains mandatory for both sides: never teach the
+		// SDK to accept an oracle's lexical bug. Valid JSON still takes the
+		// unchanged schema/semantic differential path.
+		if officialErr == nil && !json.Valid([]byte(input)) {
+			officialErr = fmt.Errorf("official parser accepted invalid JSON syntax")
+		}
 		if (sdkErr == nil) != (officialErr == nil) {
 			t.Fatalf("JSON acceptance differs for %q: SDK %v / official %v", input, sdkErr, officialErr)
 		}
@@ -283,6 +291,29 @@ func TestOracleGrammarExceptions(t *testing.T) {
 	for _, input := range []string{`text:'f:00'`, `data:"f:00"`, "# f:00\nf:1", `f:0`, `f:0.1`, `f:1e00`, `flag:0`, `text:"flag:1f"`} {
 		if oracleGrammarViolation(input) {
 			t.Fatalf("misidentified %q", input)
+		}
+	}
+}
+
+func TestJSONIncompleteExponentGrammar(t *testing.T) {
+	for _, literal := range []string{"0e", "0E", "1e", "1e+", "1e-", "-1E+"} {
+		for _, field := range []string{"i", "u", "f"} {
+			input := fmt.Sprintf(`{"%s":%s}`, field, literal)
+			if json.Valid([]byte(input)) {
+				t.Fatal("invalid regression fixture", input)
+			}
+			if err := jsonstandard.UnmarshalString(input, new(node)); err == nil {
+				t.Fatal("SDK accepted incomplete JSON exponent", input)
+			}
+		}
+	}
+	for input, want := range map[string]int32{`{"i":0e0}`: 0, `{"i":1e2}`: 100, `{"i":-1e+1}`: -10, `{"i":1E-0}`: 1} {
+		got := new(node)
+		if !json.Valid([]byte(input)) {
+			t.Fatal("valid regression fixture rejected", input)
+		}
+		if err := jsonstandard.UnmarshalString(input, got); err != nil || got.I != want {
+			t.Fatal("valid exponent rejected", input, err)
 		}
 	}
 }
