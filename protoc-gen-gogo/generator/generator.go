@@ -1249,6 +1249,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		if fileNeedsOptionalMapping(file.FileDescriptorProto) {
 			codeVersion = 10
 		}
+		if fileNeedsOptionalCustomOrStd(file.FileDescriptorProto) {
+			codeVersion = 11
+		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
 		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")

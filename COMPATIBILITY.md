@@ -32,10 +32,13 @@ The ordinary enum name maps and `String` methods retain proto names.
 
 ## Deliberate generation errors
 
-- Optional requires the gogo runtime. `nullable=false` and unsupported custom,
-  message cast, embedded, standard-type, face and union combinations are rejected.
+- Optional requires the gogo runtime. `nullable=false`, non-bytes customtype,
+  message cast, embedded, face and union combinations are rejected.
   Scalar/enum/bytes casttype mappings with matching underlying Go types are
   supported by all five optional backends and require runtime Version10.
+  Custom bytes and standard WKT mappings require runtime Version11; mapped
+  values retain representation-specific range and metadata limits. Explicit
+  unsafe codecs and conflicting mappings are rejected.
   See `compat/optional/README.md` for the exact presence contract.
 - Editions currently use reflection output. Fast generators and gogo custom
   extensions are rejected until their feature combinations are validated.

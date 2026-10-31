@@ -34,11 +34,12 @@ func TestOptionalRepresentationContract(t *testing.T) {
 		{"value", gogoproto.E_Nullable, proto.Bool(false), "field", "nullable=false"},
 		{"cast", gogoproto.E_Casttype, proto.String("Value"), "field", ""},
 		{"cast-message", gogoproto.E_Casttype, proto.String("Message"), "field", "extension combination"},
-		{"custom", gogoproto.E_Customtype, proto.String("Value"), "field", "extension combination"},
+		{"custom", gogoproto.E_Customtype, proto.String("Value"), "field", ""},
+		{"custom-message", gogoproto.E_Customtype, proto.String("Value"), "field", "customtype requires a bytes field"},
 		{"embed", gogoproto.E_Embed, proto.Bool(true), "field", "extension combination"},
-		{"stdtime", gogoproto.E_Stdtime, proto.Bool(true), "field", "extension combination"},
-		{"stdduration", gogoproto.E_Stdduration, proto.Bool(true), "field", "extension combination"},
-		{"wktpointer", gogoproto.E_Wktpointer, proto.Bool(true), "field", "extension combination"},
+		{"stdtime", gogoproto.E_Stdtime, proto.Bool(true), "field", ""},
+		{"stdduration", gogoproto.E_Stdduration, proto.Bool(true), "field", ""},
+		{"wktpointer", gogoproto.E_Wktpointer, proto.Bool(true), "field", ""},
 		{"face", gogoproto.E_Face, proto.Bool(true), "message", "extension combination"},
 		{"face-all", gogoproto.E_FaceAll, proto.Bool(true), "file", "extension combination"},
 		{"union", gogoproto.E_Onlyone, proto.Bool(true), "message", "extension combination"},
@@ -51,6 +52,19 @@ func TestOptionalRepresentationContract(t *testing.T) {
 			if tc.name == "wktpointer" || tc.name == "cast-message" {
 				field.Type = d.FieldDescriptorProto_TYPE_MESSAGE.Enum()
 				field.TypeName = proto.String(".google.protobuf.Int32Value")
+			}
+			switch tc.name {
+			case "custom":
+				field.Type = d.FieldDescriptorProto_TYPE_BYTES.Enum()
+			case "custom-message":
+				field.Type = d.FieldDescriptorProto_TYPE_MESSAGE.Enum()
+				field.TypeName = proto.String(".Sample")
+			case "stdtime":
+				field.Type = d.FieldDescriptorProto_TYPE_MESSAGE.Enum()
+				field.TypeName = proto.String(".google.protobuf.Timestamp")
+			case "stdduration":
+				field.Type = d.FieldDescriptorProto_TYPE_MESSAGE.Enum()
+				field.TypeName = proto.String(".google.protobuf.Duration")
 			}
 			if tc.extension != nil {
 				var options proto.Message
@@ -130,5 +144,56 @@ func TestOptionalDescriptorContract(t *testing.T) {
 	file.Syntax = proto.String("proto2")
 	if err := validateOptional(file); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestOptionalInvalidMappings(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		kind     d.FieldDescriptorProto_Type
+		typeName string
+		options  map[*proto.ExtensionDesc]interface{}
+		reason   string
+	}{
+		{"stdtime-scalar", d.FieldDescriptorProto_TYPE_INT32, "", map[*proto.ExtensionDesc]interface{}{gogoproto.E_Stdtime: proto.Bool(true)}, "stdtime requires"},
+		{"duration-wrong-message", d.FieldDescriptorProto_TYPE_MESSAGE, ".google.protobuf.Timestamp", map[*proto.ExtensionDesc]interface{}{gogoproto.E_Stdduration: proto.Bool(true)}, "stdduration requires"},
+		{"wrapper-wrong-message", d.FieldDescriptorProto_TYPE_MESSAGE, ".google.protobuf.Timestamp", map[*proto.ExtensionDesc]interface{}{gogoproto.E_Wktpointer: proto.Bool(true)}, "wktpointer requires"},
+		{"custom-scalar", d.FieldDescriptorProto_TYPE_INT32, "", map[*proto.ExtensionDesc]interface{}{gogoproto.E_Customtype: proto.String("Value")}, "customtype requires a bytes field"},
+		{"custom-and-cast", d.FieldDescriptorProto_TYPE_BYTES, "", map[*proto.ExtensionDesc]interface{}{gogoproto.E_Customtype: proto.String("Value"), gogoproto.E_Casttype: proto.String("Value")}, "conflicting"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			file := optionalFile()
+			field := file.MessageType[0].NestedType[0].Field[0]
+			field.Type = tc.kind.Enum()
+			field.TypeName = proto.String(tc.typeName)
+			field.Options = new(d.FieldOptions)
+			for extension, value := range tc.options {
+				if err := proto.SetExtension(field.Options, extension, value); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := validateOptional(file); err == nil || !strings.Contains(err.Error(), tc.reason) || !strings.Contains(err.Error(), "Outer.Sample.value:") {
+				t.Fatalf("expected scoped %s, got %v", tc.reason, err)
+			}
+		})
+	}
+}
+
+func TestOptionalUnsafeMappingRejected(t *testing.T) {
+	for _, extension := range []*proto.ExtensionDesc{gogoproto.E_UnsafeMarshaler, gogoproto.E_UnsafeUnmarshaler} {
+		file := optionalFile()
+		message := file.MessageType[0].NestedType[0]
+		field := message.Field[0]
+		field.Options = new(d.FieldOptions)
+		message.Options = new(d.MessageOptions)
+		if err := proto.SetExtension(field.Options, gogoproto.E_Casttype, proto.String("Value")); err != nil {
+			t.Fatal(err)
+		}
+		if err := proto.SetExtension(message.Options, extension, proto.Bool(true)); err != nil {
+			t.Fatal(err)
+		}
+		if err := validateOptional(file); err == nil || !strings.Contains(err.Error(), "unsafe codecs") {
+			t.Fatalf("unsafe mapping accepted: %v", err)
+		}
 	}
 }

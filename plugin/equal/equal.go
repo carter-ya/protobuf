@@ -305,6 +305,12 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 		gogoproto.IsStdString(field))
 	isBytes := gogoproto.IsStdBytes(field)
 	isTimestamp := gogoproto.IsStdTime(field)
+	// Optional mappings must reject mismatched presence before calling a
+	// value receiver or dereferencing a mapped bytes pointer.
+	missing := ""
+	if field.GetProto3Optional() {
+		missing = "this." + fieldname + " == nil || "
+	}
 	// oneof := field.IsRealOneof()
 	if !repeated {
 		if ctype || isTimestamp {
@@ -321,7 +327,7 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				p.Out()
 				p.P(`}`)
 				p.Out()
-				p.P(`} else if !this.`, fieldname, `.Equal(*that1.`, fieldname, `) {`)
+				p.P(`} else if `, missing, `!this.`, fieldname, `.Equal(*that1.`, fieldname, `) {`)
 			} else {
 				p.P(`if !this.`, fieldname, `.Equal(that1.`, fieldname, `) {`)
 			}
@@ -361,7 +367,7 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				p.Out()
 				p.P(`}`)
 				p.Out()
-				p.P(`} else if !`, p.bytesPkg.Use(), `.Equal(*this.`, fieldname, `, *that1.`, fieldname, `) {`)
+				p.P(`} else if `, missing, `!`, p.bytesPkg.Use(), `.Equal(*this.`, fieldname, `, *that1.`, fieldname, `) {`)
 			} else {
 				p.P(`if !`, p.bytesPkg.Use(), `.Equal(this.`, fieldname, `, that1.`, fieldname, `) {`)
 			}

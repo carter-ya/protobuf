@@ -483,6 +483,35 @@ func (tm *TextMarshaler) writeAny(w *textWriter, v reflect.Value, props *Propert
 	v = reflect.Indirect(v)
 
 	if props != nil {
+		if props.Proto3Optional && props.WktPointer {
+			// The Go field is scalar, but its declared protobuf type is a
+			// wrapper message. Emit the value even at zero (including -0).
+			if err := w.WriteByte('<'); err != nil {
+				return err
+			}
+			if !w.compact {
+				if err := w.WriteByte('\n'); err != nil {
+					return err
+				}
+			}
+			w.indent()
+			if _, err := w.WriteString("value:"); err != nil {
+				return err
+			}
+			if !w.compact {
+				if err := w.WriteByte(' '); err != nil {
+					return err
+				}
+			}
+			if err := tm.writeAny(w, v, nil); err != nil {
+				return err
+			}
+			if err := w.WriteByte('\n'); err != nil {
+				return err
+			}
+			w.unindent()
+			return w.WriteByte('>')
+		}
 		if len(props.CustomType) > 0 {
 			custom, ok := v.Interface().(Marshaler)
 			if ok {

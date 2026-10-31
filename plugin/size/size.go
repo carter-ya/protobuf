@@ -204,6 +204,9 @@ func (p *size) std(field *descriptor.FieldDescriptorProto, name string) (string,
 	if gogoproto.IsNullable(field) {
 		ptr = "*"
 	}
+	if field.GetProto3Optional() && gogoproto.IsStdType(field) {
+		return p.NewImport("github.com/gogo/protobuf/proto").Use() + ".SizeOfOptionalStd(" + ptr + name + ")", true
+	}
 	if gogoproto.IsStdTime(field) {
 		return p.typesPkg.Use() + `.SizeOfStdTime(` + ptr + name + `)`, true
 	} else if gogoproto.IsStdDuration(field) {

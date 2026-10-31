@@ -598,6 +598,13 @@ func (m *jsonEncoder) marshalValue(out *errWriter, prop *proto.Properties, v ref
 		return fmt.Errorf("invalid UTF-8 string")
 	}
 
+	if prop != nil && prop.Proto3Optional && prop.WktPointer && v.Kind() == reflect.Slice && v.Len() == 0 {
+		// A present BytesValue with nil inner bytes is the empty string,
+		// not JSON null (which would erase the outer message presence).
+		out.write(`""`)
+		return out.err
+	}
+
 	// Handle repeated elements.
 	if v.Kind() == reflect.Slice && v.Type().Elem().Kind() != reflect.Uint8 {
 		out.write("[")

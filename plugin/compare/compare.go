@@ -40,6 +40,7 @@ type plugin struct {
 	*generator.Generator
 	generator.PluginImports
 	fmtPkg      generator.Single
+	mathPkg     generator.Single
 	bytesPkg    generator.Single
 	sortkeysPkg generator.Single
 	protoPkg    generator.Single
@@ -62,6 +63,7 @@ func (p *plugin) Init(g *generator.Generator) {
 func (p *plugin) Generate(file *generator.FileDescriptor) {
 	p.PluginImports = generator.NewPluginImports(p.Generator)
 	p.fmtPkg = p.NewImport("fmt")
+	p.mathPkg = p.NewImport("math")
 	p.bytesPkg = p.NewImport("bytes")
 	p.sortkeysPkg = p.NewImport("github.com/gogo/protobuf/sortkeys")
 	p.protoPkg = p.NewImport("github.com/gogo/protobuf/proto")
@@ -147,6 +149,33 @@ func (p *plugin) generateMsgNullAndTypeCheck(ccTypeName string) {
 func (p *plugin) generateField(file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto) {
 	proto3 := p.FieldProto3Value(file, field, gogoproto.IsProto3(file.FileDescriptorProto))
 	fieldname := p.GetOneOfFieldName(message, field)
+	if field.GetProto3Optional() && gogoproto.IsStdType(field) {
+		p.P("if this.", fieldname, " == nil && that1.", fieldname, " != nil { return -1 }")
+		p.P("if this.", fieldname, " != nil && that1.", fieldname, " == nil { return 1 }")
+		p.P("if this.", fieldname, " != nil && that1.", fieldname, " != nil {")
+		switch {
+		case gogoproto.IsStdTime(field):
+			p.P("if this.", fieldname, ".Before(*that1.", fieldname, ") { return -1 }")
+			p.P("if this.", fieldname, ".After(*that1.", fieldname, ") { return 1 }")
+		case gogoproto.IsStdBytes(field):
+			p.P("if c := ", p.bytesPkg.Use(), ".Compare(*this.", fieldname, ", *that1.", fieldname, "); c != 0 { return c }")
+		case gogoproto.IsStdDouble(field), gogoproto.IsStdFloat(field):
+			// NaNs sort before all numbers and tie with other NaNs. Testing
+			// only < and > would incorrectly tie a NaN with every number.
+			p.P("if a, b := ", p.mathPkg.Use(), ".IsNaN(float64(*this.", fieldname, ")), ", p.mathPkg.Use(), ".IsNaN(float64(*that1.", fieldname, ")); a != b {")
+			p.P("if a { return -1 }; return 1 }")
+			p.P("if *this.", fieldname, " < *that1.", fieldname, " { return -1 }")
+			p.P("if *this.", fieldname, " > *that1.", fieldname, " { return 1 }")
+		case gogoproto.IsStdBool(field):
+			p.P("if !*this.", fieldname, " && *that1.", fieldname, " { return -1 }")
+			p.P("if *this.", fieldname, " && !*that1.", fieldname, " { return 1 }")
+		default:
+			p.P("if *this.", fieldname, " < *that1.", fieldname, " { return -1 }")
+			p.P("if *this.", fieldname, " > *that1.", fieldname, " { return 1 }")
+		}
+		p.P("}")
+		return
+	}
 	repeated := field.IsRepeated()
 	ctype := gogoproto.IsCustomType(field)
 	nullable := gogoproto.IsNullable(field)

@@ -404,6 +404,11 @@ func (p *textParser) checkForColon(props *Properties, typ reflect.Type) *ParseEr
 		return tok.err
 	}
 	if tok.value != ":" {
+		if props.Proto3Optional && props.WktPointer {
+			// Mapped strings and bytes are still wrapper messages.
+			p.back()
+			return nil
+		}
 		// Colon is optional when the field is a group or message.
 		needColon := true
 		switch props.Wire {
@@ -741,6 +746,22 @@ func (p *textParser) consumeOptionalSeparator() error {
 }
 
 func (p *textParser) readAny(v reflect.Value, props *Properties) error {
+	if props.Proto3Optional && props.WktPointer {
+		// Parse the declared wrapper structure before assigning its scalar
+		// value. A fresh wrapper preserves presence even for an empty body.
+		message, err := optionalStdMessage(reflect.Zero(v.Type().Elem()).Interface())
+		if err != nil {
+			return err
+		}
+		wrapper := reflect.ValueOf(message).Elem()
+		propsCopy := *props
+		propsCopy.WktPointer = false
+		if err := p.readAny(wrapper, &propsCopy); err != nil {
+			return err
+		}
+		v.Set(wrapper.Field(0).Addr())
+		return nil
+	}
 	tok := p.next()
 	if tok.err != nil {
 		return tok.err

@@ -38,6 +38,7 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"time"
 )
 
 /*
@@ -147,6 +148,19 @@ func equalAny(v1, v2 reflect.Value, prop *Properties) bool {
 		m1, _ := v1.Interface().(Message)
 		m2, _ := v2.Interface().(Message)
 		return Equal(m1, m2)
+	}
+	if prop != nil && prop.Proto3Optional {
+		if prop.CustomType != "" {
+			b1, e1 := v1.Addr().Interface().(Marshaler).Marshal()
+			b2, e2 := v2.Addr().Interface().(Marshaler).Marshal()
+			return e1 == nil && e2 == nil && bytes.Equal(b1, b2)
+		}
+		if prop.StdTime {
+			return v1.Interface().(time.Time).Equal(v2.Interface().(time.Time))
+		}
+		if prop.WktPointer && v1.Kind() == reflect.Slice && v1.Len() == 0 && v2.Len() == 0 {
+			return true
+		}
 	}
 	switch v1.Kind() {
 	case reflect.Bool:

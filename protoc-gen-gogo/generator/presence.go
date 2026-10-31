@@ -42,7 +42,31 @@ func validateOptional(file *descriptor.FileDescriptorProto) error {
 				if !gogoproto.IsNullable(f) {
 					return fail("nullable=false cannot preserve proto3 optional presence")
 				}
-				if gogoproto.IsCustomType(f) || (gogoproto.IsCastType(f) && f.IsMessage()) || gogoproto.IsEmbed(f) || gogoproto.IsStdType(f) || gogoproto.IsFace(file, m) || gogoproto.IsUnion(file, m) {
+				if gogoproto.IsCustomType(f) && f.GetType() != descriptor.FieldDescriptorProto_TYPE_BYTES {
+					return fail("proto3 optional customtype requires a bytes field")
+				}
+				if gogoproto.IsStdTime(f) && (!f.IsMessage() || f.GetTypeName() != ".google.protobuf.Timestamp") {
+					return fail("proto3 optional stdtime requires google.protobuf.Timestamp")
+				}
+				if gogoproto.IsStdDuration(f) && (!f.IsMessage() || f.GetTypeName() != ".google.protobuf.Duration") {
+					return fail("proto3 optional stdduration requires google.protobuf.Duration")
+				}
+				if gogoproto.IsWktPtr(f) && (!f.IsMessage() || !gogoproto.IsStdType(f)) {
+					return fail("proto3 optional wktpointer requires a scalar wrapper message")
+				}
+				representations := 0
+				for _, enabled := range []bool{gogoproto.IsCustomType(f), gogoproto.IsCastType(f), gogoproto.IsStdTime(f), gogoproto.IsStdDuration(f), gogoproto.IsWktPtr(f)} {
+					if enabled {
+						representations++
+					}
+				}
+				if representations > 0 && (gogoproto.IsUnsafeMarshaler(file, m) || gogoproto.IsUnsafeUnmarshaler(file, m)) {
+					return fail("unsafe codecs are not validated for proto3 optional mappings")
+				}
+				if representations > 1 {
+					return fail("conflicting proto3 optional representations")
+				}
+				if (gogoproto.IsCastType(f) && f.IsMessage()) || gogoproto.IsEmbed(f) || gogoproto.IsFace(file, m) || gogoproto.IsUnion(file, m) {
 					return fail("this gogo extension combination is not yet supported for proto3 optional")
 				}
 			}
@@ -62,6 +86,24 @@ func fileNeedsOptionalMapping(file *descriptor.FileDescriptorProto) bool {
 		for _, m := range messages {
 			for _, f := range m.Field {
 				if f.GetProto3Optional() && gogoproto.IsCastType(f) {
+					return true
+				}
+			}
+			if visit(m.NestedType) {
+				return true
+			}
+		}
+		return false
+	}
+	return visit(file.MessageType)
+}
+
+func fileNeedsOptionalCustomOrStd(file *descriptor.FileDescriptorProto) bool {
+	var visit func([]*descriptor.DescriptorProto) bool
+	visit = func(messages []*descriptor.DescriptorProto) bool {
+		for _, m := range messages {
+			for _, f := range m.Field {
+				if f.GetProto3Optional() && (gogoproto.IsCustomType(f) || gogoproto.IsStdType(f)) {
 					return true
 				}
 			}

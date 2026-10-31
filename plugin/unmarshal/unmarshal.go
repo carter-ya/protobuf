@@ -1093,6 +1093,8 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			p.P(`return err`)
 			p.Out()
 			p.P(`}`)
+		} else if field.GetProto3Optional() && gogoproto.IsStdType(field) {
+			p.P("if err := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".UnmarshalOptionalStd(&m.", fieldname, ", dAtA[iNdEx:postIndex]); err != nil { return err }")
 		} else if nullable {
 			p.P(`if m.`, fieldname, ` == nil {`)
 			p.In()
