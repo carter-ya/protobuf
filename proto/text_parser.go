@@ -83,13 +83,15 @@ func (t *token) String() string {
 }
 
 type textParser struct {
-	s            string // remaining input
-	done         bool   // whether the parsing is finished (success or error)
-	backed       bool   // whether back() was called
-	offset, line int
-	cur          token
-	standard     bool
-	nameContext  bool // standard extension name or expanded Any URL
+	s              string // remaining input
+	done           bool   // whether the parsing is finished (success or error)
+	backed         bool   // whether back() was called
+	offset, line   int
+	cur            token
+	standard       bool
+	nameContext    bool // standard extension name or expanded Any URL
+	depth          int
+	recursionLimit int
 }
 
 func newTextParser(s string) *textParser {
@@ -484,6 +486,16 @@ func (p *textParser) checkForColon(props *Properties, typ reflect.Type) *ParseEr
 }
 
 func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
+	if p.standard {
+		if sv.Kind() != reflect.Struct {
+			return p.errorf("standard text requires a struct message")
+		}
+		if p.depth >= p.recursionLimit {
+			return p.errorf("standard text nesting exceeds limit %d", p.recursionLimit)
+		}
+		p.depth++
+		defer func() { p.depth-- }()
+	}
 	st := sv.Type()
 	sprops := GetProperties(st)
 	var schema *textSchema
@@ -675,6 +687,12 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 		}
 
 		if dst.Kind() == reflect.Map {
+			if p.standard {
+				if p.depth >= p.recursionLimit {
+					return p.errorf("standard text map nesting exceeds limit %d", p.recursionLimit)
+				}
+				p.depth++
+			}
 			// Consume any colon.
 			if err := p.checkForColon(props, dst.Type()); err != nil {
 				return err
@@ -727,6 +745,9 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 						return err
 					}
 					if err := p.readAny(val, props.MapValProp); err != nil {
+						if p.standard {
+							p.depth--
+						}
 						return err
 					}
 					if err := p.consumeOptionalSeparator(); err != nil {
@@ -739,6 +760,9 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 			}
 
 			dst.SetMapIndex(key, val)
+			if p.standard {
+				p.depth--
+			}
 			continue
 		}
 

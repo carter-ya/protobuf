@@ -178,3 +178,9 @@ entrypoints and explicit `nullable=true`. Codec and auxiliary generators use
 normalized cloned metadata; input descriptors and ordinary nullable fields retain
 their declaration policy. The five-backend gate covers selected zero, direct
 encoding, Clone/Equal/VerboseEqual/Compare/Populate and String/GoString.
+
+Standard text traversal has a configurable recursion limit (default 10,000) and
+Go message-cycle detection. Map entries, wrappers, expanded Any, reserved values
+and printed unknown messages observe the budget. Shared submessages are allowed,
+and encoder failure leaves the destination writer untouched. Existing root text
+bridges and historical configuration literals remain source compatible.
