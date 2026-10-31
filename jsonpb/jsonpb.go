@@ -1151,6 +1151,11 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 	// The case of an enum appearing as a number is handled
 	// at the bottom of this function.
 	if inputValue[0] == '"' && prop != nil && prop.Enum != "" {
+		// An unknown name may be ignored only in a scalar enum slot.
+		// A string in place of a repeated field is still malformed JSON.
+		if u.standard && targetType.Kind() != reflect.Int32 {
+			return fmt.Errorf("invalid target %q for enum %s", targetType.Kind(), prop.Enum)
+		}
 		vmap := proto.EnumValueMap(prop.Enum)
 		var name string
 		if err := json.Unmarshal(inputValue, &name); err != nil {

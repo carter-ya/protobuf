@@ -64,7 +64,7 @@ func TestIgnoreUnknownEnumNames(t *testing.T) {
 	if err := (&Unmarshaler{AllowUnknownFields: true}).Unmarshal(strings.NewReader(`{"selected":"UNKNOWN"}`), &value); err != nil || value.Choice != nil {
 		t.Fatalf("ignored oneof invented presence: %v", err)
 	}
-	for _, input := range []string{`{"colors":[true]}`, `{"color":{}}`, `{"mapping":{"x":[]}}`} {
+	for _, input := range []string{`{"colors":[true]}`, `{"color":{}}`, `{"mapping":{"x":[]}}`, `{"colors":"UNKNOWN"}`, `{"colors":"RED"}`, `{"colors":[["UNKNOWN"]]}`} {
 		if err := (&Unmarshaler{AllowUnknownFields: true}).Unmarshal(strings.NewReader(input), &value); err == nil {
 			t.Fatalf("ignored malformed enum input: %s", input)
 		}
