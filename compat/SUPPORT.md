@@ -6,6 +6,10 @@ Go 1.15. Existing valid proto2/proto3 bindings and their public Go layouts remai
 usable. Malformed-wire fixes enforce field-number and group bounds. Historical
 JSON/text defaults are preserved through their original entrypoints.
 
+The exhaustive feature inventory and remaining differences are tracked in
+[the feature audit](feature-audit/README.md). Passing the existing conformance
+profile does not imply that every Go-specific generation feature is implemented.
+
 ## Version and feature matrix
 
 | Area | Qualified scope | Evidence |

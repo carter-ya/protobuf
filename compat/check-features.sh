@@ -6,6 +6,7 @@ go test ./internal/...
 python3 compat/test-merge-protocol.py
 case "$(protoc --version)" in
   'libprotoc 36.2')
+    sh compat/check-feature-inventory.sh
     tmp=$(mktemp -d)
     trap 'rm -rf "$tmp"' EXIT HUP INT TERM
     sh compat/regenerate-features.sh "$tmp/defaults.gen.go"
