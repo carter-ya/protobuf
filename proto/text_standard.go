@@ -134,3 +134,40 @@ func knownTextEnumNumber(properties *Properties, number int32) bool {
 	}
 	return false
 }
+
+// Matches the reference tokenizer's URL character mode, scoped to brackets.
+func standardURLChar(ch byte) bool {
+	return ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9' || strings.IndexByte("_-.~!$&()*+,;=%/", ch) >= 0
+}
+
+func validStandardTextName(value string) bool {
+	name := value
+	if slash := strings.LastIndexByte(value, '/'); slash >= 0 {
+		if slash == 0 || value[0] == '/' {
+			return false
+		}
+		prefix := value[:slash]
+		for i := 0; i < len(prefix); i++ {
+			if !standardURLChar(prefix[i]) {
+				return false
+			}
+			if prefix[i] == '%' {
+				if i+2 >= len(prefix) || !textHexDigit(prefix[i+1]) || !textHexDigit(prefix[i+2]) {
+					return false
+				}
+				i += 2
+			}
+		}
+		name = value[slash+1:]
+	}
+	for _, identifier := range strings.Split(name, ".") {
+		if !textIdentifier(identifier) {
+			return false
+		}
+	}
+	return true
+}
+
+func textHexDigit(ch byte) bool {
+	return ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
+}

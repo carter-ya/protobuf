@@ -141,6 +141,17 @@ adaptation claim is made for those cases.
 `textpb/standard` adds standard floating-point syntax, negative-zero output,
 closed-enum and UTF-8 policy checks while preserving the historical text APIs
 and TextMarshaler layout. The first implementation passes 125 formerly failing
-standard text cases; 98 text failures remain explicitly recorded. Unknown fields
+standard text cases. Unicode scalar validation and descriptor-backed reserved-name
+skipping remove 72 more. Any URL syntax removes another 8 and schema-based
+group names resolve the last 18. All 909 pinned Protobuf 36.2 text cases pass
+through the standard entrypoint without skips; the legacy baseline stays separate. Unknown fields
 can be omitted or printed using the explicit configuration. It is not a
 full text-conformance claim. See `textpb/standard/README.md`.
+
+## Concurrent read-only encoding
+
+JSON encoding checks time, duration and custom JSON interfaces by reflected type
+before materializing values. Ordinary messages are no longer copied while binary
+sizing updates internal caches. The runtime race gate covers proto, legacy and
+standard JSON, and standard text with default and purego builds. This contract
+assumes application fields are not being mutated concurrently.
