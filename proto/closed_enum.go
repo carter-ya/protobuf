@@ -97,6 +97,9 @@ func (c *closedEnumFilter) filter(b []byte, wire int, tag uint64) ([]byte, []byt
 			if k == 0 {
 				return b, nil, io.ErrUnexpectedEOF
 			}
+			if err := validateWireKey(key, k); err != nil {
+				return b, nil, err
+			}
 			body = body[k:]
 			if key == 2<<3 {
 				value, v := decodeVarint(body)
@@ -106,7 +109,7 @@ func (c *closedEnumFilter) filter(b []byte, wire int, tag uint64) ([]byte, []byt
 				valid = c.values[int32(value)]
 			}
 			var err error
-			body, err = skipField(body, int(key)&7)
+			body, err = skipField(body, int(key)&7, key>>3)
 			if err != nil {
 				return b, nil, err
 			}

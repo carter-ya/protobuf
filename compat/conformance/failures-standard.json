@@ -156,81 +156,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
         "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
         "follow_up": "later binary/text runtime conformance work"
@@ -238,31 +163,6 @@
       {
         "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
         "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
         "follow_up": "later binary/text runtime conformance work"
       },
       {

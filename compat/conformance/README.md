@@ -71,3 +71,10 @@ upstream reference. Sixty exact binary/JSON failures are removed from each
 baseline; the standard entrypoint has 54 remaining binary/JSON failures and
 223 text failures. Pointer/scalar, packed/unpacked and map key/value regressions
 also run with purego. Canonical 32-bit inputs retain their previous results.
+
+Reflection decoding also rejects invalid/overlong field keys and mismatched
+outer or nested group tags, including unknown fields and map entries. Matching
+groups retain their payload and legal maximum field numbers remain accepted.
+Group scanning uses an iterative stack with the same 10,000-group limit as the
+existing Editions fast helper. Twenty more exact binary/JSON failures are
+removed from both baselines (34 standard binary/JSON failures remain).

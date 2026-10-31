@@ -406,31 +406,6 @@
         "follow_up": "A03 JSON standard entrypoint"
       },
       {
-        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Editions_Proto3.JsonInput.AnyEmpty.JsonOutput",
         "reason": "Failed to parse input or produce output.",
         "follow_up": "A03 JSON standard entrypoint"
@@ -526,31 +501,6 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Editions_Proto3.TimestampProtoInputTooLarge.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
@@ -579,31 +529,6 @@
         "test": "Required.Proto2.JsonInput.RejectTopLevelNull",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A03 JSON standard entrypoint"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
       },
       {
         "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
@@ -709,31 +634,6 @@
         "test": "Required.Proto3.JsonInput.TimestampJsonInputTooSmall",
         "reason": "Should have failed to parse, but didn't.",
         "follow_up": "A04 WKT standard JSON"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.BadTag_FieldNumberSlightlyTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.BadTag_FieldNumberTooHigh",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.BadTag_OverlongVarint",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.MismatchedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.MismatchedNestedGroupTags",
-        "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
       },
       {
         "test": "Required.Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
