@@ -11,8 +11,9 @@ import (
 )
 
 type reservedProbe struct {
-	Known int32           `protobuf:"varint,1,opt,name=known,proto3"`
-	Child *reservedNested `protobuf:"bytes,2,opt,name=child"`
+	Known    int32             `protobuf:"varint,1,opt,name=known,proto3"`
+	Child    *reservedNested   `protobuf:"bytes,2,opt,name=child"`
+	Children []*reservedNested `protobuf:"bytes,3,rep,name=children"`
 }
 
 type reservedNested struct {
@@ -115,5 +116,25 @@ func TestStandardReservedNamesConcurrent(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestStandardReservedMessageListWithoutColon(t *testing.T) {
+	if err := UnmarshalString(`children [{ known: 1 }]`, new(reservedProbe)); err != nil {
+		t.Fatalf("declared message-list spelling: %v", err)
+	}
+	for _, input := range []string{
+		`removed [{ a: 1 }] known: 7`, `removed [< a: 1 >, {}] known: 7`,
+		`removed [] known: 7`, `removed { children [{ a: 1 }] } known: 7`,
+	} {
+		var message reservedProbe
+		if err := UnmarshalString(input, &message); err != nil || message.Known != 7 {
+			t.Errorf("reserved message-list %q: %v", input, err)
+		}
+	}
+	for _, input := range []string{`removed [1]`, `removed ["s"]`, `removed [{}, 1]`, `removed [{},]`, `removed [[{}]]`} {
+		if err := UnmarshalString(input, new(reservedProbe)); err == nil {
+			t.Errorf("accepted colonless non-message list %q", input)
+		}
 	}
 }

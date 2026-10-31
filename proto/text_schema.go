@@ -108,6 +108,12 @@ func (p *textParser) skipReservedField(depth int) error {
 		if err := p.skipReservedValue(depth); err != nil {
 			return err
 		}
+	} else if tok.value == "[" {
+		// Colons are optional for repeated message values as well as a single
+		// message. Without a colon, scalar or nested-list elements are invalid.
+		if err := p.skipReservedList(depth+1, true); err != nil {
+			return err
+		}
 	} else if tok.value == "{" || tok.value == "<" {
 		p.back()
 		if err := p.skipReservedValue(depth); err != nil {
@@ -154,29 +160,7 @@ func (p *textParser) skipReservedValue(depth int) error {
 			}
 		}
 	case "[":
-		tok = p.next()
-		if tok.err != nil {
-			return tok.err
-		}
-		if tok.value == "]" {
-			return nil
-		}
-		p.back()
-		for {
-			if err := p.skipReservedValue(depth + 1); err != nil {
-				return err
-			}
-			tok = p.next()
-			if tok.err != nil {
-				return tok.err
-			}
-			if tok.value == "]" {
-				return nil
-			}
-			if tok.value != "," {
-				return p.errorf("expected ',' or ']' in reserved list")
-			}
-		}
+		return p.skipReservedList(depth+1, false)
 	}
 	if len(value) > 0 && isQuote(value[0]) {
 		return nil
@@ -203,6 +187,42 @@ func (p *textParser) skipReservedValue(depth int) error {
 		return nil
 	}
 	return p.errorf("invalid reserved scalar value %q", value)
+}
+
+func (p *textParser) skipReservedList(depth int, messagesOnly bool) error {
+	if depth > 100 {
+		return p.errorf("reserved text value nesting exceeds 100")
+	}
+	tok := p.next()
+	if tok.err != nil {
+		return tok.err
+	}
+	if tok.value == "]" {
+		return nil
+	}
+	for {
+		if messagesOnly && tok.value != "{" && tok.value != "<" {
+			return p.errorf("expected message body in colonless reserved list")
+		}
+		p.back()
+		if err := p.skipReservedValue(depth); err != nil {
+			return err
+		}
+		tok = p.next()
+		if tok.err != nil {
+			return tok.err
+		}
+		if tok.value == "]" {
+			return nil
+		}
+		if tok.value != "," {
+			return p.errorf("expected ',' or ']' in reserved list")
+		}
+		tok = p.next()
+		if tok.err != nil {
+			return tok.err
+		}
+	}
 }
 
 func reservedTextNumber(value string) bool {
