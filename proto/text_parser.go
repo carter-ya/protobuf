@@ -232,7 +232,8 @@ func unquoteC(s string, quote rune) (string, error) {
 func unquoteCWithPolicy(s string, quote rune, standard bool) (string, error) {
 	// This is based on C++'s tokenizer.cc.
 	// Despite its name, this is *not* parsing C syntax.
-	// For instance, "\0" is an invalid quoted string.
+	// Historical callers require full-width byte escapes. Standard mode
+	// accepts the variable-width octal and hexadecimal forms.
 
 	// Avoid allocation in trivial cases.
 	simple := true
@@ -302,21 +303,39 @@ func unescapeWithPolicy(s string, standard bool) (ch string, tail string, err er
 	case '\'', '"', '\\':
 		return string(r), s, nil
 	case '0', '1', '2', '3', '4', '5', '6', '7':
-		if len(s) < 2 {
+		digits := 2
+		if standard {
+			digits = 0
+			for digits < 2 && digits < len(s) && s[digits] >= '0' && s[digits] <= '7' {
+				digits++
+			}
+		} else if len(s) < 2 {
 			return "", "", fmt.Errorf(`\%c requires 2 following digits`, r)
 		}
-		ss := string(r) + s[:2]
-		s = s[2:]
+		ss := string(r) + s[:digits]
+		s = s[digits:]
 		i, err := strconv.ParseUint(ss, 8, 8)
 		if err != nil {
 			return "", "", fmt.Errorf(`\%s contains non-octal digits`, ss)
 		}
 		return string([]byte{byte(i)}), s, nil
 	case 'x', 'X', 'u', 'U':
+		if standard && r == 'X' {
+			return "", "", fmt.Errorf(`unknown escape \X`)
+		}
 		var n int
 		switch r {
 		case 'x', 'X':
 			n = 2
+			if standard {
+				n = 0
+				for n < 2 && n < len(s) && textHexDigit(s[n]) {
+					n++
+				}
+				if n == 0 {
+					return "", "", fmt.Errorf(`\x requires at least one hex digit`)
+				}
+			}
 		case 'u':
 			n = 4
 		case 'U':

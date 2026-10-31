@@ -60,3 +60,8 @@ Both the declared field name and valid message-name alias are accepted; aliases
 share singular-field duplicate checks. Ordinary fields take precedence over
 aliases. Standard printing uses the corresponding schema spelling, while legacy
 Go tag spelling and extension-name behavior remain unchanged.
+
+Byte escape widths follow the text specification: one to three octal digits,
+and one to two hex digits after lowercase `\x`. Extra digits and following
+characters remain literal. Out-of-range byte values and uppercase `\X` are
+rejected. Historical entrypoints retain their full-width and uppercase behavior.
