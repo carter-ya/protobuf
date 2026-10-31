@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	gofeaturespb "github.com/gogo/protobuf/gofeatures"
 	"github.com/gogo/protobuf/proto"
 	d "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
@@ -91,11 +92,20 @@ func main() {
 	must(z.Close())
 	var compiled d.FileDescriptorProto
 	must(proto.Unmarshal(raw, &compiled))
+	goCompressed, _ := (*gofeaturespb.GoFeatures)(nil).Descriptor()
+	goReader, err := gzip.NewReader(bytes.NewReader(goCompressed))
+	must(err)
+	goRaw, err := ioutil.ReadAll(goReader)
+	must(err)
+	must(goReader.Close())
+	var compiledGo d.FileDescriptorProto
+	must(proto.Unmarshal(goRaw, &compiledGo))
+	compiledFiles := []*d.FileDescriptorProto{&compiled, &compiledGo}
 	upstream := messages(official.File)
-	ours := messages([]*d.FileDescriptorProto{&compiled})
+	ours := messages(compiledFiles)
 	statuses := map[string]int{}
 	upstreamEnums := enumValues(official.File)
-	compiledEnums := enumValues([]*d.FileDescriptorProto{&compiled})
+	compiledEnums := enumValues(compiledFiles)
 	audit := func(name string, rows []feature, compiled bool) {
 		schema := upstream[name]
 		if schema == nil {
@@ -153,7 +163,7 @@ func main() {
 		}
 	}
 	audit(".google.protobuf.FeatureSet", manifest.Core, true)
-	audit(".pb.GoFeatures", manifest.Go, false)
+	audit(".pb.GoFeatures", manifest.Go, true)
 	for _, row := range manifest.Remaining {
 		if row.Status == "gap" {
 			statuses["gap"]++

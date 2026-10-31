@@ -138,10 +138,11 @@
     {
       "name": "legacy_unmarshal_json_enum",
       "number": 1,
-      "status": "gap",
+      "status": "implemented",
       "owner": "enum JSON generation",
       "evidence": [
-        "protoc-gen-gogo/generator/go_features.go"
+        "compat/check-go-enum-json.sh",
+        "compat/go-enum-json/README.md"
       ]
     },
     {

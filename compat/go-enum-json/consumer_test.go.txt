@@ -1,0 +1,45 @@
+package qualify
+
+import (
+	"encoding/json"
+	pb "example.com/go-enum-json/pb"
+	"reflect"
+	"testing"
+)
+
+const inherited = INHERITED
+
+func TestLegacyJSONMethod(t *testing.T) {
+	cases := []struct {
+		value   interface{}
+		enabled bool
+		name    string
+	}{
+		{new(pb.Mode), inherited, "MODE_ONE"},
+		{new(pb.ExplicitOn), true, "EXPLICIT_ON_ONE"},
+		{new(pb.ExplicitOff), false, "EXPLICIT_OFF_ONE"},
+		{new(pb.Container_State), inherited, "STATE_ONE"},
+	}
+	for _, tt := range cases {
+		_, present := tt.value.(json.Unmarshaler)
+		if present != tt.enabled {
+			t.Fatalf("%T method=%v want%v", tt.value, present, tt.enabled)
+		}
+		rv := reflect.ValueOf(tt.value).Elem()
+		if err := json.Unmarshal([]byte(`"`+tt.name+`"`), tt.value); (err == nil) != tt.enabled {
+			t.Fatalf("%T named enum decode: %v", tt.value, err)
+		}
+		if tt.enabled && rv.Int() != 1 {
+			t.Fatal("wrong named enum value")
+		}
+		if err := json.Unmarshal([]byte(`17`), tt.value); err != nil || rv.Int() != 17 {
+			t.Fatalf("%T numeric enum: %v", tt.value, err)
+		}
+		if err := json.Unmarshal([]byte(`"INVALID"`), tt.value); err == nil || rv.Int() != 17 {
+			t.Fatal("invalid name changed prior enum")
+		}
+		if err := json.Unmarshal([]byte(`2147483648`), tt.value); err == nil || rv.Int() != 17 {
+			t.Fatal("overflow changed prior enum")
+		}
+	}
+}

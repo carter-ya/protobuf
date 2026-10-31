@@ -9,7 +9,7 @@ compiler's bundled `descriptor.proto` / `go_features.proto` schemas.
 
 `inventory.json` names every core and Go feature field and every enum value.
 `sh compat/check-feature-inventory.sh` reads schemas from the pinned compiler's
-own include directory, compares compiled core metadata, and rejects added,
+own include directory, compares compiled core and Go metadata, and rejects added,
 removed or renumbered feature fields/values. The report distinguishes a complete
 inventory from complete implementation. Known gaps remain visible and cannot be
 turned into an all-features claim by a passing inventory/conformance check.
@@ -38,8 +38,12 @@ Legacy proto2 closed enums are now available through explicit
 imports, packed values, map entries, oneofs and extensions. Unmarked/frozen
 bindings retain historical decoding. The remaining implementation gaps are:
 
-* Explicit Go `legacy_unmarshal_json_enum`, non-OPEN `api_level`, non-KEEP
-  `strip_enum_prefix` and `optimize_mode` are diagnosed rather than implemented.
+The [legacy enum JSON API](../go-enum-json/README.md) now implements its official
+false default and file/enum overrides, with independent official-generator
+method and behavior checks. The remaining Go generation gaps are:
+
+* Non-OPEN `api_level`, non-KEEP `strip_enum_prefix` and `optimize_mode` are
+  diagnosed rather than implemented.
   Their individual fields/values remain in the inventory as gaps. Core Editions
   support is not equivalent to support for all official Go generator APIs.
 * The C02 V2 conversion experiment is not a production ProtoReflect adapter and

@@ -208,3 +208,13 @@ policy; late registrations are consulted after an immutable table-cache miss.
 The option asserts Version15. Explicit unknown-storage/presence conflicts and
 alternate runtimes are rejected. See the
 [contract and independent cross-reads](compat/legacy-enums/README.md).
+
+## Go enum JSON generation features
+
+Fresh Editions enum output honors the official
+`features.(pb.go).legacy_unmarshal_json_enum` default (false), file inheritance
+and enum overrides. Set true when regenerating earlier Editions output that
+relies on the deprecated `UnmarshalJSON` method. Frozen bindings and legacy
+proto2/proto3 generation keep their existing method policy. A local Go 1.15
+`gofeatures` binding handles ordinary Edition 2023 feature imports without a V2
+runtime dependency. See [the generated API contract](compat/go-enum-json/README.md).

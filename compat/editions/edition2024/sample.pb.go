@@ -47,15 +47,6 @@ func (x Status) String() string {
 	return proto.EnumName(Status_name, int32(x))
 }
 
-func (x *Status) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(Status_value, data, "Status")
-	if err != nil {
-		return err
-	}
-	*x = Status(value)
-	return nil
-}
-
 func (Status) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8071f3d7c5cdb039, []int{0}
 }

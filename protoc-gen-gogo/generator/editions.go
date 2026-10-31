@@ -18,8 +18,9 @@ type editionEnum struct {
 	first  string
 }
 type editionMetadata struct {
-	fields map[*d.FieldDescriptorProto]fieldmeta.Features
-	enums  map[string]editionEnum
+	fields     map[*d.FieldDescriptorProto]fieldmeta.Features
+	enums      map[string]editionEnum
+	legacyJSON map[*d.EnumDescriptorProto]bool
 }
 
 // Collect enums from their definition scopes, including imported proto2 enums.
@@ -109,7 +110,11 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 	if err := checkOptions(file.Options, file.GetOptions().GetFeatures(), file.GetName()); err != nil {
 		return nil, nil, err
 	}
-	out := &editionMetadata{fields: state.Fields, enums: enums}
+	out := &editionMetadata{fields: state.Fields, enums: enums, legacyJSON: make(map[*d.EnumDescriptorProto]bool)}
+	fileLegacyJSON, err := enumLegacyJSON(file.GetOptions().GetFeatures(), false)
+	if err != nil {
+		return nil, nil, err
+	}
 	prepareExtensions := func(fields []*d.FieldDescriptorProto, scope string) error {
 		for _, f := range fields {
 			if err := checkOptions(f.Options, f.GetOptions().GetFeatures(), scope+"."+f.GetName()); err != nil {
@@ -143,6 +148,11 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 		if err := checkOptions(e.Options, e.GetOptions().GetFeatures(), scope); err != nil {
 			return err
 		}
+		value, err := enumLegacyJSON(e.GetOptions().GetFeatures(), fileLegacyJSON)
+		if err != nil {
+			return err
+		}
+		out.legacyJSON[e] = value
 		for _, v := range e.Value {
 			if err := checkOptions(v.Options, v.GetOptions().GetFeatures(), scope+"."+v.GetName()); err != nil {
 				return err

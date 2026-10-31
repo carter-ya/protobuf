@@ -841,6 +841,11 @@ func (g *Generator) WrapTypes() {
 			//
 			// The go_package option sets the import path. Most users should use this.
 			fd.importPath = p
+			if f.GetName() == "google/protobuf/go_features.proto" && p == "google.golang.org/protobuf/types/gofeaturespb" {
+				// Edition 2023 has ordinary imports for feature-only schemas.
+				// Keep those generated consumers on the gogo runtime as well.
+				fd.importPath = "github.com/gogo/protobuf/gofeatures"
+			}
 		} else {
 			// Source filename.
 			//
@@ -1639,7 +1644,14 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 		g.P("}")
 		g.P()
 	}
-	if !enum.proto3() {
+	legacyJSON := !enum.proto3()
+	if enum.file.edition != nil {
+		legacyJSON = enum.file.edition.legacyJSON[enum.EnumDescriptorProto]
+	}
+	if legacyJSON {
+		if enum.file.edition != nil {
+			g.P("// Deprecated: Do not use.")
+		}
 		g.P("func (x *", ccTypeName, ") UnmarshalJSON(data []byte) error {")
 		g.In()
 		g.P("value, err := ", g.Pkg["proto"], ".UnmarshalJSONEnum(", ccTypeName, `_value, data, "`, ccTypeName, `")`)
