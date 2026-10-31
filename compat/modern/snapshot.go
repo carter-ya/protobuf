@@ -111,30 +111,87 @@ func validTarget(m gogo.Message) bool {
 	return v.IsValid() && v.Kind() == reflect.Ptr && !v.IsNil() && v.Elem().Kind() == reflect.Struct
 }
 
-// sourceName prevents a caller-supplied same-name schema from silently
-// changing presence or field meaning during the initial wire conversion.
+// runtimeDescriptor recognizes only the historical path aliases used by
+// generated gogo dependencies. Missing runtime metadata must not be replaced
+// by the caller's potentially incompatible registry descriptor.
+func runtimeDescriptor(path string) []byte {
+	if raw := gogo.FileDescriptor(path); len(raw) != 0 {
+		return raw
+	}
+	if path == "gogoproto/gogo.proto" || path == "github.com/gogo/protobuf/gogoproto/gogo.proto" {
+		return gogo.FileDescriptor("gogo.proto")
+	}
+	if path == "google/protobuf/descriptor.proto" {
+		return gogo.FileDescriptor("descriptor.proto")
+	}
+	return nil
+}
+
+func (r *Registry) decodeSource(raw []byte, path string) (*descriptorpb.FileDescriptorProto, error) {
+	z, err := gzip.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		return nil, err
+	}
+	data, err := io.ReadAll(z)
+	z.Close()
+	if err != nil {
+		return nil, err
+	}
+	file := new(descriptorpb.FileDescriptorProto)
+	if err := (proto.UnmarshalOptions{Resolver: r.Types}).Unmarshal(data, file); err != nil {
+		return nil, err
+	}
+	file.SourceCodeInfo = nil
+	if path != "" && file.GetName() != path {
+		alias := file.GetName() == "gogo.proto" && (path == "gogoproto/gogo.proto" || path == "github.com/gogo/protobuf/gogoproto/gogo.proto") || file.GetName() == "descriptor.proto" && path == "google/protobuf/descriptor.proto"
+		if !alias {
+			return nil, fmt.Errorf("modern: dependency %q declares %q", path, file.GetName())
+		}
+		file.Name = proto.String(path)
+	}
+	return file, nil
+}
+
+func (r *Registry) checkSourceFile(file *descriptorpb.FileDescriptorProto, seen map[string]bool) error {
+	path := file.GetName()
+	if seen[path] {
+		return nil
+	}
+	if !proto.Equal(file, r.sourceFiles[path]) {
+		return fmt.Errorf("modern: source descriptor %q does not match registry", path)
+	}
+	seen[path] = true
+	for _, dependency := range file.Dependency {
+		raw := runtimeDescriptor(dependency)
+		if len(raw) == 0 {
+			return fmt.Errorf("modern: runtime descriptor for dependency %q is unavailable", dependency)
+		}
+		imported, err := r.decodeSource(raw, dependency)
+		if err != nil {
+			return err
+		}
+		if err := r.checkSourceFile(imported, seen); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sourceName validates the complete ordinary import closure before resolving
+// the message path, including types whose file contributes no generated Go
+// message (such as an imported enum-only file).
 func (r *Registry) sourceName(m gogo.Message) (protoreflect.FullName, error) {
 	d, ok := m.(interface{ Descriptor() ([]byte, []int) })
 	if !ok {
 		return "", fmt.Errorf("modern: %T has no source descriptor", m)
 	}
 	raw, path := d.Descriptor()
-	z, err := gzip.NewReader(bytes.NewReader(raw))
+	file, err := r.decodeSource(raw, "")
 	if err != nil {
 		return "", err
 	}
-	data, err := io.ReadAll(z)
-	z.Close()
-	if err != nil {
+	if err := r.checkSourceFile(file, map[string]bool{}); err != nil {
 		return "", err
-	}
-	file := new(descriptorpb.FileDescriptorProto)
-	if err := (proto.UnmarshalOptions{Resolver: r.Types}).Unmarshal(data, file); err != nil {
-		return "", err
-	}
-	file.SourceCodeInfo = nil
-	if !proto.Equal(file, r.sourceFiles[file.GetName()]) {
-		return "", fmt.Errorf("modern: source descriptor %q does not match registry", file.GetName())
 	}
 	if len(path) == 0 {
 		return "", fmt.Errorf("modern: missing message descriptor path")

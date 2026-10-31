@@ -38,7 +38,7 @@ func registry(t *testing.T) *Registry {
 		t.Fatal(err)
 	}
 	for i, file := range set.File {
-		if source := gogo.FileDescriptor(file.GetName()); len(source) != 0 {
+		if source := runtimeDescriptor(file.GetName()); len(source) != 0 {
 			z, err := gzip.NewReader(bytes.NewReader(source))
 			if err != nil {
 				t.Fatal(err)
@@ -52,6 +52,7 @@ func registry(t *testing.T) *Registry {
 			if err := proto.Unmarshal(data, runtime); err != nil {
 				t.Fatal(err)
 			}
+			runtime.Name = proto.String(file.GetName())
 			set.File[i] = runtime
 		}
 	}
@@ -376,5 +377,49 @@ func TestConcurrentRegistryReads(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestImportedSourceMismatchRejected(t *testing.T) {
+	for _, transitive := range []bool{false, true} {
+		good := registry(t)
+		set := new(descriptorpb.FileDescriptorSet)
+		for name, file := range good.sourceFiles {
+			copy := proto.Clone(file).(*descriptorpb.FileDescriptorProto)
+			if !transitive && name == "compat/editions/edition2023/imported.proto" {
+				copy.EnumType[0].Value[0].Name = proto.String("RENAMED_FIRST")
+			}
+			if transitive && name == "google/protobuf/descriptor.proto" {
+				copy.Options.GoPackage = proto.String("example.com/changed/descriptor")
+			}
+			set.File = append(set.File, copy)
+		}
+		raw, _ := proto.Marshal(set)
+		altered, err := NewRegistry(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var original gogo.Message = &ed23.Sample{Imported: ed23.Imported_FIRST.Enum()}
+		if transitive {
+			original = &optional.Sample{Value: gogo.Int32(7)}
+		}
+		if snapshot, err := altered.Snapshot(original); err == nil {
+			text, _ := (protojson.MarshalOptions{Resolver: altered.Types}).Marshal(snapshot)
+			t.Fatalf("accepted changed dependency (transitive=%v): %s", transitive, text)
+		}
+		name, err := good.sourceName(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		typeOf, _ := altered.Types.FindMessageByName(name)
+		snapshot := dynamicpb.NewMessage(typeOf.Descriptor())
+		wire, _ := gogo.Marshal(original)
+		if err := (proto.UnmarshalOptions{Resolver: altered.Types}).Unmarshal(wire, snapshot); err != nil {
+			t.Fatal(err)
+		}
+		before := gogo.Clone(original)
+		if err := altered.Apply(original, snapshot); err == nil || !gogo.Equal(before, original) {
+			t.Fatalf("Apply accepted changed dependency (transitive=%v): %v", transitive, err)
+		}
 	}
 }

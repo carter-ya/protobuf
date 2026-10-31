@@ -51,6 +51,34 @@ func TestModernMappedSnapshots(t *testing.T) {
 			set.File[i] = file
 		}
 	}
+	for i, candidate := range set.File {
+		path := candidate.GetName()
+		source := gogo.FileDescriptor(path)
+		if len(source) == 0 && (path == "gogoproto/gogo.proto" || path == "github.com/gogo/protobuf/gogoproto/gogo.proto") {
+			source = gogo.FileDescriptor("gogo.proto")
+		}
+		if len(source) == 0 && path == "google/protobuf/descriptor.proto" {
+			source = gogo.FileDescriptor("descriptor.proto")
+		}
+		if len(source) == 0 {
+			continue
+		}
+		z, err := gzip.NewReader(bytes.NewReader(source))
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(z)
+		z.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		dependency := new(descriptorpb.FileDescriptorProto)
+		if err := proto.Unmarshal(data, dependency); err != nil {
+			t.Fatal(err)
+		}
+		dependency.Name = proto.String(path)
+		set.File[i] = dependency
+	}
 	raw, err = proto.Marshal(set)
 	if err != nil {
 		t.Fatal(err)

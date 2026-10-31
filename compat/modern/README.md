@@ -15,7 +15,10 @@ Include option-only dependencies, extension declarations and all Any payloads.
 Dynamic options are decoded again with local extension types before final
 feature resolution. No V2 global registration is installed. Descriptor bundles
 must match the actual generated runtime descriptors, including options; a
-same-name schema is not sufficient. Frozen WKT runtime descriptors include gogo
+same-name schema is not sufficient. Snapshot and Apply recursively verify the
+ordinary dependency closure against registered generated metadata, including
+imported enum-only files and transitive dependencies. Missing runtime dependency
+metadata is an error; documented historical gogo path aliases are recognized. Frozen WKT runtime descriptors include gogo
 options that differ from compiler source options. Test helpers retain those
 original descriptors and handle historical gogo import-path spellings.
 
