@@ -26,8 +26,8 @@ legacy parser's ownership contract. Raw descriptors and generated APIs are not
 changed by selecting this package.
 
 The pinned Protobuf 36.2 suite runs legacy and standard text independently.
-The first implementation removes 125 standard-only failures; 66 standard text
-failures remain, including reserved names, Any URL spelling and group casing.
+The first implementation removes 125 standard-only failures; 26 standard text
+failures remain, including Any URL spelling and group casing.
 Legacy behavior and its 223-failure baseline remain separate. See
 `compat/conformance/README.md` for the full test inventory and exact failures.
 
@@ -41,3 +41,9 @@ The numeric rules follow the official [text-format specification](https://protob
 
 Unicode escapes must encode scalar values; surrogate halves and pairs are rejected
 for both strings and bytes. Raw byte escapes retain their byte semantics.
+
+Declared reserved field names are ignored using the generated message descriptor,
+including nested message descriptor paths. Skipped values retain lexical and
+structural validation, and nesting is bounded. Other unknown names are errors.
+Malformed descriptor data returns an error; messages without descriptors have no
+reserved-name metadata. Schema facts are cached per Go message type.

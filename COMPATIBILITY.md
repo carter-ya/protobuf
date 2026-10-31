@@ -141,6 +141,7 @@ adaptation claim is made for those cases.
 `textpb/standard` adds standard floating-point syntax, negative-zero output,
 closed-enum and UTF-8 policy checks while preserving the historical text APIs
 and TextMarshaler layout. The first implementation passes 125 formerly failing
-standard text cases; 98 text failures remain explicitly recorded. Unknown fields
+standard text cases. Unicode scalar validation and descriptor-backed reserved-name
+skipping remove 72 more; 26 text failures remain explicitly recorded. Unknown fields
 can be omitted or printed using the explicit configuration. It is not a
 full text-conformance claim. See `textpb/standard/README.md`.

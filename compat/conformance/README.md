@@ -100,3 +100,7 @@ legacy text baseline remains at 223; binary/JSON remains at 7 standard failures.
 The standard text Unicode-escape follow-up rejects surrogate code points before
 Go rune conversion, removing 32 more failures and leaving 66 standard text cases.
 Legacy parsing retains its historical replacement behavior.
+
+Descriptor-backed reserved-name skipping removes another 40 standard text cases.
+The standard text inventory now contains 26 failures; legacy entrypoints do not
+consult this metadata and retain their previous unknown-name behavior.

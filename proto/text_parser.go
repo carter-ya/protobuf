@@ -457,6 +457,13 @@ func (p *textParser) checkForColon(props *Properties, typ reflect.Type) *ParseEr
 func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 	st := sv.Type()
 	sprops := GetProperties(st)
+	var schema *textSchema
+	if p.standard {
+		schema = standardTextSchema(st)
+		if schema.err != nil {
+			return p.errorf("invalid text schema for %v: %v", st, schema.err)
+		}
+	}
 	reqCount := sprops.reqCount
 	var reqFieldErr error
 	fieldSet := make(map[string]bool)
@@ -598,6 +605,12 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 
 		// This is a normal, non-extension field.
 		name := tok.value
+		if schema != nil && schema.reserved[name] {
+			if err := p.skipReservedField(0); err != nil {
+				return err
+			}
+			continue
+		}
 		var dst reflect.Value
 		fi, props, ok := structFieldByName(sprops, name)
 		if ok {
