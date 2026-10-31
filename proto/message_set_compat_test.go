@@ -2,6 +2,7 @@ package proto_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -109,6 +110,40 @@ func TestMessageSetOrdinaryUnknownAndMalformed(t *testing.T) {
 	for _, wire := range [][]byte{{18, 3, 1}, {18, 128}, {11, 16, 1, 26, 0, 20}} {
 		if err := proto.Unmarshal(wire, new(pb.MyMessageSet)); err == nil {
 			t.Fatalf("malformed input accepted: %x", wire)
+		}
+	}
+}
+
+func TestMessageSetLargeTypeIDMerging(t *testing.T) {
+	for _, id := range []int32{536870911, 536870912, 2147483646} {
+		desc := &proto.ExtensionDesc{ExtendedType: (*pb.MyMessageSet)(nil), ExtensionType: (*messageSetPayload)(nil), Field: id, Name: fmt.Sprintf("test.messageset.large%d", id), Tag: fmt.Sprintf("bytes,%d,opt,name=large", id)}
+		first, second := messageSetGroup(id, []byte{8, 1}), messageSetGroup(id, []byte{16, 2})
+		for _, incremental := range []bool{false, true} {
+			var message pb.MyMessageSet
+			if incremental {
+				if err := proto.Unmarshal(first, &message); err != nil {
+					t.Fatal(err)
+				}
+				if err := proto.UnmarshalMerge(second, &message); err != nil {
+					t.Fatalf("type ID %d: %v", id, err)
+				}
+			} else {
+				if err := proto.Unmarshal(append(append([]byte{}, first...), second...), &message); err != nil {
+					t.Fatalf("type ID %d: %v", id, err)
+				}
+			}
+			value, err := proto.GetExtension(&message, desc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload := value.(*messageSetPayload)
+			if payload.A == nil || *payload.A != 1 || payload.B == nil || *payload.B != 2 {
+				t.Fatalf("large type ID merge lost: %v", payload)
+			}
+			wire, err := proto.Marshal(&message)
+			if err != nil || !bytes.Equal(wire, messageSetGroup(id, []byte{8, 1, 16, 2})) {
+				t.Fatalf("large type ID output %x: %v", wire, err)
+			}
 		}
 	}
 }

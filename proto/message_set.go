@@ -182,16 +182,24 @@ func unmarshalMessageSet(buf []byte, exts interface{}) error {
 					return err
 				}
 			} else {
-				end, header, _, err := editionField(ext.enc)
+				// This header is the internal extension representation, not
+				// an ordinary wire field. MessageSet type IDs extend past the
+				// usual 29-bit field-number limit.
+				key, header, err := editionVarint(ext.enc)
 				if err != nil {
 					return err
 				}
-				key, _ := DecodeVarint(ext.enc)
-				if key != uint64(id)<<3|WireBytes || end != len(ext.enc) {
+				if key != uint64(id)<<3|WireBytes {
 					return errors.New("proto: invalid encoded MessageSet extension")
 				}
-				_, length := DecodeVarint(ext.enc[header:])
-				old = ext.enc[header+length:]
+				length, prefix, err := editionVarint(ext.enc[header:])
+				if err != nil {
+					return err
+				}
+				if length != uint64(len(ext.enc)-header-prefix) {
+					return errors.New("proto: invalid encoded MessageSet length")
+				}
+				old = ext.enc[header+prefix:]
 			}
 			joined := make([]byte, 0, len(old)+len(msg))
 			joined = append(joined, old...)
