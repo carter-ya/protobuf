@@ -1,8 +1,16 @@
-[GoGo Protobuf looking for new ownership](https://github.com/gogo/protobuf/issues/691)
-
 # Protocol Buffers for Go with Gadgets
 
-[![Build Status](https://github.com/gogo/protobuf/workflows/Continuous%20Integration/badge.svg)](https://github.com/gogo/protobuf/actions)
+This maintenance fork continues original gogo/protobuf v1.3.2 while preserving
+its module path, generated APIs and Go 1.15 runtime support. See the
+[current compatibility and migration matrix](compat/SUPPORT.md) for qualified
+proto3 optional, Editions 2023–2026, standard JSON/text, gogo representations and
+remaining boundaries. Stable Protobuf 36.2 and the 37.0/Go 1.37 previews are
+qualified separately.
+
+The [original ownership discussion](https://github.com/gogo/protobuf/issues/691)
+and the upstream project documentation below are retained for historical context.
+
+[![Compatibility](https://github.com/carter-ya/protobuf/actions/workflows/compatibility.yml/badge.svg?branch=baseline%2Fv1.3.2)](https://github.com/carter-ya/protobuf/actions/workflows/compatibility.yml)
 [![GoDoc](https://godoc.org/github.com/gogo/protobuf?status.svg)](http://godoc.org/github.com/gogo/protobuf)
 
 gogoprotobuf is a fork of <a href="https://github.com/golang/protobuf">golang/protobuf</a> with extra code generation features.
@@ -19,9 +27,9 @@ This code generation is used to achieve:
 Keeping track of how up to date gogoprotobuf is relative to golang/protobuf is done in this
 <a href="https://github.com/gogo/protobuf/issues/191">issue</a>
 
-## Release v1.3.0
+## Historical upstream release v1.3.0
 
-The project has updated to release v1.3.0. Check out the release notes <a href="https://github.com/gogo/protobuf/releases/tag/v1.3.0">here</a>.
+The upstream project announced release v1.3.0. Check out the release notes <a href="https://github.com/gogo/protobuf/releases/tag/v1.3.0">here</a>.
 
 With this new release comes a new internal library version. This means any newly generated *pb.go files generated with the v1.3.0 library will not be compatible with the old library version (v1.2.1). However, current *pb.go files (generated with v1.2.1) should still work with the new library.
 

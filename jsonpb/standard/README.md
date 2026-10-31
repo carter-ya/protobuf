@@ -33,8 +33,13 @@ remaining binary, JSON and text limitations are individually recorded in
 Any special-type handling. It removes 44 further stable failures, with
 independent official C++ and Go interoperability checks. No modern official runtime dependency is added.
 
-The current standard baseline retains 120 binary/JSON and 223 text failures.
-Legacy mode retains its separate historical baseline and behavior.
+The completed standard 36.2 profile now has zero failures across 5,649
+binary/JSON cases (four deliberately unsupported unstable-Edition skips) and
+all 909 text cases pass without skips. This profile uses separately generated
+message-oneof merge policy plus the explicit standard JSON/text entrypoints;
+selecting this JSON package alone does not retrofit imported binary decoders.
+Legacy mode retains its separate historical baseline and behavior. See
+[the current support matrix](../../compat/SUPPORT.md) for the full contract.
 
 With `AllowUnknownFields`, unknown enum **names** are discarded: an optional
 field/oneof stays absent, repeated elements are omitted and map entries are

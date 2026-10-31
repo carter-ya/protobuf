@@ -1,5 +1,9 @@
 # Legacy compatibility checks
 
+For the current qualified scope, migration steps and deliberate boundaries, see
+[the support matrix](SUPPORT.md). The staged notes below document how the
+compatibility gates evolved; older intermediate failure counts are historical.
+
 `compat/legacy` is an independent consumer module. Its generated files are
 frozen output of gogo/protobuf v1.3.2 (b03c65e), generated with protoc 36.2.
 Do not regenerate these fixtures while updating the generator or runtime.
