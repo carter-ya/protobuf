@@ -72,6 +72,14 @@ def main():
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         if result.returncode == 0 or 'independent message presence' not in result.stdout:
             raise RuntimeError('flattened optional required child was not diagnosed: ' + result.stdout)
+    for nullable in ['true', 'false']:
+        (negative / 'castvalue.proto').write_text('syntax="proto2";package bad;import "gogoproto/gogo.proto";message Child {required int32 value=1 [default=0];}message Root {map<string,Child> children=1 [(gogoproto.castvalue)="MyChild",(gogoproto.nullable)=' + nullable + '];}\n')
+        for backend in BACKENDS:
+            result = subprocess.run(['protoc', '-I' + str(negative), '-I' + str(ROOT), '-I' + str(ROOT / 'protobuf'),
+                '--plugin=protoc-gen-test=' + str(output / backend), '--test_out=merge_required_fields=true:' + str(negative), 'castvalue.proto'],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            if result.returncode == 0 or 'cannot inspect mapped required message fields' not in result.stdout:
+                raise RuntimeError('required-reachable castvalue was not diagnosed: ' + result.stdout)
     alternate = output / 'gofast'
     subprocess.run(['go', 'build', '-o', str(alternate), './protoc-gen-gofast'], cwd=ROOT, check=True)
     (negative / 'plain.proto').write_text('syntax="proto2";package bad;message Bad {required int32 value=1;}\n')

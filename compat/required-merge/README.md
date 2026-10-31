@@ -21,7 +21,7 @@ before the call.
 
 Every required field needs an independent nil/non-nil presence representation.
 Non-nullable required scalars, singular message fields without independent
-presence, and mapped message paths with required descendants
+presence, and mapped message paths (including map `castvalue`) with required descendants
 produce generation errors rather than guessing presence. Proto2 gogofaster/slick
 users may need explicit `nullable=true` or retained defaults to preserve pointers.
 Native bytes already distinguish nil from present empty bytes. This parameter

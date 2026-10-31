@@ -88,7 +88,7 @@ func (g *Generator) validateRequiredMerging(file *FileDescriptor) bool {
 					if g.hasRequiredGraph(child) && !gogoproto.IsNullable(field) && !field.IsRepeated() && !m.GetOptions().GetMapEntry() {
 						g.Fail("merge_required_fields requires independent message presence: ", m.File().GetName(), ":", m.GetName(), ".", field.GetName())
 					}
-					if g.hasRequiredGraph(child) && (gogoproto.IsCustomType(field) || gogoproto.IsCastType(field) || gogoproto.IsStdType(field)) {
+					if g.hasRequiredGraph(child) && (gogoproto.IsCustomType(field) || gogoproto.IsCastType(field) || gogoproto.IsCastValue(field) || gogoproto.IsStdType(field)) {
 						g.Fail("merge_required_fields cannot inspect mapped required message fields: ", m.File().GetName(), ":", m.GetName(), ".", field.GetName())
 					}
 					visit(child)
