@@ -216,10 +216,7 @@ func equalAny(v1, v2 reflect.Value, prop *Properties) bool {
 			if v1.IsNil() != v2.IsNil() {
 				return false
 			}
-			if prop != nil && prop.Proto3Optional && prop.CastType != "" {
-				return bytes.Equal(v1.Bytes(), v2.Bytes())
-			}
-			return bytes.Equal(v1.Interface().([]byte), v2.Interface().([]byte))
+			return bytes.Equal(v1.Bytes(), v2.Bytes())
 		}
 
 		if v1.Len() != v2.Len() {
@@ -232,10 +229,7 @@ func equalAny(v1, v2 reflect.Value, prop *Properties) bool {
 		}
 		return true
 	case reflect.String:
-		if prop != nil && prop.Proto3Optional && prop.CastType != "" {
-			return v1.String() == v2.String()
-		}
-		return v1.Interface().(string) == v2.Interface().(string)
+		return v1.String() == v2.String()
 	case reflect.Struct:
 		return equalStruct(v1, v2)
 	case reflect.Uint32, reflect.Uint64:
