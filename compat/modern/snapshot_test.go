@@ -423,3 +423,56 @@ func TestImportedSourceMismatchRejected(t *testing.T) {
 		}
 	}
 }
+
+func TestExternalExtensionAndAnySourceMismatchRejected(t *testing.T) {
+	for _, anyPayload := range []bool{false, true} {
+		good := registry(t)
+		set := new(descriptorpb.FileDescriptorSet)
+		for name, file := range good.sourceFiles {
+			copy := proto.Clone(file).(*descriptorpb.FileDescriptorProto)
+			if !anyPayload && name == "compat/editions/edition2023/foreign_ext.proto" {
+				copy.Extension[0].Name = proto.String("renamed_foreign_extension")
+				copy.Extension[0].JsonName = proto.String("renamedForeignExtension")
+			}
+			if anyPayload && name == "compat/editions/edition2023/imported.proto" {
+				copy.EnumType[0].Value[0].Name = proto.String("RENAMED_FIRST")
+			}
+			set.File = append(set.File, copy)
+		}
+		raw, _ := proto.Marshal(set)
+		altered, err := NewRegistry(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		extended := new(ed23.Extensible)
+		if err := gogo.SetExtension(extended, ed23.E_ExtFromForeignScope, gogo.String("value")); err != nil {
+			t.Fatal(err)
+		}
+		var original gogo.Message = extended
+		if anyPayload {
+			original, err = types.MarshalAny(&ed23.Sample{Imported: ed23.Imported_FIRST.Enum()})
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		if snapshot, err := altered.Snapshot(original); err == nil {
+			text, _ := (protojson.MarshalOptions{Resolver: altered.Types}).Marshal(snapshot)
+			t.Errorf("accepted changed external schema (Any=%v): %s", anyPayload, text)
+			continue
+		}
+		name, err := good.sourceName(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		typeOf, _ := altered.Types.FindMessageByName(name)
+		snapshot := dynamicpb.NewMessage(typeOf.Descriptor())
+		wire, _ := gogo.Marshal(original)
+		if err := (proto.UnmarshalOptions{Resolver: altered.Types}).Unmarshal(wire, snapshot); err != nil {
+			t.Fatal(err)
+		}
+		before := gogo.Clone(original)
+		if err := altered.Apply(original, snapshot); err == nil || !gogo.Equal(before, original) {
+			t.Fatalf("Apply accepted changed external schema (Any=%v): %v", anyPayload, err)
+		}
+	}
+}

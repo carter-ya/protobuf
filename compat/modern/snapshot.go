@@ -246,10 +246,31 @@ func (r *Registry) Snapshot(m gogo.Message) (*dynamicpb.Message, error) {
 // can also contain cycles, which have no finite protobuf wire representation.
 func (r *Registry) validateMessage(root protoreflect.Message) error {
 	active := map[protoreflect.Message]bool{}
+	// Public callers have already validated the root's generated Descriptor.
+	// Referenced extension declarations and Any payloads can live outside its
+	// ordinary import closure and need their own source validation.
+	verified := map[string]bool{root.Descriptor().ParentFile().Path(): true}
+	checkFile := func(path string) error {
+		if verified[path] {
+			return nil
+		}
+		raw := runtimeDescriptor(path)
+		if len(raw) == 0 {
+			return fmt.Errorf("modern: runtime descriptor for referenced file %q is unavailable", path)
+		}
+		file, err := r.decodeSource(raw, path)
+		if err != nil {
+			return err
+		}
+		return r.checkSourceFile(file, verified)
+	}
 	var walk func(protoreflect.Message, int) error
 	walk = func(m protoreflect.Message, depth int) error {
 		if depth > 10000 || active[m] {
 			return fmt.Errorf("%w: cyclic or excessively nested message", ErrUnsupportedSemantics)
+		}
+		if err := checkFile(m.Descriptor().ParentFile().Path()); err != nil {
+			return err
 		}
 		active[m] = true
 		defer delete(active, m)
@@ -285,6 +306,11 @@ func (r *Registry) validateMessage(root protoreflect.Message) error {
 			}
 		}
 		m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+			if fd.IsExtension() {
+				if err = checkFile(fd.ParentFile().Path()); err != nil {
+					return false
+				}
+			}
 			if fd.IsMap() {
 				v.Map().Range(func(_ protoreflect.MapKey, entry protoreflect.Value) bool {
 					value(fd.MapValue(), entry)

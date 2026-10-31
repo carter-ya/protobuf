@@ -17,7 +17,10 @@ feature resolution. No V2 global registration is installed. Descriptor bundles
 must match the actual generated runtime descriptors, including options; a
 same-name schema is not sufficient. Snapshot and Apply recursively verify the
 ordinary dependency closure against registered generated metadata, including
-imported enum-only files and transitive dependencies. Missing runtime dependency
+imported enum-only files and transitive dependencies. Resolved extensions also
+validate their declaring files, even when those files import the message rather
+than being imported by it. Any payloads validate their own source/import closure;
+payload types require registered generated metadata. Missing runtime dependency
 metadata is an error; documented historical gogo path aliases are recognized. Frozen WKT runtime descriptors include gogo
 options that differ from compiler source options. Test helpers retain those
 original descriptors and handle historical gogo import-path spellings.
