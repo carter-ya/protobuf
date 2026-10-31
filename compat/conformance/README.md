@@ -64,3 +64,10 @@ old callers. The report directories identify the entrypoint explicitly.
 B05 fixes message-oneof merging only for explicit Editions metadata. Six exact
 Editions_Proto2/Proto3 binary/JSON failures are removed from each baseline.
 Historical proto2/proto3 oneof behavior and text baselines are unchanged.
+
+The table sint32 decoder now truncates an incoming varint to 32 bits before
+ZigZag decoding, matching the existing Buffer codec, generated codecs and the
+upstream reference. Sixty exact binary/JSON failures are removed from each
+baseline; the standard entrypoint has 54 remaining binary/JSON failures and
+223 text failures. Pointer/scalar, packed/unpacked and map key/value regressions
+also run with purego. Canonical 32-bit inputs retain their previous results.

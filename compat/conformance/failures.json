@@ -81,41 +81,6 @@
         "follow_up": "A03 JSON standard entrypoint"
       },
       {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto2.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Recommended.Editions_Proto3.FieldMaskNumbersDontRoundTrip.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
@@ -216,41 +181,6 @@
         "follow_up": "A04 WKT standard JSON"
       },
       {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Editions_Proto3.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Recommended.Editions_Proto3.ValueRejectInfNumberValue.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
@@ -333,41 +263,6 @@
       {
         "test": "Recommended.Proto2.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
         "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\372\\004\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\372\\004\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\002, but got: \\230\\002\\000\\230\\002\\362\\300\\001\\230\\002\\376\\377\\377\\377\\017\\230\\002\\377\\377\\377\\377\\017\\230\\002\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
         "follow_up": "later binary/text runtime conformance work"
       },
       {
@@ -481,41 +376,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.DefaultOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.PackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\232\\002\\017\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\002, but got: \\232\\002\\023\\000\\362\\300\\001\\376\\377\\377\\377\\017\\377\\377\\377\\377\\017\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.UnpackedOutput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\002, but got: \\350\\005\\000\\350\\005\\362\\300\\001\\350\\005\\376\\377\\377\\377\\017\\350\\005\\377\\377\\377\\377\\017\\350\\005\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataScalarBinary.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\050\\002, but got: \\050\\375\\377\\377\\377\\017",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Recommended.Proto3.ValueRejectInfNumberValue.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
@@ -568,46 +428,6 @@
       {
         "test": "Required.Editions_Proto2.ProtobufInput.MismatchedNestedGroupTags",
         "reason": "Should have failed to parse, but didn't.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto2.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
         "follow_up": "later binary/text runtime conformance work"
       },
       {
@@ -731,46 +551,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Editions_Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Editions_Proto3.TimestampProtoInputTooLarge.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
@@ -826,16 +606,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
         "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
         "follow_up": "later binary/text runtime conformance work"
@@ -843,36 +613,6 @@
       {
         "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
         "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
         "follow_up": "later binary/text runtime conformance work"
       },
       {
@@ -996,16 +736,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.RepeatedScalarSelectsLast.SINT32.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
         "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
         "follow_up": "later binary/text runtime conformance work"
@@ -1013,36 +743,6 @@
       {
         "test": "Required.Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
         "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.PackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataRepeated.SINT32.UnpackedInput.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: repeated_sint32[4]: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataScalar.SINT32[4].JsonOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataScalar.SINT32[4].ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: modified: optional_sint32: 1 -> -2147483647",
         "follow_up": "later binary/text runtime conformance work"
       },
       {

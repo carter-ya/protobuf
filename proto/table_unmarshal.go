@@ -1211,7 +1211,7 @@ func unmarshalSint32Value(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	*f.toInt32() = v
 	return b, nil
 }
@@ -1225,7 +1225,7 @@ func unmarshalSint32Ptr(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	f.setInt32Ptr(v)
 	return b, nil
 }
@@ -1248,7 +1248,7 @@ func unmarshalSint32Slice(b []byte, f pointer, w int) ([]byte, error) {
 				return nil, io.ErrUnexpectedEOF
 			}
 			b = b[n:]
-			v := int32(x>>1) ^ int32(x)<<31>>31
+			v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 			f.appendInt32Slice(v)
 		}
 		return res, nil
@@ -1261,7 +1261,7 @@ func unmarshalSint32Slice(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	f.appendInt32Slice(v)
 	return b, nil
 }
