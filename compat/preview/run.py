@@ -113,7 +113,7 @@ def main():
         report['schema_audit'] = json.loads((output / 'schema-audit.json').read_text())
         report['schema_audit']['raw_sha256'] = {name: hashlib.sha256((output / (name + '.pb')).read_bytes()).hexdigest() for name in ['stable', 'preview']}
         record()
-        for name in ['check.sh', 'check-entrypoints.sh', 'check-optional-mappings.sh', 'check-oneof-merge.sh', 'check-required.sh']:
+        for name in ['check.sh', 'check-entrypoints.sh', 'check-optional-mappings.sh', 'check-oneof-merge.sh', 'check-compare-floats.sh', 'check-required.sh']:
             run(name.removesuffix('.sh'), ['sh', ROOT / 'compat' / name])
         run('editions-all-backends', ['python3', ROOT / 'compat/fast/prepare.py', output / 'editions'])
 

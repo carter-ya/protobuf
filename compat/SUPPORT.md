@@ -132,6 +132,12 @@ its separate gogo option allowlist; custom/cast/nullable and unsafe codec option
 outside that list fail generation rather than emitting partially supported code.
 Legacy schemas retain their established gogo mappings and helpers.
 
+Fresh native float/double Compare methods and the maintained scalar wrappers
+use [NaNs-before-numbers ordering](compare-floats/README.md), with equal NaNs
+continuing to later elements/fields. The historical Go floating-point rule for
+[proto.Equal](../proto/equal.go) and generated equality is retained. External
+frozen Compare implementations need regeneration for the ordering fix.
+
 Explicit Go HYBRID/OPAQUE API requests, enum-prefix stripping and unsupported Go
 features produce diagnostics. This backend preserves its Open Struct API. The
 C02 conversion experiment rejects MessageSet, unknown closed-enum reflection
