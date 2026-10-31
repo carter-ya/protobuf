@@ -32,7 +32,7 @@ SourceCodeInfo documentation also describes negative option-part paths in the
 new compiler; its existing repeated int32 representation is unchanged.
 
 The preview compiler runs the complete historical/frozen suite, five-generator
-optional entrypoints and mappings, oneof merge policies, floating-point comparison, required-word boundaries
+optional entrypoints and mappings, oneof merge policies, floating-point comparison, required-word boundaries, final required initialization
 and the full Editions 2023/2024/2026 scalar/complex/auxiliary preparation matrix.
 Temporary consumers then pin official Go v1.37.0-rc.1 for standard JSON/text
 regressions, the Edition 2026 JSON and WKT oracle, and the C02 detached V2 snapshot

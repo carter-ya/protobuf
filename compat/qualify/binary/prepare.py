@@ -58,7 +58,7 @@ def main():
             destination.mkdir(exist_ok=True)
             shutil.move(str(generated[0]), str(destination / 'messages.pb.go'))
             shutil.rmtree(stage)
-        if 'GoGoProtoPackageIsVersion13' not in (module / 'closed/messages.pb.go').read_text():
+        if 'GoGoProtoPackageIsVersion14' not in (module / 'closed/messages.pb.go').read_text():
             raise RuntimeError('registered Editions extension runtime guard missing')
         driver.unlink()
         shutil.copyfile(ROOT / 'compat/qualify/binary/wire_test.go.txt',

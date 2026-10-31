@@ -5,7 +5,7 @@
 continues to require Go 1.15. Each module uses the unmodified Protobuf 36.2
 `TestAllTypesEdition2023` schema and this directory's separate `closed.proto`.
 The latter adds closed enums, presence, groups, maps, oneofs and extensions.
-Generation opts into `merge_oneof_messages=true`; imported frozen bindings do
+Generation opts into `merge_oneof_messages=true,merge_required_fields=true`; imported frozen bindings do
 not acquire that policy automatically.
 
 The pinned C++ runner exposes a private framed `wire_oracle` mode. Both fixtures
@@ -49,7 +49,8 @@ failure corpora. Copy a confirmed new corpus into this directory's `testdata`
 before submitting its fix.
 
 Regenerated extensible Editions files and extension declarations require runtime
-Version13 and carry `edition_ext` metadata. Registered native message extensions
+Version13 and carry `edition_ext` metadata; required-reachable graphs additionally
+require Version14. Registered native message extensions
 are checked during outer decoding for wire, UTF-8 and required-field errors while
 the encoded store remains lazy. Singular fragments merge before validation;
 repeated messages are checked separately. Nested required-fragment recovery uses
@@ -84,6 +85,13 @@ generated Editions fast decoders use the shared table codec for ordinary
 message graphs that can contain extensible children; other fast field paths
 remain generated. Regenerate enclosing codecs as well as the affected Editions
 messages to obtain this policy. A dependency-only enclosing file requires runtime
-Version13 even if it declares no extension ranges itself. Legacy ordinary required
-field policy is unchanged. Depth-64 recursive-extension and overwritten-child
+Version13 even if it declares no extension ranges itself. Required-reachable
+Editions graphs use Version14 and defer ordinary required initialization too.
+Unmarked legacy ordinary required policy is unchanged. Depth-64 recursive-extension and overwritten-child
 regressions prevent exponential revalidation and lost wire-time errors.
+
+`sh compat/check-required-merge.sh` qualifies final required initialization across
+ordinary messages, maps, oneofs and DELIMITED fragments, using all five backends
+and default/purego runtimes. The binary oracle fixture includes an ordinary
+required child and verifies the independently accepted split-fragment case.
+See [the generation contract](../../required-merge/README.md).

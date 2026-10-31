@@ -71,6 +71,7 @@ type unmarshalInfo struct {
 	// Required-field completeness is checked after all fragments have merged.
 	editionFragment bool
 	extensionGraph  bool
+	requiredMerge   bool
 
 	// 0 = only typ field is initialized
 	// 1 = completely initialized
@@ -387,6 +388,12 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			reqMask >>= 1
 		}
 	}
+	if !u.editionFragment && u.requiredMerge {
+		if _, required := errLater.(*RequiredNotSetError); errLater != nil && !required {
+			return errLater
+		}
+		return validateEditionMessageGraph(m.asPointerTo(u.typ).Interface().(Message), true)
+	}
 	if !u.editionFragment && u.extensionGraph {
 		if err := validateEditionExtensionsInGraph(m.asPointerTo(u.typ).Interface().(Message)); err != nil {
 			return err
@@ -429,6 +436,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 	}
 	t := u.typ
 	u.extensionGraph = hasEditionExtensionGraph(t)
+	u.requiredMerge = hasRequiredMergePolicy(t)
 	n := t.NumField()
 
 	// Set up the "not found" value for the unrecognized byte buffer.
@@ -507,7 +515,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		}
 
 		// Extract unmarshaling function from the field (its type and tags).
-		unmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph)
+		unmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph || u.requiredMerge)
 
 		// Required field?
 		var reqMask uint64
@@ -539,7 +547,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 			typ := tptr.Elem()        // Msg_X
 
 			f := typ.Field(0) // oneof implementers have one field
-			baseUnmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph)
+			baseUnmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph || u.requiredMerge)
 			tags := strings.Split(f.Tag.Get("protobuf"), ",")
 			fieldNum, err := strconv.Atoi(tags[1])
 			if err != nil {

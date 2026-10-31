@@ -151,6 +151,7 @@ type Properties struct {
 	oneof            bool           // whether this is a oneof field
 	oneofMerge       bool           // opt-in merging of repeated message members
 	editionExtension bool           // explicit validation/merge policy for regenerated Editions extensions
+	mergeRequired    bool           // initialization after the complete logical message merges
 
 	Default     string // default value
 	HasDefault  bool   // whether an explicit default was provided
@@ -182,6 +183,9 @@ func (p *Properties) String() string {
 	}
 	if p.Repeated {
 		s += ",rep"
+	}
+	if p.mergeRequired {
+		s += ",merge_required"
 	}
 	if p.Packed {
 		s += ",packed"
@@ -287,6 +291,8 @@ outer:
 			p.JSONName = f[5:]
 		case strings.HasPrefix(f, "enum="):
 			p.Enum = f[5:]
+		case f == "merge_required" && i == 3 && (fields[2] == "opt" || fields[2] == "req" || fields[2] == "rep"):
+			p.mergeRequired = true
 		case f == "explicit":
 			p.ExplicitPresence = true
 		case f == "edition_ext":

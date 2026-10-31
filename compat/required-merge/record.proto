@@ -1,0 +1,15 @@
+edition = "2023";
+package qualification.requiredmerge;
+option go_package = "example.com/gogo-required-merge/pb";
+import "leaf.proto";
+message Record {
+  Leaf child = 1;
+  repeated Leaf children = 2;
+  map<string, Leaf> values = 3;
+  oneof choice {
+    Leaf selected = 4;
+    int32 scalar = 5;
+  }
+  Leaf delimited = 6 [features.message_encoding = DELIMITED];
+  string text = 7;
+}

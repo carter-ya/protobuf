@@ -45,7 +45,8 @@ qualification is separate from the stable C++ conformance run.
 
 The historical inventory is retained so updating the runtime does not silently
 select different JSON/text policies. The standard profile uses separately
-generated binary code with `merge_oneof_messages=true` and explicit standard
+generated binary code with `merge_oneof_messages=true,merge_required_fields=true`
+and explicit standard
 JSON/text entrypoints. It passes 5,645 binary/JSON cases and all 909 text cases.
 The four skipped cases use `EditionUnstable`, outside the supported 2023–2026
 range. No stable-Edition case is skipped. Exact inventories live in
@@ -116,10 +117,21 @@ module release versions; keep the generated guard and use the matching runtime.
 | Version10 / 11 | Optional casts / custom and standard mappings |
 | Version12 | Explicit oneof message merge metadata |
 | Version13 | Native Editions extension validation, cached merges and deferred enclosing-graph completeness |
+| Version14 | Required initialization after final logical-message merging |
 
 Version13 also applies to a newly generated enclosing Editions file that reaches
 extensible children but declares no ranges itself. Its fast decoder uses the
 shared table path for that graph; other fast field paths remain generated.
+Version14 applies to newly generated Editions messages that reach required fields,
+including imported dependencies and native extension payloads. Their fast decoders
+use the shared table path to defer completeness until the final message. For
+proto2/proto3 this is the explicit `merge_required_fields=true` parameter; unmarked
+bindings keep their historical required policy. Regenerate the complete dependency
+graph and retain independent presence for every required field. Non-nullable
+required scalars, flattened singular message fields and mapped message paths
+with required descendants are rejected.
+See [required merge qualification](required-merge/README.md).
+
 An older runtime must fail to compile new feature code. Frozen legacy bindings
 continue to compile without regeneration.
 

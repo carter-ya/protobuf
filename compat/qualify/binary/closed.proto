@@ -48,6 +48,7 @@ message Record {
   map<string, Payload> messages = 15;
   map<string, Record> recursive_messages = 16;
   Record recursive_child = 18;
+  RequiredPayload required_child = 19;
   extensions 100 to 199;
 }
 

@@ -143,7 +143,8 @@ randomized GoString syntax, raw feature retention and unsupported options.
 gogofast, gogofaster, gogoslick and gogotypes. The initial matrix covers all scalar
 and repeated types, presence, UTF-8 VERIFY/NONE, packed/expanded enums, negative
 enums, required fields, unknown/wrong-wire fields and malformed input. Fresh
-fast scalar bindings use Version9; regenerated extensible files use Version13. Fast wire/size results are checked against the
+fast scalar bindings use Version14 because the fixture includes required fields;
+regenerated extensible files without required descendants use Version13. Fast wire/size results are checked against the
 reflection codec and the pinned official protoc binary/text oracle. The matrix
 also covers map UTF-8 and closed-enum routing, message/oneof merging,
 DELIMITED singular/repeated/oneof fields, imported proto2 enums, cross-file and
@@ -177,3 +178,9 @@ values merge without losing fields. Unregistered payloads and unmarked old
 bindings retain their policy. Both map and optional byte extension storage are
 qualified across all five generators. See `compat/qualify/binary/README.md` for
 the required-fragment, cached-value and representation boundaries.
+
+`sh compat/check-required-merge.sh` checks required initialization after complete
+ordinary message merging. Editions selects this policy automatically; legacy
+proto2/proto3 generation requires `merge_required_fields=true`. Required-reachable
+files assert runtime Version14. Unmarked old bindings keep their policy; see
+[the required merge contract](required-merge/README.md).

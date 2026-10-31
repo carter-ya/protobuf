@@ -986,6 +986,8 @@ const (
 	GoGoProtoPackageIsVersion12 = true
 	// Version13 validates native Editions message extensions and decoded merges.
 	GoGoProtoPackageIsVersion13 = true
+	// Version14 defers required completeness until the logical message merges.
+	GoGoProtoPackageIsVersion14 = true
 
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.

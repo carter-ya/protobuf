@@ -479,3 +479,20 @@ func TestEnclosingEditionExtensionFragments(t *testing.T) {
 	}
 	checkWire(t, 1, append(field(18, proto.WireBytes, a), field(18, proto.WireBytes, b)...))
 }
+
+func TestOrdinaryRequiredChildFragments(t *testing.T) {
+	first := field(19, proto.WireBytes, []byte{8, 1})
+	second := field(19, proto.WireBytes, []byte{16, 2})
+	checkWire(t, 1, append(first, second...))
+	checkWire(t, 1, first)
+	var got closed.Record
+	if err := proto.Unmarshal(first, &got); err == nil {
+		t.Fatal("incomplete child accepted")
+	}
+	if err := proto.UnmarshalMerge(second, &got); err != nil {
+		t.Fatal("later call completes required child", err)
+	}
+	if err := proto.UnmarshalMerge(nil, &got); err != nil {
+		t.Fatal("valid prior child", err)
+	}
+}

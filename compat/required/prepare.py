@@ -17,7 +17,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     generator = output / 'gogo'
     subprocess.run(['go', 'build', '-o', str(generator), './protoc-gen-gogo'], cwd=ROOT, check=True)
-    modern = subprocess.check_output(['protoc', '--version'], text=True).strip() == 'libprotoc 36.2'
+    modern = subprocess.check_output(['protoc', '--version'], text=True).strip() in ['libprotoc 36.2', 'libprotoc 37.0-rc1']
     syntaxes = ['proto2', 'editions'] if modern else ['proto2']
     for syntax in syntaxes:
         for count in COUNTS:
@@ -39,7 +39,7 @@ def main():
             subprocess.run(['protoc', '-I' + str(output), '--plugin=protoc-gen-test=' + str(generator),
                             '--test_out=paths=source_relative:' + str(dest), path.name], check=True)
             code = (dest / (name + '.pb.go')).read_text()
-            version = 7 if count > 64 else 5 if syntax == 'editions' else 3
+            version = 14 if syntax == 'editions' else 7 if count > 64 else 3
             if 'GoGoProtoPackageIsVersion%d' % version not in code:
                 raise RuntimeError('wrong guard for ' + name)
     imports = '\n'.join('%s "example.com/gogo-required/%s"' % (syntax + str(n), syntax + str(n))

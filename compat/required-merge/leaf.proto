@@ -1,0 +1,9 @@
+edition = "2023";
+package qualification.requiredmerge;
+option go_package = "example.com/gogo-required-merge/pb";
+message Leaf {
+  int32 a = 1 [features.field_presence = LEGACY_REQUIRED];
+  int32 b = 2 [features.field_presence = LEGACY_REQUIRED];
+  bytes data = 3 [features.field_presence = LEGACY_REQUIRED];
+  string text = 4;
+}

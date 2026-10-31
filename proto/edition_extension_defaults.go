@@ -1,6 +1,9 @@
 package proto
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 // A map entry can omit its message value. The table codec represents that default
 // as nil, so ordinary field decoding never visits the empty message's required
@@ -66,11 +69,18 @@ func validateEditionMessageGraph(message Message, required bool) error {
 				if field.Tag.Get("protobuf") == "" && field.Tag.Get("protobuf_oneof") == "" {
 					continue
 				}
+				if required && property.Required {
+					switch value.Field(i).Kind() {
+					case reflect.Ptr, reflect.Slice, reflect.Interface:
+						if isNil(value.Field(i)) {
+							return &RequiredNotSetError{value.Type().String() + "." + property.OrigName}
+						}
+					default:
+						return fmt.Errorf("proto: required presence cannot be checked for %s.%s", value.Type(), property.OrigName)
+					}
+				}
 				if property.CustomType != "" || property.CastType != "" || property.StdTime || property.StdDuration || property.WktPointer {
 					continue
-				}
-				if required && property.Required && isNil(value.Field(i)) {
-					return &RequiredNotSetError{value.Type().String() + "." + property.OrigName}
 				}
 				if err := visit(value.Field(i), false); err != nil {
 					return err

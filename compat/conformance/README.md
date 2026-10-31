@@ -121,5 +121,7 @@ The standard profile now generates its own testee with the explicit
 `merge_oneof_messages=true` parameter. Its last six binary/JSON records pass;
 all 5,649 binary/JSON cases have no failures (four future-Edition skips), and
 all 909 text cases pass without skips. Legacy generation and inventory remain
-separate. This suite result does not qualify every gogo representation, imported
+separate. Standard generation also enables `merge_required_fields=true` so
+ordinary required children are checked after all surviving fragments merge.
+This suite result does not qualify every gogo representation, imported
 decoder policy or resource boundary.
