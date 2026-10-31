@@ -70,6 +70,7 @@ type unmarshalInfo struct {
 	// Extension fragment decoding checks newly encountered wire payloads only.
 	// Required-field completeness is checked after all fragments have merged.
 	editionFragment bool
+	extensionGraph  bool
 
 	// 0 = only typ field is initialized
 	// 1 = completely initialized
@@ -386,8 +387,8 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			reqMask >>= 1
 		}
 	}
-	if !u.editionFragment && len(u.extensionRanges) != 0 {
-		if err := ValidateEditionMessageExtensions(m.asPointerTo(u.typ).Interface().(Message)); err != nil {
+	if !u.editionFragment && u.extensionGraph {
+		if err := validateEditionExtensionsInGraph(m.asPointerTo(u.typ).Interface().(Message)); err != nil {
 			return err
 		}
 	}
@@ -427,6 +428,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		return
 	}
 	t := u.typ
+	u.extensionGraph = hasEditionExtensionGraph(t)
 	n := t.NumField()
 
 	// Set up the "not found" value for the unrecognized byte buffer.
@@ -505,7 +507,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		}
 
 		// Extract unmarshaling function from the field (its type and tags).
-		unmarshal := fieldUnmarshaler(&f, u.editionFragment)
+		unmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph)
 
 		// Required field?
 		var reqMask uint64
@@ -537,7 +539,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 			typ := tptr.Elem()        // Msg_X
 
 			f := typ.Field(0) // oneof implementers have one field
-			baseUnmarshal := fieldUnmarshaler(&f, u.editionFragment)
+			baseUnmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph)
 			tags := strings.Split(f.Tag.Get("protobuf"), ",")
 			fieldNum, err := strconv.Atoi(tags[1])
 			if err != nil {

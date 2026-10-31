@@ -76,3 +76,14 @@ Both reference parsers can ignore overflowing tag bits in unknown groups; that
 shared tolerance must not classify the SDK's rejection as a compatibility bug.
 The minimized unknown-group case is retained as an oracle regression. Unknown
 length-delimited bytes remain opaque; only known message schemas are traversed.
+
+Extension completeness is checked after ordinary enclosing message fragments have
+merged, including DELIMITED fields. Structural graph reachability is cached
+without caching registrations, so late registration remains effective. Newly
+generated Editions fast decoders use the shared table codec for ordinary
+message graphs that can contain extensible children; other fast field paths
+remain generated. Regenerate enclosing codecs as well as the affected Editions
+messages to obtain this policy. A dependency-only enclosing file requires runtime
+Version13 even if it declares no extension ranges itself. Legacy ordinary required
+field policy is unchanged. Depth-64 recursive-extension and overwritten-child
+regressions prevent exponential revalidation and lost wire-time errors.

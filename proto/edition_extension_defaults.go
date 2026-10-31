@@ -6,6 +6,14 @@ import "reflect"
 // as nil, so ordinary field decoding never visits the empty message's required
 // fields. Validate these defaults without changing the decoded Go representation.
 func validateEditionMapMessageDefaults(message Message) error {
+	return validateEditionMessageGraph(message, true)
+}
+
+func validateEditionExtensionsInGraph(message Message) error {
+	return validateEditionMessageGraph(message, false)
+}
+
+func validateEditionMessageGraph(message Message, required bool) error {
 	var visit func(reflect.Value, bool) error
 	visit = func(value reflect.Value, empty bool) error {
 		if !value.IsValid() {
@@ -26,7 +34,7 @@ func validateEditionMapMessageDefaults(message Message) error {
 				return nil
 			}
 			if value.IsNil() {
-				if empty {
+				if empty && required {
 					for _, property := range GetProperties(value.Type().Elem()).Prop {
 						if property.Required {
 							return &RequiredNotSetError{value.Type().String() + "." + property.OrigName}
@@ -56,7 +64,7 @@ func validateEditionMapMessageDefaults(message Message) error {
 				if property.CustomType != "" || property.CastType != "" || property.StdTime || property.StdDuration || property.WktPointer {
 					continue
 				}
-				if property.Required && isNil(value.Field(i)) {
+				if required && property.Required && isNil(value.Field(i)) {
 					return &RequiredNotSetError{value.Type().String() + "." + property.OrigName}
 				}
 				if err := visit(value.Field(i), false); err != nil {

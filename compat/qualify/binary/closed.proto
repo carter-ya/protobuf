@@ -47,6 +47,7 @@ message Record {
   bytes data = 14;
   map<string, Payload> messages = 15;
   map<string, Record> recursive_messages = 16;
+  Record recursive_child = 18;
   extensions 100 to 199;
 }
 
@@ -60,4 +61,9 @@ extend Record {
   Payload extension_group = 106 [features.message_encoding = DELIMITED];
   RequiredContainer extension_nested_required = 110;
   Record extension_recursive = 112;
+}
+
+message Envelope {
+  Record child = 1;
+  Record group_child = 2 [features.message_encoding = DELIMITED];
 }

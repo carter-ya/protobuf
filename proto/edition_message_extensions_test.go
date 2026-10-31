@@ -306,3 +306,26 @@ func TestEditionNestedExtensionRequiredFragments(t *testing.T) {
 		t.Fatal("nested extension consumed following occurrence")
 	}
 }
+
+type extensionValidationParent struct {
+	Child *extensionValidationRecord `protobuf:"bytes,1,opt,name=child"`
+}
+
+func (m *extensionValidationParent) Reset()         { *m = extensionValidationParent{} }
+func (m *extensionValidationParent) String() string { return CompactTextString(m) }
+func (*extensionValidationParent) ProtoMessage()    {}
+func TestEditionExtensionEnclosingFragments(t *testing.T) {
+	a := extensionWire(1, extensionWire(104, []byte{8, 1}))
+	b := extensionWire(1, extensionWire(104, []byte{16, 2}))
+	var got extensionValidationParent
+	if err := Unmarshal(append(a, b...), &got); err != nil {
+		t.Fatal(err)
+	}
+	value, err := GetExtension(got.Child, validationRequired)
+	if err != nil || value.(*extensionValidationRequired).A == nil || value.(*extensionValidationRequired).B == nil {
+		t.Fatalf("enclosing merge: %v", err)
+	}
+	if err := Unmarshal(a, &got); err == nil {
+		t.Fatal("incomplete nested extension was accepted")
+	}
+}

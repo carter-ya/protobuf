@@ -1396,6 +1396,15 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			continue
 		}
 		p.atleastOne = true
+		if file.IsEditions() && p.NeedsDeferredEditionExtensions(message) {
+			// The shared codec preserves per-occurrence wire checks while
+			// checking extension completeness after the outer graph merges.
+			p.P("func (m *", ccTypeName, ") Unmarshal(dAtA []byte) error {")
+			p.P("var info ", protoPkg.Use(), ".InternalMessageInfo")
+			p.P("return info.Unmarshal(m, dAtA)")
+			p.P("}")
+			continue
+		}
 
 		// build a map required field_id -> bitmask offset
 		rfMap := make(map[int32]uint)

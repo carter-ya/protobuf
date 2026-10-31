@@ -449,3 +449,33 @@ func TestEmptyRepeatedEditionExtension(t *testing.T) {
 		t.Fatalf("empty repeated extension: %v", err)
 	}
 }
+
+func TestEnclosingEditionExtensionFragments(t *testing.T) {
+	a, b := field(104, proto.WireBytes, []byte{8, 1}), field(104, proto.WireBytes, []byte{16, 2})
+	input := append(field(1, proto.WireBytes, a), field(1, proto.WireBytes, b)...)
+	var got closed.Envelope
+	if err := proto.Unmarshal(input, &got); err != nil {
+		t.Fatal(err)
+	}
+	value, err := proto.GetExtension(got.Child, closed.E_ExtensionRequired)
+	if err != nil || value.(*closed.RequiredPayload).GetA() != 1 || value.(*closed.RequiredPayload).GetB() != 2 {
+		t.Fatalf("enclosing fragments: %v", err)
+	}
+	if err := proto.Unmarshal(field(1, proto.WireBytes, a), &got); err == nil {
+		t.Fatal("incomplete nested extension was accepted")
+	}
+	// Exercise the generated method directly, not just the runtime entry point.
+	if direct, ok := interface{}(&got).(interface{ Unmarshal([]byte) error }); ok {
+		got.Reset()
+		if err := direct.Unmarshal(input); err != nil {
+			t.Fatal(err)
+		}
+	}
+	groups := append(field(2, proto.WireStartGroup, a), varint(2<<3|proto.WireEndGroup)...)
+	groups = append(groups, field(2, proto.WireStartGroup, b)...)
+	groups = append(groups, varint(2<<3|proto.WireEndGroup)...)
+	if err := proto.Unmarshal(groups, &got); err != nil {
+		t.Fatal("DELIMITED enclosing fragments", err)
+	}
+	checkWire(t, 1, append(field(18, proto.WireBytes, a), field(18, proto.WireBytes, b)...))
+}

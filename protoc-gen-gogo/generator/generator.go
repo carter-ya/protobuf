@@ -1260,7 +1260,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 		if oneofMerge {
 			codeVersion = 12
 		}
-		if file.IsEditions() && fileNeedsEditionExtensionPolicy(file.FileDescriptorProto) {
+		if file.IsEditions() && (fileNeedsEditionExtensionPolicy(file.FileDescriptorProto) || g.fileNeedsDeferredEditionExtensions(file)) {
 			codeVersion = 13
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
