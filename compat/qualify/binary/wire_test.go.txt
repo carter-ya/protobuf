@@ -1,0 +1,225 @@
+package qualify
+
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"sync"
+	"testing"
+
+	closed "example.com/gogo-wire-qualification/closed"
+	official "example.com/gogo-wire-qualification/official"
+	"github.com/gogo/protobuf/proto"
+	modern "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
+)
+
+type oracle struct {
+	command *exec.Cmd
+	input   io.WriteCloser
+	output  io.ReadCloser
+	lock    sync.Mutex
+}
+
+var oracles [2]*oracle
+var schemas [2]protoreflect.MessageDescriptor
+var resolver *dynamicpb.Types
+
+func TestMain(m *testing.M) {
+	descriptorBytes, err := os.ReadFile(os.Getenv("GOGO_WIRE_DESCRIPTOR"))
+	if err != nil {
+		panic(err)
+	}
+	var set descriptorpb.FileDescriptorSet
+	if err := modern.Unmarshal(descriptorBytes, &set); err != nil {
+		panic(err)
+	}
+	files, err := protodesc.NewFiles(&set)
+	if err != nil {
+		panic(err)
+	}
+	resolver = dynamicpb.NewTypes(files)
+	for i, name := range []string{"protobuf_test_messages.editions.TestAllTypesEdition2023", "qualification.closed.Record"} {
+		desc, err := files.FindDescriptorByName(protoreflect.FullName(name))
+		if err != nil {
+			panic(err)
+		}
+		schemas[i] = desc.(protoreflect.MessageDescriptor)
+		cmd := exec.Command(os.Getenv("PROTOBUF_CONFORMANCE_RUNNER"), "wire_oracle", name, os.Getenv("GOGO_WIRE_DESCRIPTOR"))
+		// Invalid UTF-8 diagnostics from the C++ parser are expected during fuzzing.
+		// A closed pipe or nonzero oracle exit is reported as a test failure.
+		input, err := cmd.StdinPipe()
+		if err != nil {
+			panic(err)
+		}
+		output, err := cmd.StdoutPipe()
+		if err != nil {
+			panic(err)
+		}
+		if err := cmd.Start(); err != nil {
+			panic(err)
+		}
+		oracles[i] = &oracle{command: cmd, input: input, output: output}
+	}
+	status := m.Run()
+	for _, oracle := range oracles {
+		oracle.input.Close()
+		if err := oracle.command.Wait(); err != nil {
+			fmt.Fprintln(os.Stderr, "binary oracle:", err)
+			status = 1
+		}
+		oracle.output.Close()
+	}
+	os.Exit(status)
+}
+func (o *oracle) request(t *testing.T, frame []byte) bool {
+	t.Helper()
+	o.lock.Lock()
+	defer o.lock.Unlock()
+	header := make([]byte, 4)
+	binary.LittleEndian.PutUint32(header, uint32(len(frame)))
+	if _, err := o.input.Write(append(header, frame...)); err != nil {
+		t.Fatal("oracle write:", err)
+	}
+	var response [1]byte
+	if _, err := io.ReadFull(o.output, response[:]); err != nil {
+		t.Fatal("oracle read:", err)
+	}
+	if response[0] > 1 {
+		t.Fatalf("invalid oracle response %x", response)
+	}
+	return response[0] == 1
+}
+func message(which byte) proto.Message {
+	if which&1 != 0 {
+		return new(closed.Record)
+	}
+	return new(official.TestAllTypesEdition2023)
+}
+func varint(value uint64) []byte {
+	var out [10]byte
+	n := binary.PutUvarint(out[:], value)
+	return out[:n]
+}
+func field(number int, wire int, value []byte) []byte {
+	out := varint(uint64(number<<3 | wire))
+	if wire == proto.WireBytes {
+		out = append(out, varint(uint64(len(value)))...)
+	}
+	return append(out, value...)
+}
+func seeds() [][]byte {
+	return [][]byte{
+		{}, {0}, {8}, {8, 0}, {8, 1}, {8, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1},
+		{8, 128, 128, 128, 128, 128, 128, 128, 128, 128, 2},
+		{8, 1, 8, 0}, {16, 1, 16, 0}, {24, 127}, {24, 255, 255, 255, 255, 15},
+		{34, 4, 0, 127, 1, 127}, {32, 0, 32, 127, 32, 1},
+		field(5, proto.WireBytes, []byte{10, 1, 'a', 16, 127}),
+		field(5, proto.WireBytes, []byte{10, 1, 'a', 16, 1}),
+		{50, 2, 8, 1, 50, 2, 16, 2},
+		{59, 8, 1, 60}, {59, 8, 1, 68}, {59}, {60},
+		{66, 2, 8, 1, 66, 2, 16, 2}, {66, 2, 8, 1, 80, 0, 66, 2, 16, 2},
+		{74, 1}, {74, 127}, {90, 3, 1, 2, 3},
+		field(13, proto.WireBytes, []byte{255}), field(14, proto.WireBytes, []byte{255}),
+		field(15, proto.WireBytes, []byte{10, 1, 'a', 18, 2, 8, 1}),
+		field(100, proto.WireBytes, []byte{8, 1}),
+		append(field(100, proto.WireBytes, []byte{8, 1}), field(100, proto.WireBytes, []byte{16, 2})...),
+		field(101, proto.WireBytes, []byte{255}), field(102, proto.WireVarint, varint(127)),
+		field(103, proto.WireBytes, []byte{0, 127, 1}),
+		field(536870911, proto.WireVarint, []byte{1}),
+		field(536870912, proto.WireVarint, []byte{1}),
+	}
+}
+func checkWire(t *testing.T, which byte, input []byte) {
+	t.Helper()
+	if len(input) > 4096 {
+		t.Skip()
+	}
+	oracle := oracles[which&1]
+	accepted := oracle.request(t, append([]byte{0}, input...))
+	got := message(which)
+	err := proto.Unmarshal(input, got)
+	if !accepted {
+		return
+	} // Includes the C++ parser's independent recursion policy.
+	if err != nil {
+		// C++ accepts overflowing tenth varint bytes that official Go rejects.
+		// Require both independent parsers to accept before demanding SDK acceptance;
+		// C++ alone remains the semantic oracle (Go dynamic has closed-enum gaps).
+		official := dynamicpb.NewMessage(schemas[which&1])
+		if (modern.UnmarshalOptions{Resolver: resolver}).Unmarshal(input, official) != nil {
+			return
+		}
+		t.Fatalf("SDK rejected wire accepted by C++ and Go %x: %v", input, err)
+	}
+	output, err := proto.Marshal(got)
+	if err != nil {
+		t.Fatalf("SDK re-encode %x: %v", input, err)
+	}
+	compare := make([]byte, 5, 5+len(input)+len(output))
+	compare[0] = 1
+	binary.LittleEndian.PutUint32(compare[1:], uint32(len(input)))
+	compare = append(compare, input...)
+	compare = append(compare, output...)
+	if !oracle.request(t, compare) {
+		t.Fatalf("wire semantics changed: input %x / SDK %x", input, output)
+	}
+	if proto.Size(got) != len(output) {
+		t.Fatalf("size %d differs from encoded length %d", proto.Size(got), len(output))
+	}
+}
+func TestWireSeeds(t *testing.T) {
+	for which := byte(0); which < 2; which++ {
+		for i, input := range seeds() {
+			t.Run(fmt.Sprintf("%d/%d", which, i), func(t *testing.T) { checkWire(t, which, input) })
+		}
+	}
+}
+func FuzzWire(f *testing.F) {
+	for which := byte(0); which < 2; which++ {
+		for _, input := range seeds() {
+			f.Add(which, input)
+		}
+	}
+	f.Fuzz(checkWire)
+}
+
+func TestGeneratedBooleanMapComparison(t *testing.T) {
+	left := &official.TestAllTypesEdition2023{MapBoolBool: map[bool]bool{false: false}}
+	right := &official.TestAllTypesEdition2023{MapBoolBool: map[bool]bool{false: true}}
+	type comparer interface{ Compare(interface{}) int }
+	compare, ok := interface{}(left).(comparer)
+	if !ok {
+		return
+	} // Only auxiliary-enabled generators emit Compare.
+	if compare.Compare(right) != -1 || interface{}(right).(comparer).Compare(left) != 1 || compare.Compare(left) != 0 {
+		t.Fatal("boolean map comparison must order false before true")
+	}
+}
+
+func TestGeneratedMapComparisonKeysAndOrder(t *testing.T) {
+	type comparer interface{ Compare(interface{}) int }
+	if _, ok := interface{}(new(official.TestAllTypesEdition2023)).(comparer); !ok {
+		return
+	}
+	for _, pair := range [][2]*official.TestAllTypesEdition2023{
+		{{MapBoolBool: map[bool]bool{false: false}}, {MapBoolBool: map[bool]bool{true: false}}},
+		{{MapInt32Int32: map[int32]int32{1: 0}}, {MapInt32Int32: map[int32]int32{2: 0}}},
+		{{MapStringString: map[string]string{"a": ""}}, {MapStringString: map[string]string{"b": ""}}},
+		{{MapStringBytes: map[string][]byte{"a": nil}}, {MapStringBytes: map[string][]byte{"b": nil}}},
+		{{MapStringNestedMessage: map[string]*official.TestAllTypesEdition2023_NestedMessage{"a": nil}}, {MapStringNestedMessage: map[string]*official.TestAllTypesEdition2023_NestedMessage{"b": nil}}},
+		{{MapInt32Int32: map[int32]int32{1: 1, 2: 2}}, {MapInt32Int32: map[int32]int32{1: 2, 2: 1}}},
+	} {
+		a, b := interface{}(pair[0]).(comparer), interface{}(pair[1]).(comparer)
+		for i := 0; i < 128; i++ {
+			if a.Compare(pair[1]) != -1 || b.Compare(pair[0]) != 1 {
+				t.Fatal("map comparison must distinguish keys, be antisymmetric and deterministic")
+			}
+		}
+	}
+}

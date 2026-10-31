@@ -1,0 +1,44 @@
+edition = "2023";
+
+package qualification.closed;
+
+option features.enum_type = CLOSED;
+
+message Payload {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+enum State {
+  ZERO = 0;
+  ONE = 1;
+  NEGATIVE = -1;
+}
+
+message Record {
+  int32 explicit_value = 1;
+  int32 implicit_value = 2 [features.field_presence = IMPLICIT];
+  State state = 3;
+  repeated State states = 4;
+  map<string, State> state_map = 5;
+  Payload payload = 6;
+  Payload delimited = 7 [features.message_encoding = DELIMITED];
+  oneof choice {
+    Payload message = 8;
+    State enum = 9;
+    int32 scalar = 10;
+  }
+  repeated int32 unpacked = 11 [features.repeated_field_encoding = EXPANDED];
+  repeated Payload children = 12;
+  string text = 13;
+  bytes data = 14;
+  map<string, Payload> messages = 15;
+  extensions 100 to 199;
+}
+
+extend Record {
+  Payload extension_payload = 100;
+  string extension_text = 101;
+  State extension_state = 102;
+  repeated State extension_states = 103;
+}

@@ -159,3 +159,9 @@ Go 1.23+. It verifies detached reflection/protojson/Any/extensions, all five
 optional mapping backends and frozen real downstreams. Lossy representations,
 unknown closed-enum reflection mismatches and MessageSet are explicitly rejected;
 see `compat/modern/README.md`. The root runtime remains Go 1.15 without V2 imports.
+
+
+Independent binary fuzz qualification across all five generators is described in
+`compat/qualify/binary/README.md`. Native C++ 36.2 is the semantic oracle; official
+Go v1.36.12 helps identify acceptance differences between reference parsers.
+Historical generated bindings and root Go/module requirements remain separate.

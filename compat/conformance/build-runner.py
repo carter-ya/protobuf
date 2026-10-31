@@ -44,12 +44,17 @@ def main():
         with tarfile.open(archive) as stream:
             stream.extractall(root, filter='data')
     executable = root / 'bin/conformance_test_runner'
-    if executable.exists() and not runner_ready(executable):
-        print('Cached conformance runner cannot start; rebuilding it.')
+    entrypoint = pathlib.Path(__file__).with_name('runner-main.cc')
+    oracle_schema = pathlib.Path(__file__).resolve().parents[1] / 'qualify/binary/closed.proto'
+    digest = hashlib.sha256(entrypoint.read_bytes() + oracle_schema.read_bytes()).hexdigest()
+    stamp = executable.with_suffix('.entrypoint-sha256')
+    if executable.exists() and (not runner_ready(executable) or
+                               not stamp.exists() or stamp.read_text() != digest):
+        print('Cached conformance runner is stale or cannot start; rebuilding it.')
         executable.unlink()
     if not executable.exists():
         # No upstream protocol, fixture or test implementation is modified.
-        shutil.copyfile(pathlib.Path(__file__).with_name('runner-main.cc'),
+        shutil.copyfile(entrypoint,
                         source / 'conformance/conformance_test_main.cc')
         # Upstream's static-link branch uses jsoncpp_static, but its dependency
         # check still requires jsoncpp_lib. Supply an alias for the static-only
@@ -63,6 +68,29 @@ def main():
             if config.count(marker) != 1:
                 raise SystemExit('pinned conformance CMake target check changed')
             cmake.write_text(config.replace(marker, alias + marker))
+        # Compile our separate qualification fixture as native C++ too. Dynamic
+        # C++ maps can retain repeated duplicate entries until map synchronization;
+        # using generated parsers avoids mistaking that representation for SDK loss.
+        fixture = source / 'compat/qualify/binary/closed.proto'
+        fixture.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(oracle_schema, fixture)
+        oracle_cmake = r'''
+# gogo binary qualification fixture (separate from upstream suites).
+add_custom_command(
+  OUTPUT "${protobuf_BINARY_DIR}/compat/qualify/binary/closed.pb.cc"
+         "${protobuf_BINARY_DIR}/compat/qualify/binary/closed.pb.h"
+  COMMAND $<TARGET_FILE:protoc> --cpp_out=${protobuf_BINARY_DIR}
+          -I${protobuf_SOURCE_DIR} compat/qualify/binary/closed.proto
+  DEPENDS protoc "${protobuf_SOURCE_DIR}/compat/qualify/binary/closed.proto"
+  WORKING_DIRECTORY "${protobuf_SOURCE_DIR}"
+  VERBATIM)
+target_sources(conformance_test_runner PRIVATE
+  "${protobuf_BINARY_DIR}/compat/qualify/binary/closed.pb.cc")
+target_include_directories(conformance_test_runner PRIVATE "${protobuf_BINARY_DIR}")
+'''
+        config = cmake.read_text()
+        if oracle_cmake not in config:
+            cmake.write_text(config + oracle_cmake)
         build = root / 'build'
         subprocess.run(['cmake', '-S', str(source), '-B', str(build), '-G', 'Ninja',
                         '-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF',
@@ -73,6 +101,7 @@ def main():
         subprocess.run(['cmake', '--build', str(build), '--target', 'conformance_test_runner', '-j', args.jobs], check=True)
         executable.parent.mkdir(exist_ok=True)
         shutil.copy2(build / 'conformance_test_runner', executable)
+        stamp.write_text(digest)
     if not runner_ready(executable):
         raise SystemExit('built conformance runner cannot start')
     print(str(executable))
