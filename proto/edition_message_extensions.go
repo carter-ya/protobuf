@@ -41,6 +41,9 @@ func decodeEditionMessageExtension(data []byte, extension *ExtensionDesc) (inter
 		result = reflect.MakeSlice(reflect.TypeOf(extension.ExtensionType), 0, 0)
 	}
 	var merged []byte
+	var first reflect.Value
+	var firstError error
+	fragments := 0
 	if len(data) == 0 {
 		return nil, io.ErrUnexpectedEOF
 	}
@@ -69,19 +72,33 @@ func decodeEditionMessageExtension(data []byte, extension *ExtensionDesc) (inter
 			}
 			body = body[prefix:]
 		}
-		if repeated {
-			value := reflect.New(element.Elem())
-			if err := unmarshalEditionExtensionValue(body, value.Interface().(Message)); err != nil {
-				return nil, err
+		value := reflect.New(element.Elem())
+		decodeError := unmarshalEditionExtensionValue(body, value.Interface().(Message))
+		if decodeError != nil {
+			if _, required := decodeError.(*RequiredNotSetError); repeated || !required {
+				return nil, decodeError
 			}
+		}
+		if repeated {
 			result = reflect.Append(result, value)
 		} else {
-			merged = append(merged, body...)
+			fragments++
+			if fragments == 1 {
+				first, firstError = value, decodeError
+				// Capping capacity prevents a subsequent append from modifying
+				// the original encoded store through this temporary body slice.
+				merged = body[:len(body):len(body)]
+			} else {
+				merged = append(merged, body...)
+			}
 		}
 		data = data[end:]
 	}
 	if repeated {
 		return result.Interface(), nil
+	}
+	if fragments == 1 {
+		return first.Interface(), firstError
 	}
 	value := reflect.New(element.Elem())
 	if err := unmarshalEditionExtensionValue(merged, value.Interface().(Message)); err != nil {
@@ -210,6 +227,9 @@ func editionExtensionsFromBytes(data []byte) (map[int32]Extension, error) {
 // nonfatal required errors; final encoding then checks the complete merged graph.
 func unmarshalEditionExtensionValue(data []byte, message Message) error {
 	err := Unmarshal(data, message)
+	if err == nil {
+		return validateEditionMapMessageDefaults(message)
+	}
 	if _, required := err.(*RequiredNotSetError); !required {
 		return err
 	}
@@ -222,5 +242,8 @@ func unmarshalEditionExtensionValue(data []byte, message Message) error {
 		}
 	}
 	_, err = Marshal(message)
-	return err
+	if err != nil {
+		return err
+	}
+	return validateEditionMapMessageDefaults(message)
 }

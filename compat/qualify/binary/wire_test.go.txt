@@ -12,6 +12,7 @@ import (
 	closed "example.com/gogo-wire-qualification/closed"
 	official "example.com/gogo-wire-qualification/official"
 	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protowire"
 	modern "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -144,9 +145,21 @@ func checkWire(t *testing.T, which byte, input []byte) {
 	accepted := oracle.request(t, append([]byte{0}, input...))
 	got := message(which)
 	err := proto.Unmarshal(input, got)
-	if !accepted {
+	if _, envelopeError := strictEnvelope(input, schemas[which&1], 0); envelopeError != nil {
+		if err == nil {
+			t.Fatalf("SDK accepted invalid wire envelope %x: %v", input, envelopeError)
+		}
 		return
-	} // Includes the C++ parser's independent recursion policy.
+	}
+	if !accepted {
+		if err == nil {
+			official := dynamicpb.NewMessage(schemas[which&1])
+			if (modern.UnmarshalOptions{Resolver: resolver}).Unmarshal(input, official) != nil {
+				t.Fatalf("SDK accepted wire rejected by C++ and Go %x", input)
+			}
+		}
+		return
+	}
 	if err != nil {
 		// C++ accepts overflowing tenth varint bytes that official Go rejects.
 		// Require both independent parsers to accept before demanding SDK acceptance;
@@ -286,4 +299,97 @@ func TestNestedRequiredExtensionFragments(t *testing.T) {
 		t.Fatalf("nested required extension: %v", err)
 	}
 	checkWire(t, 1, input)
+}
+
+func TestEditionExtensionFragmentValidation(t *testing.T) {
+	cases := [][]byte{
+		append(field(100, proto.WireBytes, []byte{26, 3, 'A'}), field(100, proto.WireBytes, []byte{8, 1})...),
+		append(field(110, proto.WireBytes, []byte{10, 4, 8, 1}), field(110, proto.WireBytes, []byte{16, 2})...),
+		field(110, proto.WireBytes, []byte{10, 2, 8, 1, 18, 1, 255, 10, 2, 16, 2, 18, 1, 'x'}),
+	}
+	entry := []byte{18, 2, 8, 1, 10, 1, 255, 18, 2, 16, 2, 10, 1, 'x'}
+	body := append([]byte{10, 2, 8, 1}, field(3, proto.WireBytes, entry)...)
+	body = append(body, 10, 2, 16, 2)
+	cases = append(cases, field(110, proto.WireBytes, body))
+	cases = append(cases, field(110, proto.WireBytes, field(3, proto.WireBytes, []byte{10, 1, 'x'})))
+	for _, input := range cases {
+		if oracles[1].request(t, append([]byte{0}, input...)) {
+			t.Fatalf("oracle accepted invalid fragments %x", input)
+		}
+		var got closed.Record
+		if err := proto.Unmarshal(input, &got); err == nil {
+			t.Fatalf("SDK accepted invalid fragments %x", input)
+		}
+		number, extension := int32(100), closed.E_ExtensionPayload
+		if input[0] != field(100, proto.WireBytes, nil)[0] {
+			number, extension = 110, closed.E_ExtensionNestedRequired
+		}
+		proto.SetRawExtension(&got, number, input)
+		if _, err := proto.GetExtension(&got, extension); err == nil {
+			t.Fatalf("GetExtension accepted invalid fragments %x", input)
+		}
+	}
+}
+
+// Reference parsers may ignore overflowing tag bits while skipping an unknown
+// group. Enforce the published 29-bit field-number range before comparing their
+// acceptance. Unknown length-delimited payloads stay opaque.
+func strictEnvelope(data []byte, schema protoreflect.MessageDescriptor, group protowire.Number) (int, error) {
+	offset := 0
+	for offset < len(data) {
+		number, wire, header := protowire.ConsumeTag(data[offset:])
+		if header < 0 || number < 1 || number > protowire.MaxValidNumber {
+			return 0, fmt.Errorf("invalid field number")
+		}
+		offset += header
+		if wire == protowire.EndGroupType {
+			if group == 0 || number != group {
+				return 0, fmt.Errorf("mismatched group")
+			}
+			return offset, nil
+		}
+		var field protoreflect.FieldDescriptor
+		if schema != nil {
+			field = schema.Fields().ByNumber(number)
+			if field == nil {
+				if extension, err := resolver.FindExtensionByNumber(schema.FullName(), number); err == nil {
+					field = extension.TypeDescriptor()
+				}
+			}
+		}
+		if wire == protowire.StartGroupType {
+			var child protoreflect.MessageDescriptor
+			if field != nil && field.Kind() == protoreflect.GroupKind {
+				child = field.Message()
+			}
+			consumed, err := strictEnvelope(data[offset:], child, number)
+			if err != nil {
+				return 0, err
+			}
+			offset += consumed
+			continue
+		}
+		if wire == protowire.BytesType {
+			body, consumed := protowire.ConsumeBytes(data[offset:])
+			if consumed < 0 {
+				return 0, fmt.Errorf("truncated bytes")
+			}
+			if field != nil && (field.Kind() == protoreflect.MessageKind || field.IsMap()) {
+				if _, err := strictEnvelope(body, field.Message(), 0); err != nil {
+					return 0, err
+				}
+			}
+			offset += consumed
+			continue
+		}
+		consumed := protowire.ConsumeFieldValue(number, wire, data[offset:])
+		if consumed < 0 {
+			return 0, fmt.Errorf("invalid field payload")
+		}
+		offset += consumed
+	}
+	if group != 0 {
+		return 0, fmt.Errorf("unterminated group")
+	}
+	return offset, nil
 }

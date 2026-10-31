@@ -328,8 +328,16 @@ func (nf *nonFatal) Merge(err error) (ok bool) {
 	if !isNonFatal(err) {
 		return false // fatal error
 	}
-	if nf.E == nil {
-		nf.E = err // store first instance of non-fatal error
+	replace := nf.E == nil
+	if required, ok := nf.E.(interface{ RequiredNotSet() bool }); ok && required.RequiredNotSet() {
+		if invalid, ok := err.(interface{ InvalidUTF8() bool }); ok && invalid.InvalidUTF8() {
+			replace = true
+		}
+	}
+	if replace {
+		// UTF-8 is a wire-time failure; a required error can disappear after
+		// later fragments fill the missing fields.
+		nf.E = err
 	}
 	return true
 }

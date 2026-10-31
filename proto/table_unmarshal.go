@@ -220,7 +220,8 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			}
 			if err != errInternalBadWireType {
 				if err == errInvalidUTF8 {
-					if errLater == nil {
+					_, required := errLater.(*RequiredNotSetError)
+					if errLater == nil || required {
 						fullName := revProtoTypes[reflect.PtrTo(u.typ)] + "." + f.name
 						errLater = &invalidUTF8Error{fullName}
 					}

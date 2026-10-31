@@ -152,6 +152,7 @@ func TestEditionDecodedExtensionMergeAndLazyStore(t *testing.T) {
 
 type extensionValidationNested struct {
 	Child *extensionValidationRequired `protobuf:"bytes,1,opt,name=child"`
+	Text  string                       `protobuf:"bytes,2,opt,name=text,proto3"`
 }
 
 func (m *extensionValidationNested) Reset()         { *m = extensionValidationNested{} }
@@ -180,5 +181,75 @@ func TestEditionNestedRequiredExtensionFragments(t *testing.T) {
 	value, err = GetExtension(&got, validationRequired)
 	if err != nil || value.(*extensionValidationRequired).A == nil || *value.(*extensionValidationRequired).A != 1 {
 		t.Fatal("encoding error lost prior cached fields")
+	}
+}
+
+func TestEditionExtensionFragmentBoundaries(t *testing.T) {
+	for _, input := range [][]byte{
+		append(extensionWire(100, []byte{26, 3, 'A'}), extensionWire(100, []byte{8, 1})...),
+		append(extensionWire(110, []byte{10, 4, 8, 1}), extensionWire(110, []byte{16, 2})...),
+	} {
+		var got extensionValidationRecord
+		if err := Unmarshal(input, &got); err == nil {
+			t.Fatalf("truncated occurrence consumed following fragment: %x", input)
+		}
+		number := int32(100)
+		extension := validationPayload
+		if input[0] != extensionWire(100, nil)[0] {
+			number = 110
+			extension = validationNested
+		}
+		SetRawExtension(&got, number, input)
+		if _, err := GetExtension(&got, extension); err == nil {
+			t.Fatal("GetExtension accepted truncated fragment")
+		}
+	}
+}
+func TestEditionRequiredRecoveryKeepsUTF8Errors(t *testing.T) {
+	body := []byte{10, 2, 8, 1, 18, 1, 255, 10, 2, 16, 2, 18, 1, 'x'}
+	input := extensionWire(110, body)
+	var got extensionValidationRecord
+	if err := Unmarshal(input, &got); err == nil {
+		t.Fatal("required recovery hid an overwritten UTF-8 error")
+	}
+	SetRawExtension(&got, 110, input)
+	if _, err := GetExtension(&got, validationNested); err == nil {
+		t.Fatal("GetExtension hid an overwritten UTF-8 error")
+	}
+}
+
+type extensionValidationMap struct {
+	Values map[string]*extensionValidationRequired `protobuf:"bytes,1,rep,name=values,proto3" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+}
+
+func (m *extensionValidationMap) Reset()         { *m = extensionValidationMap{} }
+func (m *extensionValidationMap) String() string { return CompactTextString(m) }
+func (*extensionValidationMap) ProtoMessage()    {}
+
+var validationMap = &ExtensionDesc{ExtendedType: (*extensionValidationRecord)(nil), ExtensionType: (*extensionValidationMap)(nil), Field: 111, Name: "validation.map", Tag: "bytes,111,edition_ext,opt,name=map,proto3,explicit"}
+
+func init() { RegisterExtension(validationMap) }
+func TestEditionRequiredMapRecoveryKeepsUTF8Errors(t *testing.T) {
+	entry := []byte{18, 2, 8, 1, 10, 1, 255, 18, 2, 16, 2, 10, 1, 'x'}
+	input := extensionWire(111, extensionWire(1, entry))
+	var got extensionValidationRecord
+	if err := Unmarshal(input, &got); err == nil {
+		t.Fatal("map accumulator masked overwritten UTF-8 error with required error")
+	}
+	SetRawExtension(&got, 111, input)
+	if _, err := GetExtension(&got, validationMap); err == nil {
+		t.Fatal("map GetExtension masked UTF-8 error")
+	}
+}
+
+func TestEditionRequiredMapDefaultValue(t *testing.T) {
+	input := extensionWire(111, extensionWire(1, []byte{10, 1, 'x'}))
+	var got extensionValidationRecord
+	if err := Unmarshal(input, &got); err == nil {
+		t.Fatal("omitted map message value bypassed required checks")
+	}
+	SetRawExtension(&got, 111, input)
+	if _, err := GetExtension(&got, validationMap); err == nil {
+		t.Fatal("map default GetExtension bypassed required checks")
 	}
 }
