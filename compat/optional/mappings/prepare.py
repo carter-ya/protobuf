@@ -14,6 +14,7 @@ def main():
     parser.add_argument('output', type=pathlib.Path)
     parser.add_argument('--backend', action='append')
     parser.add_argument('--schema', action='append')
+    parser.add_argument('--modern', action='store_true', help='also test explicit V2 snapshot conversion on Go 1.23+')
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True)
@@ -30,6 +31,7 @@ def main():
             shutil.copyfile(ROOT / 'gogoproto/gogo.proto', dest / 'gogoproto/gogo.proto')
             subprocess.run(['protoc', '-I' + str(dest), '-I' + str(ROOT / 'protobuf'),
                             '--plugin=protoc-gen-test=' + str(driver),
+                            '--include_imports', '--descriptor_set_out=' + str(dest / 'schema.pb'),
                             '--test_out=paths=source_relative,Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types:' + str(dest / 'pb'), 'sample.proto'], check=True)
             code = (dest / 'pb/sample.pb.go').read_text()
             if ('GoGoProtoPackageIsVersion10' if schema == 'cast' else 'GoGoProtoPackageIsVersion11') not in code:
@@ -38,6 +40,12 @@ def main():
             shutil.copyfile(ROOT / 'go.sum', dest / 'go.sum')
             test = (ROOT / ('compat/optional/mappings/' + ('consumer_test.go.txt' if schema == 'cast' else 'custom_std_test.go.txt'))).read_text()
             (dest / 'consumer_test.go').write_text(test.replace('FAST', 'false' if backend == 'gogo' else 'true').replace('INCLUDE', str(ROOT / 'protobuf')))
+            if args.modern:
+                with (dest / 'go.mod').open('a') as stream:
+                    stream.write('require example.com/gogo-modern-integration v0.0.0\nreplace example.com/gogo-modern-integration => ' + str(ROOT / 'compat/modern') + '\n')
+                extra = (ROOT / 'compat/modern/mapping_test.go.txt').read_text()
+                (dest / 'modern_test.go').write_text(extra.replace('POPULATED', 'populated(2)' if schema == 'cast' else 'populated(true)').replace('CUSTOM_STD', 'false' if schema == 'cast' else 'true'))
+                subprocess.run(['go', 'mod', 'tidy'], cwd=dest, check=True)
             subprocess.run(['go', 'test', './...'], cwd=dest, check=True)
             subprocess.run(['go', 'test', '-tags=purego', './...'], cwd=dest, check=True)
 

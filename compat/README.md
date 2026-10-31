@@ -153,3 +153,9 @@ The default reflection runtime still has the individually recorded conformance
 limitations, including validating some lazy string extensions only when read.
 The generated Editions extension path validates registered UTF-8 and wrong-wire
 fields before storage. Historical proto2/proto3 acceptance is preserved.
+
+`sh compat/check-modern.sh` runs the isolated C02 V2 snapshot experiment on
+Go 1.23+. It verifies detached reflection/protojson/Any/extensions, all five
+optional mapping backends and frozen real downstreams. Lossy representations,
+unknown closed-enum reflection mismatches and MessageSet are explicitly rejected;
+see `compat/modern/README.md`. The root runtime remains Go 1.15 without V2 imports.
