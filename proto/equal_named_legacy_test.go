@@ -10,11 +10,13 @@ type legacyBytes []byte
 type legacyByte uint8
 type legacyNamedByteSlice []legacyByte
 type legacyNamedValues struct {
-	Name   legacyName            `protobuf:"bytes,1,opt,name=name,casttype=legacyName"`
-	Data   legacyBytes           `protobuf:"bytes,2,opt,name=data,casttype=legacyBytes"`
-	Names  []legacyName          `protobuf:"bytes,3,rep,name=names,casttype=legacyName"`
-	Values map[string]legacyName `protobuf:"bytes,4,rep,name=values,castvalue=legacyName" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Other  legacyNamedByteSlice  `protobuf:"bytes,5,opt,name=other,casttype=legacyNamedByteSlice"`
+	Untagged      *legacyName           `protobuf:"bytes,6,opt,name=untagged"`
+	UntaggedNames []legacyName          `protobuf:"bytes,7,rep,name=untagged_names"`
+	Name          legacyName            `protobuf:"bytes,1,opt,name=name,casttype=legacyName"`
+	Data          legacyBytes           `protobuf:"bytes,2,opt,name=data,casttype=legacyBytes"`
+	Names         []legacyName          `protobuf:"bytes,3,rep,name=names,casttype=legacyName"`
+	Values        map[string]legacyName `protobuf:"bytes,4,rep,name=values,castvalue=legacyName" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Other         legacyNamedByteSlice  `protobuf:"bytes,5,opt,name=other,casttype=legacyNamedByteSlice"`
 }
 
 func (m *legacyNamedValues) Reset()         { *m = legacyNamedValues{} }

@@ -198,8 +198,8 @@ func (mi *mergeInfo) computeMergeInfo() {
 			}
 		}
 
-		if prop := props.Prop[i]; (!unsafeAllowed && prop.CastType != "") || (prop.Proto3Optional && (prop.CustomType != "" || prop.StdTime || prop.StdDuration || prop.WktPointer)) {
-			// Preserve named types for pure-Go legacy/optional casts and use complete-value
+		if prop := props.Prop[i]; (!unsafeAllowed && (prop.CastType != "" || namedScalarMergeType(f.Type))) || (prop.Proto3Optional && (prop.CustomType != "" || prop.StdTime || prop.StdDuration || prop.WktPointer)) {
+			// Preserve named types for pure-Go legacy/optional values and use complete-value
 			// copy operations required by optional custom/std mappings.
 			fieldType := f.Type
 			mfi.merge = func(dst, src pointer) {
@@ -694,4 +694,18 @@ func (mi *mergeInfo) computeMergeInfo() {
 	}
 
 	atomic.StoreInt32(&mi.initialized, 1)
+}
+
+// Pure-Go typed accessors require built-in scalar types. Older generated structs
+// can use defined scalar types even without a casttype tag (for example Kubernetes).
+func namedScalarMergeType(t reflect.Type) bool {
+	switch t.Kind() {
+	case reflect.Ptr:
+		return namedScalarMergeType(t.Elem())
+	case reflect.Slice:
+		return t.PkgPath() != "" || namedScalarMergeType(t.Elem())
+	case reflect.Bool, reflect.Int32, reflect.Int64, reflect.Uint8, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.String:
+		return t.PkgPath() != ""
+	}
+	return false
 }
