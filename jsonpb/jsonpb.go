@@ -63,6 +63,9 @@ import (
 const secondInNanos = int64(time.Second / time.Nanosecond)
 const maxSecondsInDuration = 315576000000
 
+// Only standard-mode container decoders consume this sentinel.
+var errIgnoredEnumName = errors.New("jsonpb: ignored unknown enum name")
+
 // Marshaler is a configurable object for converting between
 // protocol buffer objects and a JSON representation for them.
 type Marshaler struct {
@@ -1158,6 +1161,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			n, ok = proto.EnumJSONValue(prop.Enum, name)
 		}
 		if !ok {
+			if u.standard && u.AllowUnknownFields {
+				return errIgnoredEnumName
+			}
 			return fmt.Errorf("unknown value %q for enum %s", name, prop.Enum)
 		}
 		if target.Kind() == reflect.Ptr { // proto2
@@ -1231,6 +1237,10 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			}
 
 			if err := u.unmarshalValue(target.Field(i), valueForField, sprops.Prop[i]); err != nil {
+				if err == errIgnoredEnumName {
+					target.Field(i).Set(reflect.Zero(target.Field(i).Type()))
+					continue
+				}
 				return err
 			}
 		}
@@ -1249,15 +1259,23 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 					if string(bytes.TrimSpace(raw)) == "null" && !acceptsJSONNull(oop.Type.Elem().Field(0).Type) {
 						continue
 					}
+				}
+				nv := reflect.New(oop.Type.Elem())
+				if !u.standard {
+					target.Field(oop.Field).Set(nv)
+				}
+				if err := u.unmarshalValue(nv.Elem().Field(0), raw, oop.Prop); err != nil {
+					if err == errIgnoredEnumName {
+						continue
+					}
+					return err
+				}
+				if u.standard {
 					if seen[oop.Field] {
 						return fmt.Errorf("multiple values for oneof")
 					}
 					seen[oop.Field] = true
-				}
-				nv := reflect.New(oop.Type.Elem())
-				target.Field(oop.Field).Set(nv)
-				if err := u.unmarshalValue(nv.Elem().Field(0), raw, oop.Prop); err != nil {
-					return err
+					target.Field(oop.Field).Set(nv)
 				}
 			}
 		}
@@ -1342,14 +1360,20 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		if slc != nil {
 			l := len(slc)
 			target.Set(reflect.MakeSlice(targetType, l, l))
+			kept := 0
 			for i := 0; i < l; i++ {
 				if u.standard && string(bytes.TrimSpace(slc[i])) == "null" && !acceptsJSONNull(targetType.Elem()) {
 					return fmt.Errorf("null repeated element")
 				}
-				if err := u.unmarshalValue(target.Index(i), slc[i], prop); err != nil {
+				if err := u.unmarshalValue(target.Index(kept), slc[i], prop); err != nil {
+					if err == errIgnoredEnumName {
+						continue
+					}
 					return err
 				}
+				kept++
 			}
+			target.SetLen(kept)
 		}
 		return nil
 	}
@@ -1393,6 +1417,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 					vprop = prop.MapValProp
 				}
 				if err := u.unmarshalValue(v, raw, vprop); err != nil {
+					if err == errIgnoredEnumName {
+						continue
+					}
 					return err
 				}
 				target.SetMapIndex(k, v)

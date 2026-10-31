@@ -119,9 +119,7 @@ func validateStandardJSON(raw []byte) error {
 	decoder.UseNumber()
 	var visit func(int) error
 	visit = func(depth int) error {
-		if depth > 10000 {
-			return fmt.Errorf("JSON nesting limit exceeded")
-		}
+
 		token, err := decoder.Token()
 		if err != nil {
 			return err
@@ -129,6 +127,11 @@ func validateStandardJSON(raw []byte) error {
 		delimiter, ok := token.(json.Delim)
 		if !ok {
 			return nil
+		}
+		// Count object/array containers, not their scalar leaves. This bound
+		// applies only to the explicit standard entrypoint.
+		if depth >= 100 {
+			return fmt.Errorf("JSON nesting limit exceeded")
 		}
 		switch delimiter {
 		case '{':

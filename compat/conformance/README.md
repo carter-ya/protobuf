@@ -78,3 +78,9 @@ groups retain their payload and legal maximum field numbers remain accepted.
 Group scanning uses an iterative stack with the same 10,000-group limit as the
 existing Editions fast helper. Twenty more exact binary/JSON failures are
 removed from both baselines (34 standard binary/JSON failures remain).
+
+Standard JSON's configured unknown-name handling now omits enum fields,
+collection elements and map entries rather than inventing zero/presence; ignored
+oneof enum names do not conflict with a real selection. Its explicit 100-container
+JSON limit rejects the recommended deep-WKT cases. Twenty-six standard-only
+binary/JSON failures are removed (8 remain); legacy JSON results are unchanged.
