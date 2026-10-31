@@ -142,7 +142,7 @@ func isQuote(c byte) bool {
 
 func (p *textParser) skipWhitespace() {
 	i := 0
-	for i < len(p.s) && (isWhitespace(p.s[i]) || p.s[i] == '#') {
+	for i < len(p.s) && (isWhitespace(p.s[i]) || p.standard && (p.s[i] == '\v' || p.s[i] == '\f') || p.s[i] == '#') {
 		if p.s[i] == '#' {
 			// comment; skip to end of line or input
 			for i < len(p.s) && p.s[i] != '\n' {
@@ -232,6 +232,14 @@ func unquoteC(s string, quote rune) (string, error) {
 }
 
 func unquoteCWithPolicy(s string, quote rune, standard bool) (string, error) {
+	if standard {
+		if !utf8.ValidString(s) {
+			return "", errBadUTF8
+		}
+		if strings.IndexByte(s, 0) >= 0 {
+			return "", fmt.Errorf("literal NUL must be escaped")
+		}
+	}
 	// This is based on C++'s tokenizer.cc.
 	// Despite its name, this is *not* parsing C syntax.
 	// Historical callers require full-width byte escapes. Standard mode
@@ -688,10 +696,10 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 
 		if dst.Kind() == reflect.Map {
 			if p.standard {
-				if p.depth >= p.recursionLimit {
-					return p.errorf("standard text map nesting exceeds limit %d", p.recursionLimit)
+				if err := p.readStandardMap(dst, props); err != nil {
+					return err
 				}
-				p.depth++
+				continue
 			}
 			// Consume any colon.
 			if err := p.checkForColon(props, dst.Type()); err != nil {
@@ -745,9 +753,6 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 						return err
 					}
 					if err := p.readAny(val, props.MapValProp); err != nil {
-						if p.standard {
-							p.depth--
-						}
 						return err
 					}
 					if err := p.consumeOptionalSeparator(); err != nil {
@@ -760,9 +765,6 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 			}
 
 			dst.SetMapIndex(key, val)
-			if p.standard {
-				p.depth--
-			}
 			continue
 		}
 
@@ -881,7 +883,10 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 	if tok.value == "" {
 		return p.errorf("unexpected EOF")
 	}
-	if p.standard && (tok.value == "-" || tok.value == "+") {
+	if p.standard && strings.HasPrefix(tok.value, "+") {
+		return p.errorf("leading '+' is not permitted")
+	}
+	if p.standard && tok.value == "-" {
 		sign := tok.value
 		tok = p.next()
 		if tok.err != nil {
@@ -1021,6 +1026,16 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		// Repeated field.
 		if tok.value == "[" {
 			// Repeated field with list notation, like [1,2,3].
+			if p.standard {
+				next := p.next()
+				if next.err != nil {
+					return next.err
+				}
+				if next.value == "]" {
+					return nil
+				}
+				p.back()
+			}
 			for {
 				fv.Set(reflect.Append(fv, reflect.New(at.Elem()).Elem()))
 				err := p.readAny(fv.Index(fv.Len()-1), props)
@@ -1054,6 +1069,12 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 			fv.SetBool(false)
 			return nil
 		}
+		if p.standard && standardTextInteger(tok.value, false) {
+			if number, err := strconv.ParseUint(tok.value, 0, 64); err == nil && number <= 1 {
+				fv.SetBool(number == 1)
+				return nil
+			}
+		}
 	case reflect.Float32, reflect.Float64:
 		if p.standard {
 			f, err := parseStandardTextFloat(tok.value, fv.Type().Bits())
@@ -1074,17 +1095,17 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 			return nil
 		}
 	case reflect.Int8:
-		if x, err := strconv.ParseInt(tok.value, 0, 8); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 8); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
 			fv.SetInt(x)
 			return nil
 		}
 	case reflect.Int16:
-		if x, err := strconv.ParseInt(tok.value, 0, 16); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 16); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
 			fv.SetInt(x)
 			return nil
 		}
 	case reflect.Int32:
-		if x, err := strconv.ParseInt(tok.value, 0, 32); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 32); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
 			if len(props.ClosedEnum) > 0 && !props.ClosedEnum[int32(x)] || p.standard && !knownTextEnumNumber(props, int32(x)) {
 				return p.errorf("unknown value %d for closed enum %s", x, props.Enum)
 			}
@@ -1106,7 +1127,7 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		fv.SetInt(int64(x))
 		return nil
 	case reflect.Int64:
-		if x, err := strconv.ParseInt(tok.value, 0, 64); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 64); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
 			fv.SetInt(x)
 			return nil
 		}
@@ -1137,22 +1158,22 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		// TODO: Handle nested messages which implement encoding.TextUnmarshaler.
 		return p.readStruct(fv, terminator)
 	case reflect.Uint8:
-		if x, err := strconv.ParseUint(tok.value, 0, 8); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 8); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(x)
 			return nil
 		}
 	case reflect.Uint16:
-		if x, err := strconv.ParseUint(tok.value, 0, 16); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 16); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(x)
 			return nil
 		}
 	case reflect.Uint32:
-		if x, err := strconv.ParseUint(tok.value, 0, 32); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 32); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(uint64(x))
 			return nil
 		}
 	case reflect.Uint64:
-		if x, err := strconv.ParseUint(tok.value, 0, 64); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 64); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(x)
 			return nil
 		}

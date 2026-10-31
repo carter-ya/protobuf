@@ -60,3 +60,20 @@ func TestStandardInvalidByteEscapes(t *testing.T) {
 		t.Fatalf("legacy uppercase hex changed: %v", err)
 	}
 }
+
+func TestStandardTextLiteralSourceEncoding(t *testing.T) {
+	for _, raw := range []string{string([]byte{248}), string([]byte{255}), string([]byte{0})} {
+		for _, field := range []string{"bytes", "checked", "unchecked"} {
+			if err := UnmarshalString(field+`: "`+raw+`"`, new(probe)); err == nil {
+				t.Fatalf("invalid literal source accepted: %x", raw)
+			}
+		}
+	}
+	var message probe
+	if err := UnmarshalString(`bytes: "\xff\000"`, &message); err != nil || !bytes.Equal(message.Bytes, []byte{255, 0}) {
+		t.Fatalf("escaped bytes changed: %x %v", message.Bytes, err)
+	}
+	if err := proto.UnmarshalText(`bytes: "`+string([]byte{248})+`"`, new(probe)); err != nil {
+		t.Fatalf("legacy raw-byte tolerance changed: %v", err)
+	}
+}
