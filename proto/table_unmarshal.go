@@ -2086,7 +2086,7 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		// The map entry is a submessage. Figure out how big it is.
 		if w != WireBytes {
-			return nil, fmt.Errorf("proto: bad wiretype for map field: got %d want %d", w, WireBytes)
+			return b, errInternalBadWireType
 		}
 		x, n := decodeVarint(b)
 		if n == 0 {
@@ -2205,7 +2205,7 @@ func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler, mergeMess
 		var nerr nonFatal
 		b, err = unmarshal(b, valToPointer(v).offset(field0), w)
 		if !nerr.Merge(err) {
-			return nil, err
+			return b, err
 		}
 
 		// Write pointer to holder into target field.

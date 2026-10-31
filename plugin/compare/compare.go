@@ -303,7 +303,11 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 		p.P(`return 1`)
 		p.Out()
 		p.P(`}`)
-		p.P(`for i := range this.`, fieldname, ` {`)
+		if p.IsMap(field) {
+			p.mapKeyOrder(field, fieldname)
+		} else {
+			p.P(`for i := range this.`, fieldname, ` {`)
+		}
 		p.In()
 		if ctype {
 			p.P(`if c := this.`, fieldname, `[i].Compare(that1.`, fieldname, `[i]); c != 0 {`)
@@ -347,6 +351,13 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 					p.P(`if c := `, p.bytesPkg.Use(), `.Compare(this.`, fieldname, `[i], that1.`, fieldname, `[i]); c != 0 {`)
 					p.In()
 					p.P(`return c`)
+					p.Out()
+					p.P(`}`)
+				} else if mapValue.IsBool() {
+					p.P(`if this.`, fieldname, `[i] != that1.`, fieldname, `[i] {`)
+					p.In()
+					p.P(`if !this.`, fieldname, `[i] { return -1 }`)
+					p.P(`return 1`)
 					p.Out()
 					p.P(`}`)
 				} else if mapValue.IsString() {

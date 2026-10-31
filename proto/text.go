@@ -331,12 +331,18 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			continue
 		}
 		if fv.Kind() == reflect.Ptr && fv.IsNil() {
+			if w.standard && props.Required {
+				return &RequiredNotSetError{st.String() + "." + props.OrigName}
+			}
 			// Field not filled in. This could be an optional field or
 			// a required field that wasn't filled in. Either way, there
 			// isn't anything we can show for it.
 			continue
 		}
 		if fv.Kind() == reflect.Slice && fv.IsNil() {
+			if w.standard && props.Required {
+				return &RequiredNotSetError{st.String() + "." + props.OrigName}
+			}
 			// Repeated field that is empty, or a bytes field that is unused.
 			continue
 		}
@@ -353,7 +359,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 					}
 				}
 				v := fv.Index(j)
-				if v.Kind() == reflect.Ptr && v.IsNil() {
+				if v.Kind() == reflect.Ptr && v.IsNil() && !w.standard {
 					// A nil message in a repeated field is not valid,
 					// but we can handle that more gracefully than panicking.
 					if _, err := w.Write([]byte("<nil>\n")); err != nil {
@@ -420,7 +426,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 					return err
 				}
 				// nil values aren't legal, but we can avoid panicking because of them.
-				if val.Kind() != reflect.Ptr || !val.IsNil() {
+				if val.Kind() != reflect.Ptr || !val.IsNil() || w.standard {
 					// value
 					if _, err := w.WriteString("value:"); err != nil {
 						return err
@@ -451,11 +457,11 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			}
 			continue
 		}
-		if props.proto3 && !(props.Proto3Optional || props.ExplicitPresence) && fv.Kind() == reflect.Slice && fv.Len() == 0 {
+		if props.proto3 && !(props.Proto3Optional || props.ExplicitPresence || w.standard && props.Required) && fv.Kind() == reflect.Slice && fv.Len() == 0 {
 			// empty bytes field
 			continue
 		}
-		if props.proto3 && !(props.Proto3Optional || props.ExplicitPresence) && fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
+		if props.proto3 && !(props.Proto3Optional || props.ExplicitPresence || w.standard && props.Required) && fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
 			// proto3 non-repeated scalar field; skip if zero value
 			if isProto3Zero(fv) {
 				negativeZero := w.standard && (fv.Kind() == reflect.Float32 || fv.Kind() == reflect.Float64) && math.Signbit(fv.Float())
@@ -474,6 +480,9 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 				if fv.IsNil() {
 					continue
 				}
+				if w.standard && fv.Elem().Kind() == reflect.Ptr && fv.Elem().IsNil() {
+					continue
+				}
 				inner := fv.Elem().Elem() // interface -> *T -> T
 				tag := inner.Type().Field(0).Tag.Get("protobuf")
 				props = new(Properties) // Overwrite the outer props var, but not its pointee.
@@ -484,7 +493,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 				// Special case to cope with malformed messages gracefully:
 				// If the value in the oneof is a nil pointer, don't panic
 				// in writeAny.
-				if fv.Kind() == reflect.Ptr && fv.IsNil() {
+				if fv.Kind() == reflect.Ptr && fv.IsNil() && !w.standard {
 					// Use errors.New so writeAny won't render quotes.
 					msg := errors.New("/* nil */")
 					fv = reflect.ValueOf(&msg).Elem()
@@ -535,7 +544,16 @@ var textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 // writeAny writes an arbitrary field.
 func (tm *TextMarshaler) writeAny(w *textWriter, v reflect.Value, props *Properties) error {
+	if w.standard && v.Kind() == reflect.Ptr && v.IsNil() {
+		if v.Type().Elem().Kind() != reflect.Struct || !v.Type().Implements(protoMessageType) {
+			return fmt.Errorf("proto: nil standard text mapped value %v requires its own representation", v.Type())
+		}
+		v = reflect.New(v.Type().Elem())
+	}
 	v = reflect.Indirect(v)
+	if w.standard && !v.IsValid() {
+		return fmt.Errorf("proto: invalid standard text value")
+	}
 	if w.standard && props != nil && props.proto3 && !props.UTF8None && v.Kind() == reflect.String && !utf8.ValidString(v.String()) {
 		return &invalidUTF8Error{props.OrigName}
 	}

@@ -126,7 +126,7 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/conformance/bin
-          key: conformance-36.2-ubuntu24.04-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('compat/conformance/build-runner.py', 'compat/conformance/runner-main.cc') }}
+          key: conformance-36.2-ubuntu24.04-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('compat/conformance/build-runner.py', 'compat/conformance/runner-main.cc', 'compat/qualify/binary/closed.proto') }}
       - name: Build pinned upstream conformance suites
         run: python3 compat/conformance/build-runner.py "$RUNNER_TEMP/conformance"
       - name: Check modern conformance baseline
@@ -135,6 +135,12 @@ jobs:
           PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
           CONFORMANCE_OUTPUT: ${{ runner.temp }}/conformance-report
         run: sh compat/check-conformance.sh
+      - name: Qualify binary semantics across five generators
+        env:
+          PROTOBUF_CONFORMANCE_SOURCE: ${{ runner.temp }}/conformance/protobuf-36.2
+          PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
+          BINARY_FUZZ_OUTPUT: ${{ runner.temp }}/conformance-report/binary-differential
+        run: sh compat/check-binary-fuzz.sh
       - uses: actions/upload-artifact@v6
         if: always()
         with:
