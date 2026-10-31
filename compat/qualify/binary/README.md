@@ -46,3 +46,20 @@ sh compat/check-binary-fuzz.sh
 Result modules and logs are retained for reproduction, including minimized
 failure corpora. Copy a confirmed new corpus into this directory's `testdata`
 before submitting its fix.
+
+Regenerated extensible Editions files and extension declarations require runtime
+Version13 and carry `edition_ext` metadata. Registered native message extensions
+are checked during outer decoding for wire, UTF-8 and required-field errors while
+the encoded store remains lazy. Singular fragments merge before validation;
+repeated messages are checked separately. Nested required-fragment recovery uses
+the table decoder and validates the merged graph. Decoded cached values are
+materialized before new fields are appended; an invalid prior cached value
+returns an error without dropping it. Unknown registrations remain opaque, and
+unmarked old descriptors retain their existing policy. Native checks exclude
+custom/cast/standard representation overrides.
+
+The `goproto_extensions_map[_all]=false` representation is also qualified for
+Editions. The harness repeats deterministic/default/purego/race tests for all
+five generators with byte storage and runs two-worker five-second campaigns
+under both runtime implementations. `BINARY_BYTE_FUZZ_TIME` overrides that
+additional duration. Byte stores preserve every message/repeated occurrence.

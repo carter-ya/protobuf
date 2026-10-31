@@ -19,3 +19,16 @@ for backend in gogo gogofast gogofaster gogoslick gogotypes; do
     GOMAXPROCS=2 go test -tags purego -run '^$' -fuzz '^FuzzWire$' -fuzztime="${BINARY_FUZZ_TIME:-20s}" -parallel=2 > "$output/$backend-purego-fuzz.log" 2>&1
   )
 done
+# Qualify the optional byte-storage representation against the same wire schema.
+python3 "$repo/compat/qualify/binary/prepare.py" "$PROTOBUF_CONFORMANCE_SOURCE" "$output/byte-modules" --byte-extensions
+export GOGO_WIRE_DESCRIPTOR="$output/byte-modules/schema.pb"
+for backend in gogo gogofast gogofaster gogoslick gogotypes; do
+  (
+    cd "$output/byte-modules/$backend"
+    go test ./... > "$output/$backend-byte-seeds.log" 2>&1
+    go test -tags purego ./... > "$output/$backend-byte-purego.log" 2>&1
+    go test -race ./... > "$output/$backend-byte-race.log" 2>&1
+    GOMAXPROCS=2 go test -run '^$' -fuzz '^FuzzWire$' -fuzztime="${BINARY_BYTE_FUZZ_TIME:-5s}" -parallel=2 > "$output/$backend-byte-fuzz.log" 2>&1
+    GOMAXPROCS=2 go test -tags purego -run '^$' -fuzz '^FuzzWire$' -fuzztime="${BINARY_BYTE_FUZZ_TIME:-5s}" -parallel=2 > "$output/$backend-byte-purego-fuzz.log" 2>&1
+  )
+done

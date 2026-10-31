@@ -246,6 +246,20 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 				}
 			}
 		}
+		if len(u.extensionRanges) != 0 {
+			extension := extensionMaps[u.typ][int32(tag)]
+			if editionExtensionPolicy(extension) {
+				properties := extensionProperties(extension)
+				expected := properties.WireType
+				if properties.Wire == "group" {
+					expected = WireStartGroup
+				}
+				packed := properties.Repeated && wire == WireBytes && (expected == WireVarint || expected == WireFixed32 || expected == WireFixed64)
+				if wire != expected && !packed {
+					invalidExtension = true
+				}
+			}
+		}
 		if c := u.closedExtensions[tag]; c != nil {
 			filtered, unknown, err := c.filter(b, wire, tag)
 			if err == errInternalBadWireType {
@@ -312,6 +326,13 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		if err != nil {
 			return err
 		}
+		if emap != nil {
+			e, err = materializeEditionExtension(e, extensionMaps[u.typ][int32(tag)])
+			if err != nil {
+				return err
+			}
+			z = &e.enc
+		}
 		*z = encodeVarint(*z, tag<<3|uint64(wire))
 		*z = append(*z, b0[:len(b0)-len(b)]...)
 
@@ -337,6 +358,11 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 				errLater = &RequiredNotSetError{n}
 			}
 			reqMask >>= 1
+		}
+	}
+	if len(u.extensionRanges) != 0 {
+		if err := ValidateEditionMessageExtensions(m.asPointerTo(u.typ).Interface().(Message)); err != nil {
+			return err
 		}
 	}
 	return errLater

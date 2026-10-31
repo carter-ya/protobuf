@@ -150,6 +150,7 @@ type Properties struct {
 	proto3           bool           // whether this is known to be a proto3 field
 	oneof            bool           // whether this is a oneof field
 	oneofMerge       bool           // opt-in merging of repeated message members
+	editionExtension bool           // explicit validation/merge policy for regenerated Editions extensions
 
 	Default     string // default value
 	HasDefault  bool   // whether an explicit default was provided
@@ -191,6 +192,9 @@ func (p *Properties) String() string {
 	}
 	if p.proto3 {
 		s += ",proto3"
+	}
+	if p.editionExtension {
+		s += ",edition_ext"
 	}
 	if p.Proto3Optional {
 		s += ",proto3_optional"
@@ -285,6 +289,8 @@ outer:
 			p.Enum = f[5:]
 		case f == "explicit":
 			p.ExplicitPresence = true
+		case f == "edition_ext":
+			p.editionExtension = true
 		case f == "oneof_merge":
 			p.oneofMerge = true
 		case f == "utf8_none":

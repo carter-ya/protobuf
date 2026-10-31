@@ -1660,7 +1660,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			p.P(`return `, p.ioPkg.Use(), `.ErrUnexpectedEOF`)
 			p.Out()
 			p.P(`}`)
-			p.P(protoPkg.Use(), `.AppendExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy])`)
+			if file.IsEditions() {
+				p.P(`if err := `, protoPkg.Use(), `.AppendEditionExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy]); err != nil { return err }`)
+			} else {
+				p.P(protoPkg.Use(), `.AppendExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy])`)
+			}
 			p.P(`iNdEx += skippy`)
 			p.Out()
 			p.P(`} else {`)
@@ -1727,7 +1731,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		p.P(`return ` + p.ioPkg.Use() + `.ErrUnexpectedEOF`)
 		p.Out()
 		p.P(`}`)
-		p.P(`return nil`)
+		if file.IsEditions() && message.DescriptorProto.HasExtension() {
+			p.P(`return `, protoPkg.Use(), `.ValidateEditionMessageExtensions(m)`)
+		} else {
+			p.P(`return nil`)
+		}
 		p.Out()
 		p.P(`}`)
 	}

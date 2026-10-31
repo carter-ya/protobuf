@@ -16,10 +16,21 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=pathlib.Path)
     parser.add_argument('output', type=pathlib.Path)
+    parser.add_argument('--byte-extensions', action='store_true')
     args = parser.parse_args()
     source, output = args.source.resolve(), args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    subprocess.run(['protoc', '-I' + str(ROOT), '-I' + str(source),
+    includes = []
+    if args.byte_extensions:
+        shadow = output / 'inputs'
+        fixture = shadow / CLOSED
+        fixture.parent.mkdir(parents=True, exist_ok=True)
+        original = (ROOT / CLOSED).read_text()
+        fixture.write_text(original.replace('package qualification.closed;',
+            'package qualification.closed;\n\nimport "gogoproto/gogo.proto";\n'
+            'option (gogoproto.goproto_extensions_map_all) = false;'))
+        includes = ['-I' + str(shadow)]
+    subprocess.run(['protoc'] + includes + ['-I' + str(ROOT), '-I' + str(source),
                     '-I' + str(source / 'src'), '--include_imports',
                     '--descriptor_set_out=' + str(output / 'schema.pb'),
                     OFFICIAL, CLOSED], check=True)
@@ -34,7 +45,7 @@ def main():
         for schema, package in ((OFFICIAL, 'official'), (CLOSED, 'closed')):
             stage = module / 'stage'
             stage.mkdir()
-            subprocess.run(['protoc', '-I' + str(ROOT), '-I' + str(source),
+            subprocess.run(['protoc'] + includes + ['-I' + str(ROOT), '-I' + str(source),
                             '-I' + str(source / 'src'),
                             '--plugin=protoc-gen-test=' + str(driver),
                             '--test_out=' + ','.join(['paths=source_relative',
@@ -47,6 +58,8 @@ def main():
             destination.mkdir(exist_ok=True)
             shutil.move(str(generated[0]), str(destination / 'messages.pb.go'))
             shutil.rmtree(stage)
+        if 'GoGoProtoPackageIsVersion13' not in (module / 'closed/messages.pb.go').read_text():
+            raise RuntimeError('registered Editions extension runtime guard missing')
         driver.unlink()
         shutil.copyfile(ROOT / 'compat/qualify/binary/wire_test.go.txt',
                         module / 'wire_test.go')

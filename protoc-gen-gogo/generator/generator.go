@@ -1260,6 +1260,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		if oneofMerge {
 			codeVersion = 12
 		}
+		if file.IsEditions() && fileNeedsEditionExtensionPolicy(file.FileDescriptorProto) {
+			codeVersion = 13
+		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
 		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
@@ -3256,6 +3259,14 @@ func (g *Generator) generateExtension(ext *ExtensionDescriptor) {
 	field := ext.FieldDescriptorProto
 	fieldType, wireType := g.GoType(ext.parent, field)
 	tag := g.goTag(extDesc, field, wireType)
+	if g.file.IsEditions() {
+		raw, err := strconv.Unquote(tag)
+		if err != nil {
+			g.Fail("invalid generated extension tag: ", err.Error())
+		}
+		parts := strings.SplitN(raw, ",", 3)
+		tag = strconv.Quote(parts[0] + "," + parts[1] + ",edition_ext," + parts[2])
+	}
 	g.RecordTypeUse(*ext.Extendee)
 	if n := ext.FieldDescriptorProto.TypeName; n != nil {
 		// foreign extension type

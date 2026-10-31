@@ -223,3 +223,67 @@ func TestGeneratedMapComparisonKeysAndOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestNativeEditionMessageExtensionValidation(t *testing.T) {
+	for _, input := range [][]byte{
+		field(100, proto.WireBytes, []byte{8}), field(100, proto.WireBytes, []byte{0}),
+		field(100, proto.WireBytes, []byte{26, 1, 255}),
+		field(104, proto.WireBytes, nil), field(104, proto.WireBytes, []byte{8, 1}),
+		field(105, proto.WireBytes, []byte{8, 1}),
+	} {
+		if oracles[1].request(t, append([]byte{0}, input...)) {
+			t.Fatalf("oracle accepted invalid extension %x", input)
+		}
+		if err := proto.Unmarshal(input, new(closed.Record)); err == nil {
+			t.Fatalf("SDK accepted invalid registered message extension %x", input)
+		}
+	}
+	input := append(field(104, proto.WireBytes, []byte{8, 1}), field(104, proto.WireBytes, []byte{16, 2})...)
+	var got closed.Record
+	if err := proto.Unmarshal(input, &got); err != nil {
+		t.Fatalf("required fragments must merge before validation: %v", err)
+	}
+	value, err := proto.GetExtension(&got, closed.E_ExtensionRequired)
+	if err != nil || value.(*closed.RequiredPayload).GetA() != 1 || value.(*closed.RequiredPayload).GetB() != 2 {
+		t.Fatalf("required extension merge: %v", err)
+	}
+	checkWire(t, 1, input)
+}
+func TestDecodedEditionExtensionMerge(t *testing.T) {
+	first, second := field(100, proto.WireBytes, []byte{8, 1}), field(100, proto.WireBytes, []byte{16, 2})
+	for _, set := range []bool{false, true} {
+		var got closed.Record
+		if set {
+			if err := proto.SetExtension(&got, closed.E_ExtensionPayload, &closed.Payload{A: proto.Int32(1)}); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			if err := proto.Unmarshal(first, &got); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := proto.GetExtension(&got, closed.E_ExtensionPayload); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := proto.UnmarshalMerge(second, &got); err != nil {
+			t.Fatal(err)
+		}
+		value, err := proto.GetExtension(&got, closed.E_ExtensionPayload)
+		if err != nil || value.(*closed.Payload).GetA() != 1 || value.(*closed.Payload).GetB() != 2 {
+			t.Fatalf("decoded extension lost incoming fields: %v %v", value, err)
+		}
+	}
+}
+
+func TestNestedRequiredExtensionFragments(t *testing.T) {
+	input := append(field(110, proto.WireBytes, []byte{10, 2, 8, 1}), field(110, proto.WireBytes, []byte{10, 2, 16, 2})...)
+	var got closed.Record
+	if err := proto.Unmarshal(input, &got); err != nil {
+		t.Fatal("nested required fragments must merge before validation", err)
+	}
+	value, err := proto.GetExtension(&got, closed.E_ExtensionNestedRequired)
+	if err != nil || value.(*closed.RequiredContainer).GetChild().GetA() != 1 || value.(*closed.RequiredContainer).GetChild().GetB() != 2 {
+		t.Fatalf("nested required extension: %v", err)
+	}
+	checkWire(t, 1, input)
+}

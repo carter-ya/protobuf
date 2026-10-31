@@ -7,6 +7,16 @@ option features.enum_type = CLOSED;
 message Payload {
   int32 a = 1;
   int32 b = 2;
+  string text = 3;
+}
+
+message RequiredPayload {
+  int32 a = 1 [features.field_presence = LEGACY_REQUIRED];
+  int32 b = 2 [features.field_presence = LEGACY_REQUIRED];
+}
+
+message RequiredContainer {
+  RequiredPayload child = 1;
 }
 
 enum State {
@@ -41,4 +51,8 @@ extend Record {
   string extension_text = 101;
   State extension_state = 102;
   repeated State extension_states = 103;
+  RequiredPayload extension_required = 104;
+  repeated RequiredPayload extension_required_list = 105;
+  Payload extension_group = 106 [features.message_encoding = DELIMITED];
+  RequiredContainer extension_nested_required = 110;
 }

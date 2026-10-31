@@ -18,7 +18,7 @@ func validateEditionOption(options proto.Message, extension *proto.ExtensionDesc
 		63004, 64004, 63006, 64006, 63007, 64007, 63008, 67008,
 		63013, 64013, 63029, 64029, 63021, 62021, 63022, 62022,
 		62023, 66001, 65004, 65005, 65006, 63027, 63033, 64033,
-		63034, 64034, 63035, 64035:
+		63034, 64034, 63035, 64035, 63025, 64025:
 		return nil
 	case 63026, 64026:
 		if proto.GetBoolExtension(options, extension, true) {

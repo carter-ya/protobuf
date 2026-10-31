@@ -139,7 +139,7 @@ randomized GoString syntax, raw feature retention and unsupported options.
 gogofast, gogofaster, gogoslick and gogotypes. The initial matrix covers all scalar
 and repeated types, presence, UTF-8 VERIFY/NONE, packed/expanded enums, negative
 enums, required fields, unknown/wrong-wire fields and malformed input. Fresh
-fast bindings use Version9. Fast wire/size results are checked against the
+fast scalar bindings use Version9; regenerated extensible files use Version13. Fast wire/size results are checked against the
 reflection codec and the pinned official protoc binary/text oracle. The matrix
 also covers map UTF-8 and closed-enum routing, message/oneof merging,
 DELIMITED singular/repeated/oneof fields, imported proto2 enums, cross-file and
@@ -165,3 +165,11 @@ Independent binary fuzz qualification across all five generators is described in
 `compat/qualify/binary/README.md`. Native C++ 36.2 is the semantic oracle; official
 Go v1.36.12 helps identify acceptance differences between reference parsers.
 Historical generated bindings and root Go/module requirements remain separate.
+
+Regenerated Editions extension declarations and extensible messages now require
+runtime Version13 (`edition_ext` metadata). Native registered message payloads
+receive immediate wire/UTF-8/required validation; singular fragments and cached
+values merge without losing fields. Unregistered payloads and unmarked old
+bindings retain their policy. Both map and optional byte extension storage are
+qualified across all five generators. See `compat/qualify/binary/README.md` for
+the required-fragment, cached-value and representation boundaries.
