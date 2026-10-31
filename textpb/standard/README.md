@@ -26,7 +26,7 @@ legacy parser's ownership contract. Raw descriptors and generated APIs are not
 changed by selecting this package.
 
 The pinned Protobuf 36.2 suite runs legacy and standard text independently.
-The first implementation removes 125 standard-only failures; 98 standard text
+The first implementation removes 125 standard-only failures; 66 standard text
 failures remain, including reserved names, Any URL spelling and group casing.
 Legacy behavior and its 223-failure baseline remain separate. See
 `compat/conformance/README.md` for the full test inventory and exact failures.
@@ -38,3 +38,6 @@ heuristic; recursive interpretation is bounded at 100 levels. Malformed unknown
 wire is an encoding error. The legacy debug-comment format is unchanged.
 
 The numeric rules follow the official [text-format specification](https://protobuf.dev/reference/protobuf/textformat-spec/).
+
+Unicode escapes must encode scalar values; surrogate halves and pairs are rejected
+for both strings and bytes. Raw byte escapes retain their byte semantics.

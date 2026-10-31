@@ -19,6 +19,7 @@ type probe struct {
 	Unchecked        string           `protobuf:"bytes,4,opt,name=unchecked,proto3,utf8_none"`
 	Closed           *pb.Widget_Color `protobuf:"varint,5,opt,name=closed,enum=jsonpb.Widget_Color"`
 	Open             pb.Widget_Color  `protobuf:"varint,6,opt,name=open,proto3,enum=jsonpb.Widget_Color"`
+	Bytes            []byte           `protobuf:"bytes,7,opt,name=bytes,proto3"`
 }
 
 func (m *probe) Reset()         { *m = probe{} }
@@ -114,6 +115,32 @@ func TestStandardEnumPolicyAndNil(t *testing.T) {
 	}
 	if _, err := (&Marshaler{}).MarshalToString((*probe)(nil)); err == nil {
 		t.Fatal("nil emitted")
+	}
+}
+
+func TestStandardUnicodeEscapes(t *testing.T) {
+	for _, field := range []string{"checked", "unchecked", "bytes"} {
+		for _, escape := range []string{
+			`\ud800`, `\udbff`, `\udc00`, `\udfff`, `\U0000D800`, `\U0000DFFF`,
+			`\uD83D\uDE00`, `\U0000D83D\U0000DE00`, `\uD83D\U0000DE00`, `\U0000D83D\uDE00`,
+		} {
+			input := field + `: "` + escape + `"`
+			if err := UnmarshalString(input, new(probe)); err == nil {
+				t.Errorf("accepted surrogate code point: %s", input)
+			}
+			if err := proto.UnmarshalText(input, new(probe)); err != nil {
+				t.Errorf("legacy surrogate tolerance changed: %s: %v", input, err)
+			}
+		}
+		for _, escape := range []string{`\u0000`, `\uD7FF`, `\uE000`, `\U0001F600`, `\U0010FFFF`, `\uFFFD`} {
+			if err := UnmarshalString(field+`: "`+escape+`"`, new(probe)); err != nil {
+				t.Errorf("rejected scalar value %s: %v", escape, err)
+			}
+		}
+	}
+	var value probe
+	if err := UnmarshalString(`bytes: "\xed\xa0\x80"`, &value); err != nil || string(value.Bytes) != "\xed\xa0\x80" {
+		t.Fatalf("raw bytes changed: %x %v", value.Bytes, err)
 	}
 }
 

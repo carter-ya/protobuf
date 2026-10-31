@@ -190,7 +190,7 @@ func (p *textParser) advance() {
 			p.errorf("unmatched quote")
 			return
 		}
-		unq, err := unquoteC(p.s[1:i], rune(p.s[0]))
+		unq, err := unquoteCWithPolicy(p.s[1:i], rune(p.s[0]), p.standard)
 		if err != nil {
 			p.errorf("invalid quoted string %s: %v", p.s[0:i+1], err)
 			return
@@ -216,6 +216,10 @@ var (
 )
 
 func unquoteC(s string, quote rune) (string, error) {
+	return unquoteCWithPolicy(s, quote, false)
+}
+
+func unquoteCWithPolicy(s string, quote rune, standard bool) (string, error) {
 	// This is based on C++'s tokenizer.cc.
 	// Despite its name, this is *not* parsing C syntax.
 	// For instance, "\0" is an invalid quoted string.
@@ -248,7 +252,7 @@ func unquoteC(s string, quote rune) (string, error) {
 			continue
 		}
 
-		ch, tail, err := unescape(s)
+		ch, tail, err := unescapeWithPolicy(s, standard)
 		if err != nil {
 			return "", err
 		}
@@ -259,6 +263,10 @@ func unquoteC(s string, quote rune) (string, error) {
 }
 
 func unescape(s string) (ch string, tail string, err error) {
+	return unescapeWithPolicy(s, false)
+}
+
+func unescapeWithPolicy(s string, standard bool) (ch string, tail string, err error) {
 	r, n := utf8.DecodeRuneInString(s)
 	if r == utf8.RuneError && n == 1 {
 		return "", "", errBadUTF8
@@ -316,7 +324,9 @@ func unescape(s string) (ch string, tail string, err error) {
 		if r == 'x' || r == 'X' {
 			return string([]byte{byte(i)}), s, nil
 		}
-		if i > utf8.MaxRune {
+		// Text Unicode escapes encode scalar values, never UTF-16 surrogate
+		// halves. Check before conversion, which would replace them with U+FFFD.
+		if i > utf8.MaxRune || (standard && i >= 0xD800 && i <= 0xDFFF) {
 			return "", "", fmt.Errorf(`\%c%s is not a valid Unicode code point`, r, ss)
 		}
 		return string(rune(i)), s, nil
