@@ -18,6 +18,7 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/jsonpb/standard"
 	"github.com/gogo/protobuf/proto"
+	textstandard "github.com/gogo/protobuf/textpb/standard"
 )
 
 var standardMode bool
@@ -64,7 +65,11 @@ func handle(req *pb.ConformanceRequest) (res *pb.ConformanceResponse) {
 			err = u.Unmarshal(strings.NewReader(p.JsonPayload), msg)
 		}
 	case *pb.ConformanceRequest_TextPayload:
-		err = proto.UnmarshalText(p.TextPayload, msg)
+		if standardMode {
+			err = textstandard.UnmarshalString(p.TextPayload, msg)
+		} else {
+			err = proto.UnmarshalText(p.TextPayload, msg)
+		}
 	default:
 		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_Skipped{Skipped: "unsupported input format"}}
 	}
@@ -89,7 +94,15 @@ func handle(req *pb.ConformanceRequest) (res *pb.ConformanceResponse) {
 			return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_JsonPayload{JsonPayload: text}}
 		}
 	case pb.WireFormat_TEXT_FORMAT:
-		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_TextPayload{TextPayload: proto.MarshalTextString(msg)}}
+		if standardMode {
+			var text string
+			text, err = (&textstandard.Marshaler{PrintUnknownFields: req.PrintUnknownFields}).MarshalToString(msg)
+			if err == nil {
+				return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_TextPayload{TextPayload: text}}
+			}
+		} else {
+			return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_TextPayload{TextPayload: proto.MarshalTextString(msg)}}
+		}
 	default:
 		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_Skipped{Skipped: "unsupported output format"}}
 	}

@@ -135,3 +135,12 @@ adapter. Data that cannot be retained on replacement is rejected before mutation
 The pinned official dynamic runtime's closed-enum unknown interpretation and
 MessageSet restrictions are recorded in `compat/modern/README.md`; no transparent
 adaptation claim is made for those cases.
+
+## Explicit standard text entrypoint
+
+`textpb/standard` adds standard floating-point syntax, negative-zero output,
+closed-enum and UTF-8 policy checks while preserving the historical text APIs
+and TextMarshaler layout. The first implementation passes 125 formerly failing
+standard text cases; 98 text failures remain explicitly recorded. Unknown fields
+can be omitted or printed using the explicit configuration. It is not a
+full text-conformance claim. See `textpb/standard/README.md`.

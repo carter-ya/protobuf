@@ -52,6 +52,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 var (
@@ -75,10 +76,13 @@ type writer interface {
 
 // textWriter is an io.Writer that tracks its indentation level.
 type textWriter struct {
-	ind      int
-	complete bool // if the current position is a complete line
-	compact  bool // whether to write out as a one-liner
-	w        writer
+	ind          int
+	complete     bool // if the current position is a complete line
+	compact      bool // whether to write out as a one-liner
+	standard     bool // explicit standard text policy
+	printUnknown bool
+	unknownDepth int
+	w            writer
 }
 
 func (w *textWriter) WriteString(s string) (n int, err error) {
@@ -280,7 +284,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			//   XXX_extensions   map[int32]proto.Extension
 			// The first is handled here;
 			// the second is handled at the bottom of this function.
-			if name == "XXX_unrecognized" && !fv.IsNil() {
+			if name == "XXX_unrecognized" && !fv.IsNil() && w.printUnknown {
 				if err := writeUnknownStruct(w, fv.Interface().([]byte)); err != nil {
 					return err
 				}
@@ -406,7 +410,10 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 		if props.proto3 && !(props.Proto3Optional || props.ExplicitPresence) && fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
 			// proto3 non-repeated scalar field; skip if zero value
 			if isProto3Zero(fv) {
-				continue
+				negativeZero := w.standard && (fv.Kind() == reflect.Float32 || fv.Kind() == reflect.Float64) && math.Signbit(fv.Float())
+				if !negativeZero {
+					continue
+				}
 			}
 		}
 
@@ -481,6 +488,9 @@ var textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 // writeAny writes an arbitrary field.
 func (tm *TextMarshaler) writeAny(w *textWriter, v reflect.Value, props *Properties) error {
 	v = reflect.Indirect(v)
+	if w.standard && props != nil && props.proto3 && !props.UTF8None && v.Kind() == reflect.String && !utf8.ValidString(v.String()) {
+		return &invalidUTF8Error{props.OrigName}
+	}
 
 	if props != nil {
 		if props.Proto3Optional && props.WktPointer {
@@ -694,7 +704,16 @@ func writeString(w *textWriter, s string) error {
 }
 
 func writeUnknownStruct(w *textWriter, data []byte) (err error) {
-	if !w.compact {
+	if w.standard {
+		for remaining := data; len(remaining) != 0; {
+			n, err := EditionFieldSize(remaining)
+			if err != nil {
+				return err
+			}
+			remaining = remaining[n:]
+		}
+	}
+	if !w.compact && !w.standard {
 		if _, err := fmt.Fprintf(w, "/* %d unknown bytes */\n", len(data)); err != nil {
 			return err
 		}
@@ -731,16 +750,47 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		case WireBytes:
 			buf, e := b.DecodeRawBytes(false)
 			if e == nil {
-				_, err = fmt.Fprintf(w, "%q", buf)
+				if w.standard && unknownTextMessage(buf) {
+					if w.unknownDepth >= 100 {
+						return fmt.Errorf("proto: unknown text message nesting limit")
+					}
+					if err = w.WriteByte('{'); err != nil {
+						return err
+					}
+					if err = w.WriteByte('\n'); err != nil {
+						return err
+					}
+					w.indent()
+					w.unknownDepth++
+					err = writeUnknownStruct(w, buf)
+					w.unknownDepth--
+					w.unindent()
+					if err != nil {
+						return err
+					}
+					err = w.WriteByte('}')
+				} else if w.standard {
+					err = writeString(w, string(buf))
+				} else {
+					_, err = fmt.Fprintf(w, "%q", buf)
+				}
 			} else {
 				_, err = fmt.Fprintf(w, "/* %v */", e)
 			}
 		case WireFixed32:
 			x, err = b.DecodeFixed32()
-			err = writeUnknownInt(w, x, err)
+			if w.standard && err == nil {
+				_, err = fmt.Fprintf(w, "0x%08x", x)
+			} else {
+				err = writeUnknownInt(w, x, err)
+			}
 		case WireFixed64:
 			x, err = b.DecodeFixed64()
-			err = writeUnknownInt(w, x, err)
+			if w.standard && err == nil {
+				_, err = fmt.Fprintf(w, "0x%016x", x)
+			} else {
+				err = writeUnknownInt(w, x, err)
+			}
 		case WireStartGroup:
 			err = w.WriteByte('{')
 			w.indent()
@@ -758,6 +808,22 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		}
 	}
 	return nil
+}
+
+// As in the reference text printer, nonempty length-delimited unknown data
+// that forms a complete wire message can be rendered as a message body.
+func unknownTextMessage(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+	for len(data) != 0 {
+		n, err := EditionFieldSize(data)
+		if err != nil {
+			return false
+		}
+		data = data[n:]
+	}
+	return true
 }
 
 func writeUnknownInt(w *textWriter, x uint64, err error) error {
@@ -819,6 +885,9 @@ func (tm *TextMarshaler) writeExtensions(w *textWriter, pv reflect.Value) error 
 		}
 		if desc == nil {
 			// Unknown extension.
+			if !w.printUnknown {
+				continue
+			}
 			if err := writeUnknownStruct(w, ext.enc); err != nil {
 				return err
 			}
@@ -830,15 +899,24 @@ func (tm *TextMarshaler) writeExtensions(w *textWriter, pv reflect.Value) error 
 			return fmt.Errorf("failed getting extension: %v", err)
 		}
 
+		var properties *Properties
+		if w.standard {
+			properties = new(Properties)
+			typ := reflect.TypeOf(desc.ExtensionType)
+			if desc.repeated() {
+				typ = typ.Elem()
+			}
+			properties.Init(typ, desc.Name, desc.Tag, nil)
+		}
 		// Repeated extensions will appear as a slice.
 		if !desc.repeated() {
-			if err := tm.writeExtension(w, desc.Name, pb); err != nil {
+			if err := tm.writeExtension(w, desc.Name, pb, properties); err != nil {
 				return err
 			}
 		} else {
 			v := reflect.ValueOf(pb)
 			for i := 0; i < v.Len(); i++ {
-				if err := tm.writeExtension(w, desc.Name, v.Index(i).Interface()); err != nil {
+				if err := tm.writeExtension(w, desc.Name, v.Index(i).Interface(), properties); err != nil {
 					return err
 				}
 			}
@@ -847,7 +925,7 @@ func (tm *TextMarshaler) writeExtensions(w *textWriter, pv reflect.Value) error 
 	return nil
 }
 
-func (tm *TextMarshaler) writeExtension(w *textWriter, name string, pb interface{}) error {
+func (tm *TextMarshaler) writeExtension(w *textWriter, name string, pb interface{}, properties *Properties) error {
 	if _, err := fmt.Fprintf(w, "[%s]:", name); err != nil {
 		return err
 	}
@@ -856,7 +934,7 @@ func (tm *TextMarshaler) writeExtension(w *textWriter, name string, pb interface
 			return err
 		}
 	}
-	if err := tm.writeAny(w, reflect.ValueOf(pb), nil); err != nil {
+	if err := tm.writeAny(w, reflect.ValueOf(pb), properties); err != nil {
 		return err
 	}
 	if err := w.WriteByte('\n'); err != nil {
@@ -890,6 +968,10 @@ type TextMarshaler struct {
 // Marshal writes a given protocol buffer in text format.
 // The only errors returned are from w.
 func (tm *TextMarshaler) Marshal(w io.Writer, pb Message) error {
+	return tm.marshal(w, pb, false, true)
+}
+
+func (tm *TextMarshaler) marshal(w io.Writer, pb Message, standard, printUnknown bool) error {
 	val := reflect.ValueOf(pb)
 	if pb == nil || val.IsNil() {
 		w.Write([]byte("<nil>"))
@@ -902,9 +984,11 @@ func (tm *TextMarshaler) Marshal(w io.Writer, pb Message) error {
 		ww = bw
 	}
 	aw := &textWriter{
-		w:        ww,
-		complete: true,
-		compact:  tm.Compact,
+		w:            ww,
+		complete:     true,
+		compact:      tm.Compact,
+		standard:     standard,
+		printUnknown: printUnknown,
 	}
 
 	if etm, ok := pb.(encoding.TextMarshaler); ok {
