@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=pathlib.Path)
     parser.add_argument('output', type=pathlib.Path)
+    parser.add_argument('--merge-oneof-messages', action='store_true')
     args = parser.parse_args()
     source, output = args.source.resolve(), args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -29,6 +30,8 @@ def main():
     mappings = ['M' + path + '=' + MODULE + '/pb/' + key for key, path in SCHEMAS.items()]
     mappings += ['Mgoogle/protobuf/' + name + '.proto=github.com/gogo/protobuf/types'
                  for name in ['any', 'duration', 'empty', 'field_mask', 'struct', 'timestamp', 'wrappers']]
+    if args.merge_oneof_messages:
+        mappings.append('merge_oneof_messages=true')
     for key, path in SCHEMAS.items():
         stage = output / 'stage'
         stage.mkdir()

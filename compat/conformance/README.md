@@ -116,3 +116,10 @@ qualification of all gogo representations or arbitrary text inputs.
 Ordinary submessage-encoded MessageSet input removes one binary failure from both
 profiles. Standard mode now has six binary/JSON failures (legacy oneof-message
 merge semantics) and no text failures. The four future-Edition skips remain.
+
+The standard profile now generates its own testee with the explicit
+`merge_oneof_messages=true` parameter. Its last six binary/JSON records pass;
+all 5,649 binary/JSON cases have no failures (four future-Edition skips), and
+all 909 text cases pass without skips. Legacy generation and inventory remain
+separate. This suite result does not qualify every gogo representation, imported
+decoder policy or resource boundary.

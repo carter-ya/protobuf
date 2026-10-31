@@ -149,6 +149,7 @@ type Properties struct {
 	ClosedEnum       map[int32]bool // allowed numbers, only for new closed-enum fields
 	proto3           bool           // whether this is known to be a proto3 field
 	oneof            bool           // whether this is a oneof field
+	oneofMerge       bool           // opt-in merging of repeated message members
 
 	Default     string // default value
 	HasDefault  bool   // whether an explicit default was provided
@@ -196,6 +197,9 @@ func (p *Properties) String() string {
 	}
 	if p.ExplicitPresence {
 		s += ",explicit"
+	}
+	if p.oneofMerge {
+		s += ",oneof_merge"
 	}
 	if p.UTF8None {
 		s += ",utf8_none"
@@ -281,6 +285,8 @@ outer:
 			p.Enum = f[5:]
 		case f == "explicit":
 			p.ExplicitPresence = true
+		case f == "oneof_merge":
+			p.oneofMerge = true
 		case f == "utf8_none":
 			p.UTF8None = true
 		case strings.HasPrefix(f, "enum_closed="):

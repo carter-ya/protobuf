@@ -4,38 +4,7 @@
   "binary_json": {
     "tests": 5649,
     "inventory_sha256": "49a5e8ae087e2c8a0df0f59add56e73b3c5f023b8dfb538f21cc5842980e0ed0",
-    "failures": [
-      {
-        "test": "Recommended.Proto2.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Recommended.Proto3.ProtobufInput.ValidDataOneofBinary.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: Expect: \\202\\007\\014\\022\\012\\010\\001\\020\\001\\310\\005\\001\\310\\005\\001, but got: \\202\\007\\007\\022\\005\\020\\001\\310\\005\\001",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto2.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.JsonOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.ProtobufInput.ValidDataOneof.MESSAGE.Merge.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: deleted: oneof_nested_message.corecursive.optional_int32: 1",
-        "follow_up": "later binary/text runtime conformance work"
-      }
-    ],
+    "failures": [],
     "variable_outcomes": [],
     "skips": [
       {

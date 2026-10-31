@@ -538,6 +538,10 @@ func (g *Generator) CommandLineParameters(parameter string) {
 			if v == "true" {
 				g.annotateCode = true
 			}
+		case "merge_oneof_messages":
+			if v != "true" && v != "false" {
+				g.Fail("merge_oneof_messages must be true or false")
+			}
 		default:
 			if len(k) > 0 && k[0] == 'M' {
 				g.ImportMap[k[1:]] = v
@@ -1217,6 +1221,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 	g.customImports = make([]string, 0)
 	g.file = file
 	g.validateEditionFastDependencies(file)
+	oneofMerge := g.validateOneofMessageMerging(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
@@ -1251,6 +1256,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		}
 		if fileNeedsOptionalCustomOrStd(file.FileDescriptorProto) {
 			codeVersion = 11
+		}
+		if oneofMerge {
+			codeVersion = 12
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
@@ -1821,6 +1829,9 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 	oneof := ""
 	if field.IsRealOneof() {
 		oneof = ",oneof"
+		if g.MergeOneofMessage(field) {
+			oneof += ",oneof_merge"
+		}
 	}
 	stdtime := ""
 	if gogoproto.IsStdTime(field) {
