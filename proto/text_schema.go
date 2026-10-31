@@ -203,7 +203,7 @@ func (p *textParser) skipReservedField(depth int) error {
 }
 
 func (p *textParser) skipReservedValue(depth int) error {
-	if depth > 100 {
+	if depth > 100 || p.depth+depth > p.recursionLimit {
 		return p.errorf("reserved text value nesting exceeds 100")
 	}
 	tok := p.next()
@@ -213,6 +213,9 @@ func (p *textParser) skipReservedValue(depth int) error {
 	value := tok.value
 	switch value {
 	case "{", "<":
+		if p.depth+depth >= p.recursionLimit {
+			return p.errorf("reserved text message nesting limit")
+		}
 		end := "}"
 		if value == "<" {
 			end = ">"
@@ -267,7 +270,7 @@ func (p *textParser) skipReservedValue(depth int) error {
 }
 
 func (p *textParser) skipReservedList(depth int, messagesOnly bool) error {
-	if depth > 100 {
+	if depth > 100 || p.depth+depth > p.recursionLimit {
 		return p.errorf("reserved text value nesting exceeds 100")
 	}
 	tok := p.next()

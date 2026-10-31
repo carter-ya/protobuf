@@ -76,13 +76,21 @@ type writer interface {
 
 // textWriter is an io.Writer that tracks its indentation level.
 type textWriter struct {
-	ind          int
-	complete     bool // if the current position is a complete line
-	compact      bool // whether to write out as a one-liner
-	standard     bool // explicit standard text policy
-	printUnknown bool
-	unknownDepth int
-	w            writer
+	ind            int
+	complete       bool // if the current position is a complete line
+	compact        bool // whether to write out as a one-liner
+	standard       bool // explicit standard text policy
+	printUnknown   bool
+	unknownDepth   int
+	depth          int
+	recursionLimit int
+	active         map[textPointer]bool
+	w              writer
+}
+
+type textPointer struct {
+	typ     reflect.Type
+	address uintptr
 }
 
 func (w *textWriter) WriteString(s string) (n int, err error) {
@@ -265,6 +273,27 @@ func (tm *TextMarshaler) writeProto3Any(w *textWriter, sv reflect.Value) (bool, 
 }
 
 func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
+	if w.standard {
+		if !sv.IsValid() || sv.Kind() != reflect.Struct {
+			return fmt.Errorf("proto: standard text requires a struct message")
+		}
+		if w.depth >= w.recursionLimit {
+			return fmt.Errorf("proto: standard text nesting exceeds limit %d", w.recursionLimit)
+		}
+		w.depth++
+		defer func() { w.depth-- }()
+		if sv.CanAddr() {
+			pointer := textPointer{sv.Type(), sv.Addr().Pointer()}
+			if w.active[pointer] {
+				return fmt.Errorf("proto: cycle in standard text message %v", sv.Type())
+			}
+			if w.active == nil {
+				w.active = make(map[textPointer]bool)
+			}
+			w.active[pointer] = true
+			defer delete(w.active, pointer)
+		}
+	}
 	if tm.ExpandAny && isAny(sv) {
 		if canExpand, err := tm.writeProto3Any(w, sv); canExpand {
 			return err
@@ -350,6 +379,12 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			keys := fv.MapKeys()
 			sort.Sort(mapKeys(keys))
 			for _, key := range keys {
+				if w.standard {
+					if w.depth >= w.recursionLimit {
+						return fmt.Errorf("proto: standard text map nesting exceeds limit %d", w.recursionLimit)
+					}
+					w.depth++
+				}
 				val := fv.MapIndex(key)
 				if err := writeStandardTextName(w, props, schema); err != nil {
 					return err
@@ -409,6 +444,9 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 				}
 				if err := w.WriteByte('\n'); err != nil {
 					return err
+				}
+				if w.standard {
+					w.depth--
 				}
 			}
 			continue
@@ -504,6 +542,13 @@ func (tm *TextMarshaler) writeAny(w *textWriter, v reflect.Value, props *Propert
 
 	if props != nil {
 		if props.Proto3Optional && props.WktPointer {
+			if w.standard {
+				if w.depth >= w.recursionLimit {
+					return fmt.Errorf("proto: standard text wrapper nesting exceeds limit %d", w.recursionLimit)
+				}
+				w.depth++
+				defer func() { w.depth-- }()
+			}
 			// The Go field is scalar, but its declared protobuf type is a
 			// wrapper message. Emit the value even at zero (including -0).
 			if err := w.WriteByte('<'); err != nil {
@@ -737,6 +782,9 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		}
 		wire, tag := x&7, x>>3
 		if wire == WireEndGroup {
+			if w.standard {
+				w.depth--
+			}
 			w.unindent()
 			if _, werr := w.Write(endBraceNewline); werr != nil {
 				return werr
@@ -761,7 +809,7 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 			buf, e := b.DecodeRawBytes(false)
 			if e == nil {
 				if w.standard && unknownTextMessage(buf) {
-					if w.unknownDepth >= 100 {
+					if w.unknownDepth >= 100 || w.depth+w.unknownDepth >= w.recursionLimit {
 						return fmt.Errorf("proto: unknown text message nesting limit")
 					}
 					if err = w.WriteByte('{'); err != nil {
@@ -802,6 +850,12 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 				err = writeUnknownInt(w, x, err)
 			}
 		case WireStartGroup:
+			if w.standard {
+				if w.depth+w.unknownDepth >= w.recursionLimit {
+					return fmt.Errorf("proto: unknown text group nesting limit")
+				}
+				w.depth++
+			}
 			err = w.WriteByte('{')
 			w.indent()
 		case WireVarint:
@@ -978,10 +1032,10 @@ type TextMarshaler struct {
 // Marshal writes a given protocol buffer in text format.
 // The only errors returned are from w.
 func (tm *TextMarshaler) Marshal(w io.Writer, pb Message) error {
-	return tm.marshal(w, pb, false, true)
+	return tm.marshal(w, pb, false, true, 0)
 }
 
-func (tm *TextMarshaler) marshal(w io.Writer, pb Message, standard, printUnknown bool) error {
+func (tm *TextMarshaler) marshal(w io.Writer, pb Message, standard, printUnknown bool, recursionLimit int) error {
 	val := reflect.ValueOf(pb)
 	if pb == nil || val.IsNil() {
 		w.Write([]byte("<nil>"))
@@ -994,11 +1048,12 @@ func (tm *TextMarshaler) marshal(w io.Writer, pb Message, standard, printUnknown
 		ww = bw
 	}
 	aw := &textWriter{
-		w:            ww,
-		complete:     true,
-		compact:      tm.Compact,
-		standard:     standard,
-		printUnknown: printUnknown,
+		w:              ww,
+		complete:       true,
+		compact:        tm.Compact,
+		standard:       standard,
+		printUnknown:   printUnknown,
+		recursionLimit: recursionLimit,
 	}
 
 	if etm, ok := pb.(encoding.TextMarshaler); ok {

@@ -65,3 +65,13 @@ Byte escape widths follow the text specification: one to three octal digits,
 and one to two hex digits after lowercase `\x`. Extra digits and following
 characters remain literal. Out-of-range byte values and uppercase `\X` are
 rejected. Historical entrypoints retain their full-width and uppercase behavior.
+
+`Marshaler.RecursionLimit` and `Unmarshaler.RecursionLimit` bound text message
+nesting; zero defaults to 10,000, matching the official Go text decoder. The root,
+map entries, mapped wrappers and expanded Any messages count toward the budget.
+Negative limits are invalid. Reserved/unknown values also observe the budget and
+retain their existing additional bounds. Cyclic Go message graphs are rejected;
+shared acyclic submessages are allowed. Encoder errors commit no partial output.
+Non-struct messages require their own text hook. Custom hooks own their policy;
+expanded Any payload bytes are decoded by the registered binary codec. Historical
+text APIs keep their previous behavior and configuration layout.

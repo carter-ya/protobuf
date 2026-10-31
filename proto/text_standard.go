@@ -11,10 +11,33 @@ import (
 	"strings"
 )
 
+// DefaultTextRecursionLimit matches the official Go text decoder's default.
+const DefaultTextRecursionLimit = 10000
+
+func standardTextLimit(limit int) (int, error) {
+	if limit < 0 {
+		return 0, fmt.Errorf("proto: negative standard text recursion limit")
+	}
+	if limit == 0 {
+		return DefaultTextRecursionLimit, nil
+	}
+	return limit, nil
+}
+
 // MarshalTextStandard is the policy bridge for textpb/standard. Historical
 // TextMarshaler fields and defaults are unchanged. Output is committed only
 // after successful encoding; custom TextMarshaler hooks own their semantics.
 func MarshalTextStandard(options *TextMarshaler, out io.Writer, message Message, printUnknown bool) error {
+	return MarshalTextStandardWithLimit(options, out, message, printUnknown, 0)
+}
+
+// MarshalTextStandardWithLimit additionally bounds message nesting. Zero uses
+// DefaultTextRecursionLimit. Cyclic Go message graphs are rejected independently.
+func MarshalTextStandardWithLimit(options *TextMarshaler, out io.Writer, message Message, printUnknown bool, limit int) error {
+	limit, err := standardTextLimit(limit)
+	if err != nil {
+		return err
+	}
 	if message == nil || reflect.ValueOf(message).Kind() != reflect.Ptr || reflect.ValueOf(message).IsNil() {
 		return fmt.Errorf("proto: nil standard text message")
 	}
@@ -22,10 +45,10 @@ func MarshalTextStandard(options *TextMarshaler, out io.Writer, message Message,
 		options = new(TextMarshaler)
 	}
 	var buffer bytes.Buffer
-	if err := options.marshal(&buffer, message, true, printUnknown); err != nil {
+	if err := options.marshal(&buffer, message, true, printUnknown, limit); err != nil {
 		return err
 	}
-	_, err := out.Write(buffer.Bytes())
+	_, err = out.Write(buffer.Bytes())
 	return err
 }
 
@@ -33,6 +56,16 @@ func MarshalTextStandard(options *TextMarshaler, out io.Writer, message Message,
 // string rules. It resets the destination, like UnmarshalText. A custom
 // TextUnmarshaler remains responsible for its own representation and policy.
 func UnmarshalTextStandard(input string, message Message) error {
+	return UnmarshalTextStandardWithLimit(input, message, 0)
+}
+
+// UnmarshalTextStandardWithLimit bounds message nesting without changing the
+// historical text parser. Zero uses DefaultTextRecursionLimit.
+func UnmarshalTextStandardWithLimit(input string, message Message, limit int) error {
+	limit, err := standardTextLimit(limit)
+	if err != nil {
+		return err
+	}
 	v := reflect.ValueOf(message)
 	if message == nil || v.Kind() != reflect.Ptr || v.IsNil() {
 		return fmt.Errorf("proto: nil standard text message")
@@ -43,6 +76,7 @@ func UnmarshalTextStandard(input string, message Message) error {
 	message.Reset()
 	parser := newTextParser(input)
 	parser.standard = true
+	parser.recursionLimit = limit
 	return parser.readStruct(v.Elem(), "")
 }
 
