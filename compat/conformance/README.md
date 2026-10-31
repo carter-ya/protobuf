@@ -112,3 +112,7 @@ Schema-based group names remove the final 18 standard text records: all 909
 pinned Protobuf 36.2 text cases pass without skips. Seven binary/JSON failures
 and four future-Edition skips remain separate; this is not full compatibility
 qualification of all gogo representations or arbitrary text inputs.
+
+Ordinary submessage-encoded MessageSet input removes one binary failure from both
+profiles. Standard mode now has six binary/JSON failures (legacy oneof-message
+merge semantics) and no text failures. The four future-Edition skips remain.

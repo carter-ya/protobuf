@@ -155,3 +155,11 @@ before materializing values. Ordinary messages are no longer copied while binary
 sizing updates internal caches. The runtime race gate covers proto, legacy and
 standard JSON, and standard text with default and purego builds. This contract
 assumes application fields are not being mutated concurrently.
+
+## MessageSet input compatibility
+
+MessageSet accepts both item groups and ordinary length-delimited extension
+fields. Mixed encodings retain wire order and output remains in MessageSet
+format. Merging after SetExtension or GetExtension retains decoded payloads.
+Unknown extension bodies remain opaque. The explicit V2 snapshot experiment
+continues to reject MessageSet because its target runtime does not support it.

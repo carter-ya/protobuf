@@ -261,11 +261,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Recommended.Proto2.ProtobufInput.ValidMessageSetEncoding.SubmessageEncoding.ProtobufOutput",
-        "reason": "Output was not equivalent to reference message: deleted: message_set_correct.(protobuf_test_messages.proto2.TestAllTypesProto2.MessageSetCorrectExtension2.message_set_extension): { i: 99 }",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Recommended.Proto3.FieldMaskNumbersDontRoundTrip.JsonOutput",
         "reason": "Should have failed to serialize, but didn't.",
         "follow_up": "A04 WKT standard JSON"
