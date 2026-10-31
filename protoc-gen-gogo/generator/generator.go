@@ -2835,6 +2835,7 @@ func (g *Generator) generateCommonMethods(mc *msgCtx) {
 	g.P("func (m *", mc.goName, ") XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {")
 	g.In()
 	if g.UseTableCodec(mc.message) {
+		g.P("xxx_messageInfo_", mc.goName, ".Size(m)")
 		g.P("return xxx_messageInfo_", mc.goName, ".Marshal(b, m, deterministic)")
 	} else if gogoproto.IsMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) ||
 		gogoproto.IsUnsafeMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) {

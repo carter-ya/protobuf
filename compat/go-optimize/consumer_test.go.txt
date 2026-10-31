@@ -143,3 +143,54 @@ func TestMixedAndNativeMessages(t *testing.T) {
 		t.Fatal("nested fragments", err)
 	}
 }
+
+func TestCompactDirectFreshAndMutated(t *testing.T) {
+	for _, entry := range []string{"Marshal", "XXX_Marshal", "XXX_Marshal deterministic"} {
+		t.Run(entry, func(t *testing.T) {
+			value := int32(7)
+			source := &pb.Parent{Nested: &pb.Parent_Nested{Value: &value}}
+			encode := func() ([]byte, error) {
+				switch entry {
+				case "Marshal":
+					return source.Marshal()
+				case "XXX_Marshal":
+					return source.XXX_Marshal(nil, false)
+				default:
+					return source.XXX_Marshal(nil, true)
+				}
+			}
+			for _, next := range []int32{7, 1 << 27} {
+				value = next
+				// No Size/proto.Marshal call may pre-populate the nested cache here.
+				data, err := encode()
+				if err != nil {
+					t.Fatal(err)
+				}
+				var decoded pb.Parent
+				if err := proto.Unmarshal(data, &decoded); err != nil || decoded.GetNested().GetValue() != next {
+					t.Fatal("direct entrypoint used a missing/stale nested size", data, err, &decoded)
+				}
+			}
+		})
+	}
+}
+
+func TestCompactOneofHelperWithoutOwnerSiblings(t *testing.T) {
+	wrapper := &pb.RequiredChoice_Scalar{Scalar: 7}
+	data := make([]byte, wrapper.Size())
+	n, err := wrapper.MarshalTo(data)
+	if err != nil || n != 2 || !bytes.Equal(data, []byte{16, 7}) {
+		t.Fatal("oneof helper incorrectly validated unrelated owner fields", data, n, err)
+	}
+	child := &pb.RequiredChoice_Child{Child: &pb.RequiredChoice{}}
+	if _, err := child.MarshalTo(make([]byte, child.Size())); err == nil {
+		t.Fatal("oneof helper bypassed selected payload required validation")
+	}
+	x := int32(7)
+	child.Child.Required = &x
+	payload := make([]byte, child.Size()+9)
+	n, err = child.MarshalToSizedBuffer(payload)
+	if err != nil || !bytes.Equal(payload[len(payload)-n:], []byte{26, 2, 8, 7}) {
+		t.Fatal("selected payload/tail encoding", payload, n, err)
+	}
+}

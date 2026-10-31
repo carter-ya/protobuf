@@ -1081,7 +1081,15 @@ func (p *marshalto) Generate(file *generator.FileDescriptor) {
 				for _, method := range []string{"MarshalTo", "MarshalToSizedBuffer"} {
 					p.P("func (m *", ccTypeName, ") ", method, "(data []byte) (int, error) {")
 					p.P("parent := &", owner, "{", choice, ": m}")
-					p.P("return parent.", method, "(data)")
+					p.P("size := parent.Size()")
+					p.P("if len(data) < size { return 0, ", p.NewImport("io").Use(), ".ErrShortBuffer }")
+					if method == "MarshalToSizedBuffer" {
+						p.P("data = data[len(data)-size:len(data)-size]")
+					} else {
+						p.P("data = data[:0]")
+					}
+					p.P("encoded, err := xxx_messageInfo_", owner, ".MarshalOneof(data, parent, ", strconv.Quote(choice), ")")
+					p.P("return len(encoded), err")
 					p.P("}")
 				}
 				continue
@@ -1233,7 +1241,8 @@ func (p *marshalto) generateTableMethods(message *generator.Descriptor) {
 	info := "xxx_messageInfo_" + name
 	ioPkg := p.NewImport("io")
 	p.P("func (m *", name, ") Marshal() ([]byte, error) {")
-	p.P("return ", info, ".Marshal(nil, m, false)")
+	p.P("size := m.Size()")
+	p.P("return ", info, ".Marshal(make([]byte, 0, size), m, false)")
 	p.P("}")
 	for _, method := range []string{"MarshalTo", "MarshalToSizedBuffer"} {
 		p.P("func (m *", name, ") ", method, "(data []byte) (int, error) {")

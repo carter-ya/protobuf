@@ -92,3 +92,12 @@ message Dense {
   int64 field31 = 31;
   int64 field32 = 32;
 }
+
+message RequiredChoice {
+  option features.(pb.go).optimize_mode = CODE_SIZE;
+  int32 required = 1 [features.field_presence = LEGACY_REQUIRED];
+  oneof choice {
+    int32 scalar = 2;
+    RequiredChoice child = 3;
+  }
+}

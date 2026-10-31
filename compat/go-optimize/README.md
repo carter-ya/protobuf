@@ -29,11 +29,17 @@ selected strategy and is diagnosed. Protosizer combinations are outside this
 profile. Existing Editions restrictions on unsafe codecs and custom field
 representations still apply. No new Go layout is introduced for wrappers.
 
+Fresh and mutated messages run a sizing pass before direct table marshaling,
+including both public Marshal and XXX_Marshal entrypoints, so nested length
+prefixes never depend on an absent or stale sizing pass from another caller.
+
 Compact wrappers assert runtime Version16 and expose `XXX_TableCodec`, an
 internal capability marker. Only marked generated types bypass their own custom
 Marshal shortcut when entering the shared tables; this avoids recursion through
 Marshal/Size. Ordinary custom marshalers retain their historical dispatch.
-Oneof helper methods delegate through the owning message. Direct forward and
+Oneof helper methods use the owning message's oneof metadata, emit only the
+selected member, and do not require unrelated owner fields. Required fields
+inside the selected payload still observe their normal validation. Direct forward and
 backward buffer methods preserve their offset conventions and reject short
 buffers; the compact XXX_Marshal path appends to existing data and supports its
 deterministic argument.
@@ -42,7 +48,8 @@ deterministic argument.
 absent/UNSPECIFIED/SPEED/CODE_SIZE file settings and default/purego builds (80
 consumer runs). It tests nested overrides, mixed graphs, direct and ordinary
 entrypoints, map/oneof/list/extensions, Clone, unknown retention, fragment merges,
-forward/backward buffers, append prefixes, deterministic table encoding,
+fresh and mutated direct marshaling, forward/backward buffers, append prefixes,
+deterministic table encoding,
 conflicting source options and an old-runtime compile-negative guard. Generated
 source must be smaller for CODE_SIZE than SPEED on the retained dense fixture;
 this is a source-size assertion, not a hardware-independent speed promise.
