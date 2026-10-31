@@ -104,3 +104,6 @@ Legacy parsing retains its historical replacement behavior.
 Descriptor-backed reserved-name skipping removes another 40 standard text cases.
 The standard text inventory now contains 26 failures; legacy entrypoints do not
 consult this metadata and retain their previous unknown-name behavior.
+
+Expanded Any URL character mode and percent validation remove 8 further standard
+text failures. The remaining 18 text records concern group names.

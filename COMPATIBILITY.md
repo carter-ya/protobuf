@@ -142,6 +142,7 @@ adaptation claim is made for those cases.
 closed-enum and UTF-8 policy checks while preserving the historical text APIs
 and TextMarshaler layout. The first implementation passes 125 formerly failing
 standard text cases. Unicode scalar validation and descriptor-backed reserved-name
-skipping remove 72 more; 26 text failures remain explicitly recorded. Unknown fields
+skipping remove 72 more. Any URL syntax removes another 8; 18 group-name
+failures remain explicitly recorded. Unknown fields
 can be omitted or printed using the explicit configuration. It is not a
 full text-conformance claim. See `textpb/standard/README.md`.

@@ -136,26 +136,6 @@
         "follow_up": "later binary/text runtime conformance work"
       },
       {
-        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.TextFormatOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Editions_Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.TextFormatOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
         "test": "Required.Proto2.TextFormatInput.GroupFieldLowercased.ProtobufOutput",
         "reason": "Failed to parse input or produce output.",
         "follow_up": "later binary/text runtime conformance work"
@@ -172,26 +152,6 @@
       },
       {
         "test": "Required.Proto2.TextFormatInput.GroupFieldLowercasedMultiWord.TextFormatOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.TextFormatInput.AnyFieldWithSpecialCharactersInTypeUrlPrefix.TextFormatOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.ProtobufOutput",
-        "reason": "Failed to parse input or produce output.",
-        "follow_up": "later binary/text runtime conformance work"
-      },
-      {
-        "test": "Required.Proto3.TextFormatInput.AnyFieldWithValidUrlPercentEscapeInTypeUrlPrefix.TextFormatOutput",
         "reason": "Failed to parse input or produce output.",
         "follow_up": "later binary/text runtime conformance work"
       }

@@ -26,8 +26,8 @@ legacy parser's ownership contract. Raw descriptors and generated APIs are not
 changed by selecting this package.
 
 The pinned Protobuf 36.2 suite runs legacy and standard text independently.
-The first implementation removes 125 standard-only failures; 26 standard text
-failures remain, including Any URL spelling and group casing.
+The first implementation removes 125 standard-only failures; 18 standard text
+failures remain, covering group casing.
 Legacy behavior and its 223-failure baseline remain separate. See
 `compat/conformance/README.md` for the full test inventory and exact failures.
 
@@ -47,3 +47,9 @@ including nested message descriptor paths. Skipped values retain lexical and
 structural validation, and nesting is bounded. Other unknown names are errors.
 Malformed descriptor data returns an error; messages without descriptors have no
 reserved-name metadata. Schema facts are cached per Go message type.
+
+Expanded Any URLs accept the reference tokenizer character set and percent
+encodings, with validated prefix and type name. Whitespace and comments between
+URL fragments are ignored. Standard expanded output is unquoted; invalid or
+unresolvable expansion falls back to ordinary Any fields. Expanded URLs in other
+message types are rejected. Historical URL parsing and printing are unchanged.

@@ -89,6 +89,7 @@ type textParser struct {
 	offset, line int
 	cur          token
 	standard     bool
+	nameContext  bool // standard extension name or expanded Any URL
 }
 
 func newTextParser(s string) *textParser {
@@ -172,6 +173,15 @@ func (p *textParser) advance() {
 	p.cur.err = nil
 	p.cur.offset, p.cur.line = p.offset, p.line
 	p.cur.unquoted = ""
+	if p.standard && p.nameContext && standardURLChar(p.s[0]) {
+		i := 1
+		for i < len(p.s) && standardURLChar(p.s[i]) {
+			i++
+		}
+		p.cur.value, p.s = p.s[:i], p.s[i:]
+		p.offset += i
+		return
+	}
 	switch p.s[0] {
 	case '<', '>', '{', '}', ':', '[', ']', ';', ',', '/':
 		// Single symbol
@@ -492,6 +502,9 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 			}
 
 			if s := strings.LastIndex(extName, "/"); s >= 0 {
+				if p.standard && !isAny(sv) {
+					return p.errorf("expanded Any URL in non-Any message %v", st)
+				}
 				// If it contains a slash, it's an Any type URL.
 				messageName := extName[s+1:]
 				mt := MessageType(messageName)
@@ -734,6 +747,8 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 // consumeExtName consumes extension name or expanded Any type URL and the
 // following ']'. It returns the name or URL consumed.
 func (p *textParser) consumeExtName() (string, error) {
+	p.nameContext = p.standard
+	defer func() { p.nameContext = false }()
 	tok := p.next()
 	if tok.err != nil {
 		return "", tok.err
@@ -741,6 +756,9 @@ func (p *textParser) consumeExtName() (string, error) {
 
 	// If extension name or type url is quoted, it's a single token.
 	if len(tok.value) > 2 && isQuote(tok.value[0]) && tok.value[len(tok.value)-1] == tok.value[0] {
+		if p.standard {
+			return "", p.errorf("standard extension names and Any URLs must be unquoted")
+		}
 		name, err := unquoteC(tok.value[1:len(tok.value)-1], rune(tok.value[0]))
 		if err != nil {
 			return "", err
@@ -760,7 +778,11 @@ func (p *textParser) consumeExtName() (string, error) {
 			return "", p.errorf("unclosed type_url or extension name")
 		}
 	}
-	return strings.Join(parts, ""), nil
+	name := strings.Join(parts, "")
+	if p.standard && !validStandardTextName(name) {
+		return "", p.errorf("invalid type URL or extension name %q", name)
+	}
+	return name, nil
 }
 
 // consumeOptionalSeparator consumes an optional semicolon or comma.

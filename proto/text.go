@@ -228,6 +228,9 @@ func (tm *TextMarshaler) writeProto3Any(w *textWriter, sv reflect.Value) (bool, 
 	}
 
 	parts := strings.Split(turl.String(), "/")
+	if w.standard && (len(parts) < 2 || !validStandardTextName(turl.String())) {
+		return false, nil // retain ordinary Any fields when expansion is invalid
+	}
 	mt := MessageType(parts[len(parts)-1])
 	if mt == nil {
 		return false, nil
@@ -238,7 +241,7 @@ func (tm *TextMarshaler) writeProto3Any(w *textWriter, sv reflect.Value) (bool, 
 	}
 	w.Write([]byte("["))
 	u := turl.String()
-	if requiresQuotes(u) {
+	if !w.standard && requiresQuotes(u) {
 		writeString(w, u)
 	} else {
 		w.Write([]byte(u))
