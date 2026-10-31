@@ -72,6 +72,17 @@ func TestClosedEnums(t *testing.T) {
 			t.Fatal("imported closed enum became present", err)
 		}
 	}
+	var editionMap pb.EditionMapRecord
+	wireMap := []byte{10, 5, 10, 1, 'x', 16, 99}
+	if err := proto.Unmarshal(wireMap, &editionMap); err != nil || len(editionMap.States) != 0 {
+		t.Fatal("unknown Editions map enum became present", err)
+	}
+	if encoded, err := proto.Marshal(&editionMap); err != nil || !bytes.Equal(encoded, wireMap) {
+		t.Fatal("unknown Editions map entry lost", encoded, err)
+	}
+	if err := proto.Unmarshal([]byte{10, 5, 10, 1, 'x', 16, 1}, &editionMap); err != nil || editionMap.States["x"] != 1 {
+		t.Fatal("known Editions map enum lost", err)
+	}
 	// END EDITION
 	var required pb.RequiredRecord
 	if err := proto.Unmarshal([]byte{8, 99}, &required); err == nil {

@@ -14,29 +14,29 @@ func (g *Generator) validateClosedEnumPolicy(file *FileDescriptor) {
 	if !gogoproto.ImportsGoGoProto(file.FileDescriptorProto) {
 		g.Fail("enforce_closed_enums requires the gogo runtime: ", file.GetName())
 	}
-	validateField := func(scope string, field *d.FieldDescriptorProto) {
+	validateField := func(scope string, field *d.FieldDescriptorProto, independentPresence bool) {
 		if field.GetType() != d.FieldDescriptorProto_TYPE_ENUM || file.legacyEnums[field.GetTypeName()].closed == "" {
 			return
 		}
 		if gogoproto.IsCustomType(field) || gogoproto.IsStdType(field) {
 			g.Fail("enforce_closed_enums requires a native enum representation: ", scope, ".", field.GetName())
 		}
-		if !field.IsRepeated() && !field.IsRealOneof() && !gogoproto.IsNullable(field) {
+		if independentPresence && !field.IsRepeated() && !field.IsRealOneof() && !gogoproto.IsNullable(field) {
 			g.Fail("enforce_closed_enums requires independent enum presence: ", scope, ".", field.GetName())
 		}
 	}
 	for _, field := range file.Extension {
-		validateField(file.GetName(), field)
+		validateField(file.GetName(), field, true)
 	}
 	for _, message := range file.Messages() {
 		if !message.GetOptions().GetMapEntry() && !gogoproto.HasUnrecognized(file.FileDescriptorProto, message.DescriptorProto) {
 			g.Fail("enforce_closed_enums requires unknown-field storage: ", file.GetName(), ":", message.GetName())
 		}
 		for _, field := range message.Field {
-			validateField(message.GetName(), field)
+			validateField(message.GetName(), field, !message.GetOptions().GetMapEntry())
 		}
 		for _, field := range message.Extension {
-			validateField(message.GetName(), field)
+			validateField(message.GetName(), field, true)
 		}
 	}
 }

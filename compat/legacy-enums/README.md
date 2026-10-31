@@ -25,7 +25,8 @@ unchanged. Imported proto3 enums remain open because openness belongs to the
 definition, not the referencing file.
 
 The option enables unknown-field storage and enum presence before convenience
-backends install their historical defaults. Explicit source options are never
+backends install their historical defaults. Synthetic map values keep implicit presence; filtering retains the complete
+entry when its enum is unknown. Explicit source options are never
 overridden: disabling unknown storage or flattening singular closed enums fails
 with a diagnostic. Custom enum representations and alternate runtimes are not
 qualified. Native enum names and old generated layouts outside this explicit
