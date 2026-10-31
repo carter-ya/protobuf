@@ -2182,6 +2182,9 @@ func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler, mergeMess
 	var policy Properties
 	if mergeMessage {
 		policy.Parse(sf.Tag.Get("protobuf"))
+		if policy.Wire == "group" {
+			policy.WireType = WireStartGroup
+		}
 	}
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		if mergeMessage && w != policy.WireType {
