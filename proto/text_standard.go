@@ -205,3 +205,37 @@ func validStandardTextName(value string) bool {
 func textHexDigit(ch byte) bool {
 	return ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
 }
+
+// Integer tokens use the text grammar, excluding Go-only binary/octal prefixes
+// and digit separators accepted by newer strconv implementations.
+func standardTextInteger(input string, signed bool) bool {
+	value := input
+	if signed && strings.HasPrefix(value, "-") {
+		value = value[1:]
+	}
+	if len(value) == 0 {
+		return false
+	}
+	base := byte(10)
+	if value[0] == '0' && len(value) > 1 {
+		base = 8
+		if value[1] == 'x' || value[1] == 'X' {
+			base = 16
+			value = value[2:]
+		}
+	}
+	if len(value) == 0 {
+		return false
+	}
+	for i := 0; i < len(value); i++ {
+		ch := value[i]
+		if ch >= '0' && ch < '0'+base && ch <= '9' {
+			continue
+		}
+		if base == 16 && (ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F') {
+			continue
+		}
+		return false
+	}
+	return true
+}

@@ -75,3 +75,13 @@ shared acyclic submessages are allowed. Encoder errors commit no partial output.
 Non-struct messages require their own text hook. Custom hooks own their policy;
 expanded Any payload bytes are decoded by the registered binary codec. Historical
 text APIs keep their previous behavior and configuration layout.
+
+Standard parsing accepts empty repeated lists, map entry lists and optional
+map entry key/value fields. Each individual entry rejects repeated key/value
+members; later entries for the same map key overwrite earlier entries. Boolean
+numeric literals accept any unsigned decimal/octal/hexadecimal spelling of 0/1.
+Integer literals reject Go-specific binary/`0o` prefixes and digit separators.
+Leading `+` is invalid. Vertical tab/form feed are standard token whitespace.
+Literal source text must be non-NUL UTF-8, including bytes fields; arbitrary byte
+values remain expressible using escapes. These rules leave legacy parsing intact.
+The independent regression/fuzz module is documented in `compat/qualify/README.md`.
