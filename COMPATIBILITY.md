@@ -147,3 +147,11 @@ group names resolve the last 18. All 909 pinned Protobuf 36.2 text cases pass
 through the standard entrypoint without skips; the legacy baseline stays separate. Unknown fields
 can be omitted or printed using the explicit configuration. It is not a
 full text-conformance claim. See `textpb/standard/README.md`.
+
+## Concurrent read-only encoding
+
+JSON encoding checks time, duration and custom JSON interfaces by reflected type
+before materializing values. Ordinary messages are no longer copied while binary
+sizing updates internal caches. The runtime race gate covers proto, legacy and
+standard JSON, and standard text with default and purego builds. This contract
+assumes application fields are not being mutated concurrently.

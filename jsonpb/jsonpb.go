@@ -188,8 +188,11 @@ type isWkt interface {
 }
 
 var (
-	wktType     = reflect.TypeOf((*isWkt)(nil)).Elem()
-	messageType = reflect.TypeOf((*proto.Message)(nil)).Elem()
+	wktType           = reflect.TypeOf((*isWkt)(nil)).Elem()
+	timeType          = reflect.TypeOf(time.Time{})
+	durationType      = reflect.TypeOf(time.Duration(0))
+	jsonMarshalerType = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+	messageType       = reflect.TypeOf((*proto.Message)(nil)).Elem()
 )
 
 // marshalObject writes a struct to the Writer.
@@ -646,7 +649,10 @@ func (m *jsonEncoder) marshalValue(out *errWriter, prop *proto.Properties, v ref
 		}
 	}
 
-	if t, ok := v.Interface().(time.Time); ok {
+	// Check the reflected type before materializing a value. Interface on an
+	// ordinary message struct would copy its concurrently updated size cache.
+	if v.Type() == timeType {
+		t := v.Interface().(time.Time)
 		ts, err := types.TimestampProto(t)
 		if err != nil {
 			return err
@@ -654,7 +660,8 @@ func (m *jsonEncoder) marshalValue(out *errWriter, prop *proto.Properties, v ref
 		return m.marshalValue(out, prop, reflect.ValueOf(ts), indent)
 	}
 
-	if d, ok := v.Interface().(time.Duration); ok {
+	if v.Type() == durationType {
+		d := v.Interface().(time.Duration)
 		dur := types.DurationProto(d)
 		return m.marshalValue(out, prop, reflect.ValueOf(dur), indent)
 	}
@@ -732,9 +739,8 @@ func (m *jsonEncoder) marshalValue(out *errWriter, prop *proto.Properties, v ref
 			return out.err
 		}
 
-		if m, ok := v.Interface().(interface {
-			MarshalJSON() ([]byte, error)
-		}); ok {
+		if v.Type().Implements(jsonMarshalerType) {
+			m := v.Interface().(json.Marshaler)
 			data, err := m.MarshalJSON()
 			if err != nil {
 				return err
