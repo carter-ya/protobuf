@@ -85,3 +85,11 @@ Leading `+` is invalid. Vertical tab/form feed are standard token whitespace.
 Literal source text must be non-NUL UTF-8, including bytes fields; arbitrary byte
 values remain expressible using escapes. These rules leave legacy parsing intact.
 The independent regression/fuzz module is documented in `compat/qualify/README.md`.
+
+Unset required pointers/bytes return `RequiredNotSetError` during standard
+printing, including nested messages. Required zero values retain presence.
+Nil native messages in repeated fields, map values and selected oneof members
+print as empty messages and obey the normal required-field and recursion checks.
+A typed nil oneof wrapper is unset. Nil mapped values that cannot represent an
+empty protobuf message return an error. Legacy partial output and nil debug
+markers remain unchanged.
