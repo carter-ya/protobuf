@@ -225,3 +225,13 @@ and dual-name migration aliases across all five backends. Defaults/getters and
 cross-file/public imports use the resolved Go constants; raw proto names and
 binary/JSON encodings are unchanged. Ambiguous custom Go names and collisions
 are diagnosed. See [prefix compatibility](compat/go-enum-prefix/README.md).
+
+## Explicit optimization strategies
+
+Editions 2024/2026 implement `optimize_mode` file/message inheritance and
+SPEED/CODE_SIZE overrides. Unselected/UNSPECIFIED settings retain the chosen
+backend's existing strategy. Compact table wrappers keep field layouts and fast
+method interfaces; selected parents can safely reach compact/unselected children.
+Version16 prevents linking wrappers to a runtime that would recursively call
+its own Marshal/Size methods. Unmarked custom marshalers keep their dispatch.
+See [the strategy contract and independent qualification](compat/go-optimize/README.md).

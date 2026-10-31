@@ -1,6 +1,6 @@
 # Exhaustive feature inventory
 
-Reference checked on 2026-10-31: stable Protobuf 36.2 and official Go 1.36.12;
+Reference rechecked on 2026-11-01: stable Protobuf 36.2 and official Go 1.36.12;
 37.0-rc1 / Go 1.37.0-rc.1 remain separate previews. Sources are the official
 [releases](https://github.com/protocolbuffers/protobuf/releases),
 [feature settings](https://protobuf.dev/editions/features/),
@@ -45,8 +45,11 @@ method and behavior checks. The remaining Go generation gaps are:
 The [enum prefix API](../go-enum-prefix/README.md) implements KEEP, STRIP and
 GENERATE_BOTH with file/enum/entry inheritance and migration aliases.
 
-* Non-OPEN `api_level` and `optimize_mode` are
-  diagnosed rather than implemented.
+The [optimization strategies](../go-optimize/README.md) implement explicit
+SPEED/CODE_SIZE settings and nested overrides while retaining unselected backend
+defaults.
+
+* Non-OPEN `api_level` is diagnosed rather than implemented.
   Their individual fields/values remain in the inventory as gaps. Core Editions
   support is not equivalent to support for all official Go generator APIs.
 * The C02 V2 conversion experiment is not a production ProtoReflect adapter and

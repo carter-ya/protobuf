@@ -41,6 +41,9 @@ func (g *Generator) validateEditionFastDependencies(file *FileDescriptor) {
 		if !marshaler && !sizer && !protoSizer && !unmarshaler {
 			continue
 		}
+		if g.UseTableCodec(message) {
+			continue
+		}
 		for _, field := range message.Field {
 			target := field
 			if g.IsMap(field) {

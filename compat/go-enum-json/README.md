@@ -10,8 +10,8 @@ runtime dependency changes are required.
 
 This option affects Go's `encoding/json` method interface. It does not choose
 the Protobuf JSON message entrypoint; standard JSON/text still use their explicit
-packages. Gogo continues to emit the Open Struct API. HYBRID/OPAQUE and optimization requests remain separately tracked until
-implemented. Enum prefix settings have a separate qualified matrix.
+packages. Gogo continues to emit the Open Struct API. HYBRID/OPAQUE remains separately tracked. Enum prefix and optimization settings
+have separate qualified matrices.
 
 Edition 2023 uses ordinary imports for `google/protobuf/go_features.proto`.
 Without an explicit `M` mapping, gogo maps that schema's official Go package to

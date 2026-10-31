@@ -1,0 +1,145 @@
+package qualify
+
+import (
+	"bytes"
+	pb "example.com/optimize/pb"
+	"github.com/gogo/protobuf/proto"
+	"io"
+	"testing"
+)
+
+const fileMode = FILE_MODE
+const backendFast = BACKEND_FAST
+
+type codec interface {
+	proto.Message
+	Marshal() ([]byte, error)
+	MarshalTo([]byte) (int, error)
+	MarshalToSizedBuffer([]byte) (int, error)
+	Size() int
+	Unmarshal([]byte) error
+	XXX_Marshal([]byte, bool) ([]byte, error)
+}
+type tableCodec interface{ XXX_TableCodec() }
+
+func TestOptimizationInheritance(t *testing.T) {
+	for _, m := range []proto.Message{new(pb.CompactLeaf), new(pb.Parent), new(pb.Parent_Nested)} {
+		if _, ok := m.(tableCodec); !ok {
+			t.Fatalf("%T lost compact inheritance", m)
+		}
+	}
+	for _, m := range []proto.Message{new(pb.FastLeaf), new(pb.Parent_Fast)} {
+		if _, ok := m.(codec); !ok {
+			t.Fatalf("%T lost SPEED methods", m)
+		}
+		if _, ok := m.(tableCodec); ok {
+			t.Fatalf("%T failed to override compact parent", m)
+		}
+	}
+	if _, ok := interface{}(new(pb.Mixed)).(tableCodec); ok == backendFast {
+		t.Fatal("mixed parent did not select the dependency-compatible codec")
+	}
+	if _, ok := interface{}(new(pb.Record)).(tableCodec); ok != (fileMode == 2) {
+		t.Fatal("file compact selection")
+	}
+	if _, ok := interface{}(new(pb.Record)).(codec); ok != (backendFast || fileMode != 0) {
+		t.Fatal("unselected backend API changed")
+	}
+	if _, ok := interface{}(new(pb.DefaultLeaf)).(codec); ok != backendFast {
+		t.Fatal("UNSPECIFIED did not retain backend defaults")
+	}
+}
+func roundtrip(t *testing.T, value, decoded proto.Message) {
+	t.Helper()
+	data, err := proto.Marshal(value)
+	if err != nil || len(data) != proto.Size(value) {
+		t.Fatal("marshal/size", len(data), err)
+	}
+	if err := proto.Unmarshal(data, decoded); err != nil || !proto.Equal(value, decoded) {
+		t.Fatal("roundtrip", err, decoded)
+	}
+	if !proto.Equal(proto.Clone(value), value) {
+		t.Fatal("clone")
+	}
+	if direct, ok := value.(codec); ok {
+		if direct.Size() != len(data) {
+			t.Fatal("direct size")
+		}
+		forward := make([]byte, direct.Size())
+		n, err := direct.MarshalTo(forward)
+		if err != nil || n != len(data) {
+			t.Fatal(n, err)
+		}
+		if err := proto.Unmarshal(forward, decoded); err != nil || !proto.Equal(value, decoded) {
+			t.Fatal("forward", err)
+		}
+		backward := make([]byte, direct.Size()+13)
+		n, err = direct.MarshalToSizedBuffer(backward)
+		if err != nil || n != len(data) {
+			t.Fatal(n, err)
+		}
+		if err := proto.Unmarshal(backward[len(backward)-n:], decoded); err != nil || !proto.Equal(value, decoded) {
+			t.Fatal("sized buffer tail", err)
+		}
+		decoded.Reset()
+		if err := decoded.(codec).Unmarshal(data); err != nil || !proto.Equal(value, decoded) {
+			t.Fatal("direct unmarshal", err)
+		}
+		if _, compact := value.(tableCodec); compact {
+			if n, err := direct.MarshalTo(make([]byte, len(data)-1)); n != 0 || err != io.ErrShortBuffer {
+				t.Fatal("short buffer", n, err)
+			}
+			prefix := make([]byte, 2, 200)
+			prefix[0] = 99
+			prefix[1] = 88
+			appended, err := direct.XXX_Marshal(prefix, false)
+			if err != nil || !bytes.Equal(appended[:2], prefix) {
+				t.Fatal("append prefix", err)
+			}
+			if err := proto.Unmarshal(appended[2:], decoded); err != nil || !proto.Equal(value, decoded) {
+				t.Fatal("appended bytes", err)
+			}
+			// The table path retains deterministic XXX_Marshal semantics as well.
+			first, err := direct.XXX_Marshal(nil, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			second, err := direct.XXX_Marshal(nil, true)
+			if err != nil || !bytes.Equal(first, second) {
+				t.Fatal("deterministic table encoding", err)
+			}
+		}
+	}
+}
+func TestMixedAndNativeMessages(t *testing.T) {
+	x := int32(7)
+	text := "hello"
+	mixed := &pb.Mixed{Compact: &pb.CompactLeaf{Value: &x}, Fast: &pb.FastLeaf{Value: &x}, Fallback: &pb.DefaultLeaf{Value: &x}, Items: map[string]*pb.DefaultLeaf{"x": {Value: &x}}, List: []*pb.DefaultLeaf{{Value: &x}}, Choice: &pb.Mixed_Selected{Selected: &pb.DefaultLeaf{Value: &x}}}
+	roundtrip(t, mixed, new(pb.Mixed))
+	parent := &pb.Parent{Nested: &pb.Parent_Nested{Value: &x}, Fast: &pb.Parent_Fast{Value: &x}}
+	roundtrip(t, parent, new(pb.Parent))
+	record := &pb.Record{Leaf: &pb.Leaf{Value: &x, Text: &text}, Items: map[string]*pb.Leaf{"a": {Value: &x}, "b": {Text: &text}}, Choice: &pb.Record_Selected{Selected: &pb.Leaf{Value: &x}}, Packed: []int32{0, 1, 7}}
+	if err := proto.SetExtension(record, pb.E_Payload, &pb.Leaf{Value: &x, Text: &text}); err != nil {
+		t.Fatal(err)
+	}
+	roundtrip(t, record, new(pb.Record))
+	var decoded pb.Record
+	data, err := proto.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := proto.Unmarshal(append(data, 0xf0, 0x0b, 9), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	retained, err := proto.Marshal(&decoded)
+	if err != nil || !bytes.Contains(retained, []byte{0xf0, 0x0b, 9}) {
+		t.Fatal("unknown bytes lost", err)
+	}
+	extension, err := proto.GetExtension(&decoded, pb.E_Payload)
+	if err != nil || extension.(*pb.Leaf).GetValue() != 7 {
+		t.Fatal("native extension", err)
+	}
+	if err := proto.Unmarshal([]byte{10, 2, 8, 1, 10, 2, 8, 7}, &decoded); err != nil || decoded.GetLeaf().GetValue() != 7 {
+		t.Fatal("nested fragments", err)
+	}
+}

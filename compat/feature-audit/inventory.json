@@ -179,10 +179,12 @@
     {
       "name": "optimize_mode",
       "number": 4,
-      "status": "gap",
-      "owner": "Go generation strategy",
+      "status": "implemented",
+      "owner": "explicit gogo generation strategies with retained backend defaults",
       "evidence": [
-        "protoc-gen-gogo/generator/go_features.go"
+        "compat/check-go-optimize.sh",
+        "compat/go-optimize/README.md",
+        "compat/check-binary-fuzz.sh"
       ],
       "values": {
         "OPTIMIZE_MODE_UNSPECIFIED": 0,

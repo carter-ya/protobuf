@@ -1,6 +1,6 @@
 # Qualified compatibility and migration
 
-Status date: 2026-10-31. This maintenance line starts from original gogo/protobuf
+Status date: 2026-11-01. This maintenance line starts from original gogo/protobuf
 v1.3.2. The module remains `github.com/gogo/protobuf`; the root runtime requires
 Go 1.15. Existing valid proto2/proto3 bindings and their public Go layouts remain
 usable. Malformed-wire fixes enforce field-number and group bounds. Historical
@@ -22,6 +22,7 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Proto3 optional | Scalar/enum/message/bytes presence, synthetic oneofs, supported cast/custom/std rows | [Representation contract](optional/README.md) and five-backend default/purego tests |
 | Editions | 2023, 2024 and 2026; gogo Open Struct API | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
 | Core Editions semantics | Presence, LEGACY_REQUIRED, UTF8 VERIFY/NONE, packed/expanded, open/closed enums, maps, oneofs, DELIMITED, extensions and option retention | `check-editions.sh`, `check-editions-fast.sh`, required-boundary and binary checks |
+| Go optimization | Explicit SPEED/CODE_SIZE, inherited/nested overrides and mixed graphs; retained backend defaults | [Five-backend strategy contract](go-optimize/README.md) |
 | Go enum prefixes | KEEP/STRIP/GENERATE_BOTH, inherited and per-entry settings; imported defaults and aliases | [Five-backend naming/interop matrix](go-enum-prefix/README.md) |
 | Go enum JSON API | `legacy_unmarshal_json_enum` inheritance/overrides; native gogo feature metadata | [Five-backend method/behavior matrix](go-enum-json/README.md) |
 | Edition 2026 JSON | Custom enum names, aliases and empty strings | Pinned 36.2 descriptors, independent Go development oracle and Go 1.37 preview oracle |
@@ -127,6 +128,7 @@ module release versions; keep the generated guard and use the matching runtime.
 | Version13 | Native Editions extension validation, cached merges and deferred enclosing-graph completeness |
 | Version14 | Required initialization after final logical-message merging |
 | Version15 | Explicit legacy closed-enum policy and late extension registration |
+| Version16 | Explicit optimization strategies and compact table wrappers |
 
 Version13 also applies to a newly generated enclosing Editions file that reaches
 extensible children but declares no ranges itself. Its fast decoder uses the

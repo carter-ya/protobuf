@@ -1281,6 +1281,12 @@ func (g *Generator) generate(file *FileDescriptor) {
 		if g.EnforceClosedEnums(file) {
 			codeVersion = 15
 		}
+		for _, message := range file.Messages() {
+			if g.OptimizeMode(message) != 0 {
+				codeVersion = 16
+				break
+			}
+		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
 		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
@@ -2761,6 +2767,10 @@ func (g *Generator) generateCommonMethods(mc *msgCtx) {
 		g.P("func (m *", mc.goName, ") String() string { return ", g.Pkg["proto"], ".CompactTextString(m) }")
 	}
 	g.P("func (*", mc.goName, ") ProtoMessage() {}")
+	if g.UseTableCodec(mc.message) {
+		g.P("func (*", mc.goName, ") XXX_TableCodec() {}")
+	}
+
 	var indexes []string
 	for m := mc.message; m != nil; m = m.parent {
 		indexes = append([]string{strconv.Itoa(m.index)}, indexes...)
@@ -2824,7 +2834,9 @@ func (g *Generator) generateCommonMethods(mc *msgCtx) {
 
 	g.P("func (m *", mc.goName, ") XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {")
 	g.In()
-	if gogoproto.IsMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) ||
+	if g.UseTableCodec(mc.message) {
+		g.P("return xxx_messageInfo_", mc.goName, ".Marshal(b, m, deterministic)")
+	} else if gogoproto.IsMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) ||
 		gogoproto.IsUnsafeMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) {
 		if gogoproto.IsStableMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) {
 			g.P("b = b[:cap(b)]")
@@ -2905,6 +2917,9 @@ func (g *Generator) generateMessage(message *Descriptor) {
 	}
 	if !gogoproto.IsProtoSizer(message.file.FileDescriptorProto, message.DescriptorProto) {
 		usedNames["Size"] = true
+	}
+	if g.UseTableCodec(message) {
+		usedNames["XXX_TableCodec"] = true
 	}
 
 	// allocNames finds a conflict-free variation of the given strings,

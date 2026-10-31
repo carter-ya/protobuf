@@ -323,6 +323,12 @@ func (u *marshalInfo) marshal(b []byte, ptr pointer, deterministic bool) ([]byte
 	return b, errLater
 }
 
+// Generated compact codecs explicitly delegate to these tables. Their public
+// Marshal/Size methods must not be selected as custom shortcuts recursively.
+type tableCodec interface{ XXX_TableCodec() }
+
+var tableCodecType = reflect.TypeOf((*tableCodec)(nil)).Elem()
+
 // computeMarshalInfo initializes the marshal info.
 func (u *marshalInfo) computeMarshalInfo() {
 	u.Lock()
@@ -347,7 +353,7 @@ func (u *marshalInfo) computeMarshalInfo() {
 	}
 	// If the message can marshal itself, let it do it, for compatibility.
 	// NOTE: This is not efficient.
-	if reflect.PtrTo(t).Implements(marshalerType) {
+	if reflect.PtrTo(t).Implements(marshalerType) && !reflect.PtrTo(t).Implements(tableCodecType) {
 		u.hasmarshaler = true
 		atomic.StoreInt32(&u.initialized, 1)
 		return

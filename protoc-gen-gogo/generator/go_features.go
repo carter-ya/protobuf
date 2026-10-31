@@ -39,7 +39,10 @@ func validateGoFeatures(features *d.FeatureSet) error {
 	}
 	known := proto.Clone(f)
 	proto.DiscardUnknown(known)
-	if f.OptimizeMode != nil || !proto.Equal(f, known) {
+	if f.OptimizeMode != nil && (*f.OptimizeMode < 0 || *f.OptimizeMode > 2) {
+		return fmt.Errorf("Go optimize_mode %d is invalid", *f.OptimizeMode)
+	}
+	if !proto.Equal(f, known) {
 		return fmt.Errorf("explicit Go feature is not supported by the gogo backend")
 	}
 	return nil
