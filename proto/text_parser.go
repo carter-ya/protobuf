@@ -626,9 +626,21 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 		}
 		var dst reflect.Value
 		fi, props, ok := structFieldByName(sprops, name)
+		oop := sprops.OneofTypes[name]
+		if schema != nil {
+			if tag, found := schema.tagsByName[name]; found {
+				fi, props, oop = textPropertyByTag(sprops, tag)
+				ok = fi >= 0
+				if props != nil {
+					name = props.OrigName // aliases share the same singular-field key
+				}
+			} else if props != nil && schema.groupNames[props.Tag] != "" {
+				ok, oop = false, nil // historical Go tag spelling is not a schema alias
+			}
+		}
 		if ok {
 			dst = sv.Field(fi)
-		} else if oop, ok := sprops.OneofTypes[name]; ok {
+		} else if oop != nil {
 			// It is a oneof.
 			props = oop.Prop
 			nv := reflect.New(oop.Type.Elem())
@@ -712,7 +724,11 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 		}
 
 		// Check that it's not already set if it's not a repeated field.
-		if !props.Repeated && fieldSet[name] {
+		fieldKey := name
+		if schema != nil && schema.groupNames[props.Tag] != "" {
+			fieldKey = fmt.Sprintf("#group:%d", props.Tag)
+		}
+		if !props.Repeated && fieldSet[fieldKey] {
 			return p.errorf("non-repeated field %q was repeated", name)
 		}
 
@@ -721,7 +737,7 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 		}
 
 		// Parse into the field.
-		fieldSet[name] = true
+		fieldSet[fieldKey] = true
 		if err := p.readAny(dst, props); err != nil {
 			if _, ok := err.(*RequiredNotSetError); !ok {
 				return err

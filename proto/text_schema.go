@@ -14,12 +14,26 @@ import (
 // These partial descriptors avoid a dependency cycle on the generated
 // descriptor package. Only schema facts absent from Go struct tags are read.
 type textFileDescriptor struct {
+	Package  string                   `protobuf:"bytes,2,opt,name=package"`
 	Messages []*textMessageDescriptor `protobuf:"bytes,4,rep,name=message_type"`
 }
 type textMessageDescriptor struct {
+	Name     string                   `protobuf:"bytes,1,opt,name=name"`
+	Fields   []*textFieldDescriptor   `protobuf:"bytes,2,rep,name=field"`
 	Nested   []*textMessageDescriptor `protobuf:"bytes,3,rep,name=nested_type"`
 	Reserved []string                 `protobuf:"bytes,10,rep,name=reserved_name"`
 }
+
+type textFieldDescriptor struct {
+	Name     string `protobuf:"bytes,1,opt,name=name"`
+	Number   int32  `protobuf:"varint,3,opt,name=number"`
+	Type     int32  `protobuf:"varint,5,opt,name=type"`
+	TypeName string `protobuf:"bytes,6,opt,name=type_name"`
+}
+
+func (m *textFieldDescriptor) Reset()       { *m = textFieldDescriptor{} }
+func (*textFieldDescriptor) String() string { return "textFieldDescriptor" }
+func (*textFieldDescriptor) ProtoMessage()  {}
 
 func (m *textFileDescriptor) Reset()          { *m = textFileDescriptor{} }
 func (*textFileDescriptor) String() string    { return "textFileDescriptor" }
@@ -29,8 +43,10 @@ func (*textMessageDescriptor) String() string { return "textMessageDescriptor" }
 func (*textMessageDescriptor) ProtoMessage()  {}
 
 type textSchema struct {
-	reserved map[string]bool
-	err      error
+	reserved   map[string]bool
+	tagsByName map[string]int
+	groupNames map[int]string
+	err        error
 }
 
 var textSchemas sync.Map // reflect.Type -> immutable *textSchema
@@ -41,17 +57,22 @@ func standardTextSchema(typ reflect.Type) *textSchema {
 	}
 	schema := new(textSchema)
 	if source, ok := reflect.New(typ).Interface().(interface{ Descriptor() ([]byte, []int) }); ok {
-		schema.reserved, schema.err = readTextReservedNames(source)
+		var descriptor *textMessageDescriptor
+		var fullName string
+		descriptor, fullName, schema.err = readTextMessageDescriptor(source)
+		if schema.err == nil {
+			schema.initNames(descriptor, fullName, GetProperties(typ))
+		}
 	}
 	actual, _ := textSchemas.LoadOrStore(typ, schema)
 	return actual.(*textSchema)
 }
 
-func readTextReservedNames(source interface{ Descriptor() ([]byte, []int) }) (map[string]bool, error) {
+func readTextMessageDescriptor(source interface{ Descriptor() ([]byte, []int) }) (*textMessageDescriptor, string, error) {
 	wire, path := source.Descriptor()
 	reader, err := gzip.NewReader(bytes.NewReader(wire))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer reader.Close()
 	// Generated descriptors are trusted schema data, but bound decompression so
@@ -59,32 +80,88 @@ func readTextReservedNames(source interface{ Descriptor() ([]byte, []int) }) (ma
 	const maxDescriptor = 64 << 20
 	data, err := ioutil.ReadAll(io.LimitReader(reader, maxDescriptor+1))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if len(data) > maxDescriptor {
-		return nil, fmt.Errorf("text descriptor too large")
+		return nil, "", fmt.Errorf("text descriptor too large")
 	}
 	var file textFileDescriptor
 	if err := Unmarshal(data, &file); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	messages := file.Messages
 	var selected *textMessageDescriptor
+	fullName := file.Package
 	for _, index := range path {
 		if index < 0 || index >= len(messages) {
-			return nil, fmt.Errorf("invalid text descriptor path")
+			return nil, "", fmt.Errorf("invalid text descriptor path")
 		}
 		selected = messages[index]
+		if fullName != "" {
+			fullName += "."
+		}
+		fullName += selected.Name
 		messages = selected.Nested
 	}
 	if selected == nil {
-		return nil, fmt.Errorf("empty text descriptor path")
+		return nil, "", fmt.Errorf("empty text descriptor path")
 	}
-	names := make(map[string]bool, len(selected.Reserved))
-	for _, name := range selected.Reserved {
-		names[name] = true
+	return selected, fullName, nil
+}
+
+func (schema *textSchema) initNames(descriptor *textMessageDescriptor, fullName string, properties *StructProperties) {
+	schema.reserved = make(map[string]bool, len(descriptor.Reserved))
+	for _, name := range descriptor.Reserved {
+		schema.reserved[name] = true
 	}
-	return names, nil
+	schema.tagsByName = make(map[string]int, len(descriptor.Fields))
+	schema.groupNames = make(map[int]string)
+	for _, field := range descriptor.Fields {
+		schema.tagsByName[field.Name] = int(field.Number)
+	}
+	for _, field := range descriptor.Fields {
+		_, property, _ := textPropertyByTag(properties, int(field.Number))
+		if property == nil || property.Wire != "group" {
+			continue
+		}
+		name := field.Name
+		// Group-like DELIMITED messages must be declared inside this message
+		// and their field name must be the lowercased message name. Same-named
+		// imported or enclosing messages do not gain group aliases.
+		for _, nested := range descriptor.Nested {
+			if (field.Type == 10 || field.Type == 11) && field.TypeName == "."+fullName+"."+nested.Name && field.Name == strings.ToLower(nested.Name) {
+				if existingTag, existing := schema.tagsByName[nested.Name]; !existing || existingTag == int(field.Number) {
+					name = nested.Name
+					schema.tagsByName[nested.Name] = int(field.Number)
+				}
+				break
+			}
+		}
+		schema.groupNames[int(field.Number)] = name
+	}
+}
+
+func textPropertyByTag(properties *StructProperties, tag int) (int, *Properties, *OneofProperties) {
+	if index, ok := properties.decoderTags.get(tag); ok {
+		return index, properties.Prop[index], nil
+	}
+	for _, oneof := range properties.OneofTypes {
+		if oneof.Prop.Tag == tag {
+			return -1, oneof.Prop, oneof
+		}
+	}
+	return -1, nil, nil
+}
+
+func writeStandardTextName(w *textWriter, properties *Properties, schema *textSchema) error {
+	if schema != nil {
+		if name, ok := schema.groupNames[properties.Tag]; ok {
+			copy := *properties
+			copy.OrigName = name
+			return writeName(w, &copy)
+		}
+	}
+	return writeName(w, properties)
 }
 
 func textIdentifier(value string) bool {

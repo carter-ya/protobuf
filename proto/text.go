@@ -272,6 +272,13 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 	}
 	st := sv.Type()
 	sprops := GetProperties(st)
+	var schema *textSchema
+	if w.standard {
+		schema = standardTextSchema(st)
+		if schema.err != nil {
+			return fmt.Errorf("proto: invalid text schema for %v: %v", st, schema.err)
+		}
+	}
 	for i := 0; i < sv.NumField(); i++ {
 		fv := sv.Field(i)
 		props := sprops.Prop[i]
@@ -308,7 +315,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 		if props.Repeated && fv.Kind() == reflect.Slice {
 			// Repeated field.
 			for j := 0; j < fv.Len(); j++ {
-				if err := writeName(w, props); err != nil {
+				if err := writeStandardTextName(w, props, schema); err != nil {
 					return err
 				}
 				if !w.compact {
@@ -344,7 +351,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			sort.Sort(mapKeys(keys))
 			for _, key := range keys {
 				val := fv.MapIndex(key)
-				if err := writeName(w, props); err != nil {
+				if err := writeStandardTextName(w, props, schema); err != nil {
 					return err
 				}
 				if !w.compact {
@@ -447,7 +454,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			}
 		}
 
-		if err := writeName(w, props); err != nil {
+		if err := writeStandardTextName(w, props, schema); err != nil {
 			return err
 		}
 		if !w.compact {

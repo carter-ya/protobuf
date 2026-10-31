@@ -26,8 +26,9 @@ legacy parser's ownership contract. Raw descriptors and generated APIs are not
 changed by selecting this package.
 
 The pinned Protobuf 36.2 suite runs legacy and standard text independently.
-The first implementation removes 125 standard-only failures; 18 standard text
-failures remain, covering group casing.
+The staged implementation removes all 223 originally recorded standard text
+failures. All 909 pinned text cases now pass without skips; this qualifies that
+suite, not every possible text input or gogo representation.
 Legacy behavior and its 223-failure baseline remain separate. See
 `compat/conformance/README.md` for the full test inventory and exact failures.
 
@@ -53,3 +54,9 @@ encodings, with validated prefix and type name. Whitespace and comments between
 URL fragments are ignored. Standard expanded output is unquoted; invalid or
 unresolvable expansion falls back to ordinary Any fields. Expanded URLs in other
 message types are rejected. Historical URL parsing and printing are unchanged.
+
+Group and group-like DELIMITED field names use descriptor spelling and scope.
+Both the declared field name and valid message-name alias are accepted; aliases
+share singular-field duplicate checks. Ordinary fields take precedence over
+aliases. Standard printing uses the corresponding schema spelling, while legacy
+Go tag spelling and extension-name behavior remain unchanged.
