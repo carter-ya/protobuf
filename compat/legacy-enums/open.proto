@@ -1,0 +1,7 @@
+syntax = "proto3";
+package qualification.legacyenum;
+option go_package = "example.com/legacy-enums/pb";
+enum Proto3Open {
+  PROTO3_OPEN_UNSPECIFIED = 0;
+  PROTO3_OPEN_VALUE = 1;
+}

@@ -294,12 +294,13 @@ func (id *ImportedDescriptor) TypeName() []string { return id.o.TypeName() }
 // Those slices are constructed by WrapTypes.
 type FileDescriptor struct {
 	*descriptor.FileDescriptorProto
-	original *descriptor.FileDescriptorProto
-	edition  *editionMetadata
-	desc     []*Descriptor          // All the messages defined in this file.
-	enum     []*EnumDescriptor      // All the enums defined in this file.
-	ext      []*ExtensionDescriptor // All the top-level extensions defined in this file.
-	imp      []*ImportedDescriptor  // All types defined in files publicly imported by this file.
+	original    *descriptor.FileDescriptorProto
+	edition     *editionMetadata
+	legacyEnums map[string]editionEnum
+	desc        []*Descriptor          // All the messages defined in this file.
+	enum        []*EnumDescriptor      // All the enums defined in this file.
+	ext         []*ExtensionDescriptor // All the top-level extensions defined in this file.
+	imp         []*ImportedDescriptor  // All types defined in files publicly imported by this file.
 
 	// Comments, stored as a map of path (comma-separated integers) to the comment.
 	comments map[string]*descriptor.SourceCodeInfo_Location
@@ -538,7 +539,7 @@ func (g *Generator) CommandLineParameters(parameter string) {
 			if v == "true" {
 				g.annotateCode = true
 			}
-		case "merge_oneof_messages", "merge_required_fields":
+		case "merge_oneof_messages", "merge_required_fields", "enforce_closed_enums":
 			if v != "true" && v != "false" {
 				g.Fail(k + " must be true or false")
 			}
@@ -791,7 +792,7 @@ func (g *Generator) WrapTypes() {
 	}
 	var enumInfo map[string]editionEnum
 	for _, f := range g.Request.ProtoFile {
-		if f.GetSyntax() == "editions" {
+		if f.GetSyntax() == "editions" || g.Param["enforce_closed_enums"] == "true" {
 			var err error
 			enumInfo, err = editionEnums(g.Request.ProtoFile)
 			if err != nil {
@@ -820,6 +821,9 @@ func (g *Generator) WrapTypes() {
 			exported:            make(map[Object][]symbol),
 			proto3:              fileIsProto3(f),
 		}
+		if g.Param["enforce_closed_enums"] == "true" {
+			fd.legacyEnums = enumInfo
+		}
 		// The import path may be set in a number of ways.
 		if substitution, ok := g.ImportMap[f.GetName()]; ok {
 			// Command-line: M=foo.proto=quux/bar.
@@ -837,6 +841,11 @@ func (g *Generator) WrapTypes() {
 			//
 			// The go_package option sets the import path. Most users should use this.
 			fd.importPath = p
+			if f.GetName() == "google/protobuf/go_features.proto" && p == "google.golang.org/protobuf/types/gofeaturespb" {
+				// Edition 2023 has ordinary imports for feature-only schemas.
+				// Keep those generated consumers on the gogo runtime as well.
+				fd.importPath = "github.com/gogo/protobuf/gofeatures"
+			}
 		} else {
 			// Source filename.
 			//
@@ -1223,6 +1232,8 @@ func (g *Generator) generate(file *FileDescriptor) {
 	g.validateEditionFastDependencies(file)
 	oneofMerge := g.validateOneofMessageMerging(file)
 	requiredMerge := g.validateRequiredMerging(file)
+	g.validateClosedEnumPolicy(file)
+	g.validateEnumNames(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
@@ -1266,6 +1277,15 @@ func (g *Generator) generate(file *FileDescriptor) {
 		}
 		if requiredMerge {
 			codeVersion = 14
+		}
+		if g.EnforceClosedEnums(file) {
+			codeVersion = 15
+		}
+		for _, message := range file.Messages() {
+			if g.OptimizeMode(message) != 0 {
+				codeVersion = 16
+				break
+			}
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
@@ -1542,7 +1562,6 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 	typeName := enum.alias()
 	// The full type name, CamelCased.
 	ccTypeName := CamelCaseSlice(typeName)
-	ccPrefix := enum.prefix()
 
 	deprecatedEnum := ""
 	if enum.GetOptions().GetDeprecated() {
@@ -1550,10 +1569,6 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 	}
 
 	g.PrintComments(enum.path)
-	if !gogoproto.EnabledGoEnumPrefix(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
-		ccPrefix = ""
-	}
-
 	if gogoproto.HasEnumDecl(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
 		g.P("type ", Annotate(enum.file, enum.path, ccTypeName), " int32", deprecatedEnum)
 		g.file.addExport(enum, enumSymbol{ccTypeName, enum.proto3()})
@@ -1567,14 +1582,13 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 			if e.GetOptions().GetDeprecated() {
 				deprecatedValue = deprecationComment
 			}
-			name := *e.Name
-			if gogoproto.IsEnumValueCustomName(e) {
-				name = gogoproto.GetEnumValueCustomName(e)
-			}
-			name = ccPrefix + name
-
+			name, alias := enum.valueNames(e)
 			g.P(Annotate(enum.file, etorPath, name), " ", ccTypeName, " = ", e.Number, " ", deprecatedValue)
 			g.file.addExport(enum, constOrVarSymbol{name, "const", ccTypeName})
+			if alias != "" {
+				g.P(alias, " ", ccTypeName, " = ", name)
+				g.file.addExport(enum, constOrVarSymbol{alias, "const", ccTypeName})
+			}
 		}
 		g.Out()
 		g.P(")")
@@ -1631,7 +1645,14 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 		g.P("}")
 		g.P()
 	}
-	if !enum.proto3() {
+	legacyJSON := !enum.proto3()
+	if enum.file.edition != nil {
+		legacyJSON = enum.file.edition.legacyJSON[enum.EnumDescriptorProto]
+	}
+	if legacyJSON {
+		if enum.file.edition != nil {
+			g.P("// Deprecated: Do not use.")
+		}
 		g.P("func (x *", ccTypeName, ") UnmarshalJSON(data []byte) error {")
 		g.In()
 		g.P("value, err := ", g.Pkg["proto"], ".UnmarshalJSONEnum(", ccTypeName, `_value, data, "`, ccTypeName, `")`)
@@ -1827,6 +1848,18 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_ENUM {
 			if e, ok := info.enums[field.GetTypeName()]; ok && e.closed != "" {
 				name += ",enum_closed=" + e.closed
+			}
+		}
+	}
+	if field.GetType() == descriptor.FieldDescriptorProto_TYPE_ENUM && g.file.edition == nil && g.EnforceClosedEnums(g.file) {
+		if e := g.file.legacyEnums[field.GetTypeName()]; e.closed != "" {
+			name += ",enum_closed=" + e.closed
+			if field.DefaultValue == nil {
+				object := g.ObjectNamed(field.GetTypeName())
+				if imported, ok := object.(*ImportedDescriptor); ok {
+					object = imported.o
+				}
+				defaultValue = ",def=" + object.(*EnumDescriptor).integerValueAsString(e.first)
 			}
 		}
 	}
@@ -2208,15 +2241,8 @@ func (g *Generator) getterDefault(field *descriptor.FieldDescriptorProto, goMess
 		if len(enum.Value) == 0 {
 			return "0 // empty enum"
 		} else {
-			first := enum.Value[0].GetName()
-			if gogoproto.IsEnumValueCustomName(enum.Value[0]) {
-				first = gogoproto.GetEnumValueCustomName(enum.Value[0])
-			}
-			if gogoproto.EnabledGoEnumPrefix(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
-				return g.DefaultPackageName(obj) + enum.prefix() + first
-			} else {
-				return g.DefaultPackageName(obj) + first
-			}
+			first, _ := enum.valueNames(enum.Value[0])
+			return g.DefaultPackageName(obj) + first
 		}
 	default:
 		return "0"
@@ -2498,19 +2524,11 @@ func (g *Generator) generateDefaultConstants(mc *msgCtx, topLevelFields []topLev
 				}
 			}
 
-			if enumValue != nil {
-				if gogoproto.IsEnumValueCustomName(enumValue) {
-					def = gogoproto.GetEnumValueCustomName(enumValue)
-				}
-			} else {
+			if enumValue == nil {
 				g.Fail(fmt.Sprintf("could not resolve default enum value for %v.%v", g.DefaultPackageName(obj), def))
 			}
-
-			if gogoproto.EnabledGoEnumPrefix(enum.file.FileDescriptorProto, enum.EnumDescriptorProto) {
-				def = g.DefaultPackageName(obj) + enum.prefix() + def
-			} else {
-				def = g.DefaultPackageName(obj) + def
-			}
+			name, _ := enum.valueNames(enumValue)
+			def = g.DefaultPackageName(obj) + name
 		}
 		g.P(kind, fieldname, " ", typename, " = ", def)
 		g.file.addExport(mc.message, constOrVarSymbol{fieldname, kind, ""})
@@ -2749,6 +2767,10 @@ func (g *Generator) generateCommonMethods(mc *msgCtx) {
 		g.P("func (m *", mc.goName, ") String() string { return ", g.Pkg["proto"], ".CompactTextString(m) }")
 	}
 	g.P("func (*", mc.goName, ") ProtoMessage() {}")
+	if g.UseTableCodec(mc.message) {
+		g.P("func (*", mc.goName, ") XXX_TableCodec() {}")
+	}
+
 	var indexes []string
 	for m := mc.message; m != nil; m = m.parent {
 		indexes = append([]string{strconv.Itoa(m.index)}, indexes...)
@@ -2812,7 +2834,10 @@ func (g *Generator) generateCommonMethods(mc *msgCtx) {
 
 	g.P("func (m *", mc.goName, ") XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {")
 	g.In()
-	if gogoproto.IsMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) ||
+	if g.UseTableCodec(mc.message) {
+		g.P("xxx_messageInfo_", mc.goName, ".Size(m)")
+		g.P("return xxx_messageInfo_", mc.goName, ".Marshal(b, m, deterministic)")
+	} else if gogoproto.IsMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) ||
 		gogoproto.IsUnsafeMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) {
 		if gogoproto.IsStableMarshaler(g.file.FileDescriptorProto, mc.message.DescriptorProto) {
 			g.P("b = b[:cap(b)]")
@@ -2893,6 +2918,9 @@ func (g *Generator) generateMessage(message *Descriptor) {
 	}
 	if !gogoproto.IsProtoSizer(message.file.FileDescriptorProto, message.DescriptorProto) {
 		usedNames["Size"] = true
+	}
+	if g.UseTableCodec(message) {
+		usedNames["XXX_TableCodec"] = true
 	}
 
 	// allocNames finds a conflict-free variation of the given strings,

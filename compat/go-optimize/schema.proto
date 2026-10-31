@@ -1,0 +1,103 @@
+edition = "2024";
+package qualification.optimize;
+import option "google/protobuf/go_features.proto";
+option go_package = "example.com/optimize/pb";
+// FILE_OPTIMIZE
+
+message Leaf {
+  int32 value = 1;
+  string text = 2;
+}
+message CompactLeaf {
+  option features.(pb.go).optimize_mode = CODE_SIZE;
+  int32 value = 1;
+}
+message FastLeaf {
+  option features.(pb.go).optimize_mode = SPEED;
+  int32 value = 1;
+}
+message DefaultLeaf {
+  option features.(pb.go).optimize_mode = OPTIMIZE_MODE_UNSPECIFIED;
+  int32 value = 1;
+}
+message Mixed {
+  option features.(pb.go).optimize_mode = SPEED;
+  CompactLeaf compact = 1;
+  FastLeaf fast = 2;
+  DefaultLeaf fallback = 3;
+  map<string, DefaultLeaf> items = 4;
+  repeated DefaultLeaf list = 5;
+  oneof choice {
+    DefaultLeaf selected = 6;
+    int32 scalar = 7;
+  }
+}
+message Parent {
+  option features.(pb.go).optimize_mode = CODE_SIZE;
+  message Nested {
+    int32 value = 1;
+  }
+  message Fast {
+    option features.(pb.go).optimize_mode = SPEED;
+    int32 value = 1;
+  }
+  Nested nested = 1;
+  Fast fast = 2;
+}
+message Record {
+  Leaf leaf = 1;
+  map<string, Leaf> items = 2;
+  oneof choice {
+    int32 scalar = 3;
+    Leaf selected = 4;
+  }
+  repeated int32 packed = 5;
+  extensions 100 to 199;
+}
+extend Record {
+  Leaf payload = 100;
+}
+
+message Dense {
+  int64 field1 = 1;
+  int64 field2 = 2;
+  int64 field3 = 3;
+  int64 field4 = 4;
+  int64 field5 = 5;
+  int64 field6 = 6;
+  int64 field7 = 7;
+  int64 field8 = 8;
+  int64 field9 = 9;
+  int64 field10 = 10;
+  int64 field11 = 11;
+  int64 field12 = 12;
+  int64 field13 = 13;
+  int64 field14 = 14;
+  int64 field15 = 15;
+  int64 field16 = 16;
+  int64 field17 = 17;
+  int64 field18 = 18;
+  int64 field19 = 19;
+  int64 field20 = 20;
+  int64 field21 = 21;
+  int64 field22 = 22;
+  int64 field23 = 23;
+  int64 field24 = 24;
+  int64 field25 = 25;
+  int64 field26 = 26;
+  int64 field27 = 27;
+  int64 field28 = 28;
+  int64 field29 = 29;
+  int64 field30 = 30;
+  int64 field31 = 31;
+  int64 field32 = 32;
+}
+
+message RequiredChoice {
+  option features.(pb.go).optimize_mode = CODE_SIZE;
+  int32 required = 1 [features.field_presence = LEGACY_REQUIRED];
+  oneof choice {
+    int32 scalar = 2;
+    RequiredChoice child = 3;
+  }
+}

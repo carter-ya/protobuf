@@ -1,21 +1,30 @@
 # Qualified compatibility and migration
 
-Status date: 2026-10-31. This maintenance line starts from original gogo/protobuf
+Status date: 2026-11-01. This maintenance line starts from original gogo/protobuf
 v1.3.2. The module remains `github.com/gogo/protobuf`; the root runtime requires
 Go 1.15. Existing valid proto2/proto3 bindings and their public Go layouts remain
 usable. Malformed-wire fixes enforce field-number and group bounds. Historical
 JSON/text defaults are preserved through their original entrypoints.
+
+The exhaustive feature inventory and remaining differences are tracked in
+[the feature audit](feature-audit/README.md). Passing the existing conformance
+profile does not imply that every Go-specific generation feature is implemented.
 
 ## Version and feature matrix
 
 | Area | Qualified scope | Evidence |
 | --- | --- | --- |
 | Legacy consumers | Frozen v1.3.2 output and regenerated original schemas; original gogo plugin suite | `check.sh`; frozen etcd raft v3.5.0 and CockroachDB errors v1.8.1 consumers |
+| Real project consumers | Prometheus v0.315.1, Kubernetes v0.31.4, BuildKit v0.12.5 and CockroachDB errors v1.14.0 | [Pinned runtime/regeneration matrix](downstream/projects/README.md) |
 | Stable compiler | protoc 3.21.8 (release asset 21.8) and 36.2 | Compatibility CI on Go 1.23/1.27; Go 1.15.15 with 36.2 |
 | Production backends | gogo, gogofast, gogofaster, gogoslick, gogotypes | Optional, Editions, auxiliary and binary differential matrices |
+| Legacy closed enums | Explicit `enforce_closed_enums=true`; definition-scoped imports, unknown retention and extensions | [Five-backend matrix and migration contract](legacy-enums/README.md) |
 | Proto3 optional | Scalar/enum/message/bytes presence, synthetic oneofs, supported cast/custom/std rows | [Representation contract](optional/README.md) and five-backend default/purego tests |
 | Editions | 2023, 2024 and 2026; gogo Open Struct API | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
 | Core Editions semantics | Presence, LEGACY_REQUIRED, UTF8 VERIFY/NONE, packed/expanded, open/closed enums, maps, oneofs, DELIMITED, extensions and option retention | `check-editions.sh`, `check-editions-fast.sh`, required-boundary and binary checks |
+| Go optimization | Explicit SPEED/CODE_SIZE, inherited/nested overrides and mixed graphs; retained backend defaults | [Five-backend strategy contract](go-optimize/README.md) |
+| Go enum prefixes | KEEP/STRIP/GENERATE_BOTH, inherited and per-entry settings; imported defaults and aliases | [Five-backend naming/interop matrix](go-enum-prefix/README.md) |
+| Go enum JSON API | `legacy_unmarshal_json_enum` inheritance/overrides; native gogo feature metadata | [Five-backend method/behavior matrix](go-enum-json/README.md) |
 | Edition 2026 JSON | Custom enum names, aliases and empty strings | Pinned 36.2 descriptors, independent Go development oracle and Go 1.37 preview oracle |
 | Native message extensions | Original occurrence boundaries, singular merges, required completeness after outer merges, decoded caches, map and byte storage | Runtime/direct-codec regressions; all five binary backends, both storage forms |
 | Standard JSON/text | Explicit `jsonpb/standard` and `textpb/standard` entrypoints | Complete pinned 36.2 standard conformance profile and differential fuzz |
@@ -118,6 +127,8 @@ module release versions; keep the generated guard and use the matching runtime.
 | Version12 | Explicit oneof message merge metadata |
 | Version13 | Native Editions extension validation, cached merges and deferred enclosing-graph completeness |
 | Version14 | Required initialization after final logical-message merging |
+| Version15 | Explicit legacy closed-enum policy and late extension registration |
+| Version16 | Explicit optimization strategies and compact table wrappers |
 
 Version13 also applies to a newly generated enclosing Editions file that reaches
 extensible children but declares no ranges itself. Its fast decoder uses the
@@ -131,6 +142,12 @@ graph and retain independent presence for every required field. Non-nullable
 required scalars, flattened singular message fields and mapped message paths
 with required descendants are rejected.
 See [required merge qualification](required-merge/README.md).
+
+For regenerated proto2/proto3 bindings, `enforce_closed_enums=true` selects the
+enum definition's open/closed policy. Unknown storage and independent enum
+presence are preserved before convenience backend defaults; explicit conflicting
+source options are diagnosed. Unmarked/frozen bindings keep historical enum
+behavior. See [closed-enum qualification](legacy-enums/README.md).
 
 An older runtime must fail to compile new feature code. Frozen legacy bindings
 continue to compile without regeneration.
@@ -150,7 +167,13 @@ continuing to later elements/fields. The historical Go floating-point rule for
 [proto.Equal](../proto/equal.go) and generated equality is retained. External
 frozen Compare implementations need regeneration for the ordering fix.
 
-Explicit Go HYBRID/OPAQUE API requests, enum-prefix stripping and unsupported Go
+Fresh Editions enums use the official false `legacy_unmarshal_json_enum` default.
+Set that feature to true to preserve the deprecated method when regenerating
+previous Editions output; frozen bindings and legacy proto2/proto3 methods retain
+their original behavior. Local `gofeatures` metadata avoids a V2 dependency for
+ordinary feature imports in Edition 2023.
+
+Explicit Go HYBRID/OPAQUE API requests and unsupported Go
 features produce diagnostics. This backend preserves its Open Struct API. The
 C02 conversion experiment rejects MessageSet, unknown closed-enum reflection
 mismatches, lossy mappings and incomplete descriptor metadata; it is not a

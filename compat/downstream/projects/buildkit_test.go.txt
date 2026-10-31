@@ -1,0 +1,20 @@
+package projects
+
+import (
+	"github.com/gogo/protobuf/proto"
+	"github.com/moby/buildkit/solver/pb"
+	"github.com/moby/buildkit/util/apicaps"
+	digest "github.com/opencontainers/go-digest"
+	"testing"
+)
+
+func samples() []proto.Message {
+	return []proto.Message{
+		&pb.Op{Op: &pb.Op_Source{Source: &pb.SourceOp{Identifier: "docker-image://alpine", Attrs: map[string]string{"resolve-mode": "default"}}}, Platform: &pb.Platform{OS: "linux", Architecture: "amd64"}},
+		&pb.Definition{Def: [][]byte{{10, 1, 'x'}}, Metadata: map[digest.Digest]pb.OpMetadata{digest.Digest("sha256:0123456789012345678901234567890123456789012345678901234567890123"): {Description: map[string]string{"op": "pull"}, Caps: map[apicaps.CapID]bool{apicaps.CapID("source.image"): true}}}},
+	}
+}
+
+func same(a, b proto.Message) bool { return proto.Equal(a, b) }
+
+func checkHelpers(t *testing.T, value proto.Message, check func()) { t.Helper(); check() }

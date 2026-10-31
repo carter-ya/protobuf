@@ -1,0 +1,217 @@
+{
+  "reference": "Protobuf 36.2; preview 37.0-rc1 audited separately",
+  "core": [
+    {
+      "name": "field_presence",
+      "number": 1,
+      "status": "implemented",
+      "owner": "runtime",
+      "evidence": [
+        "compat/check-optional.sh",
+        "compat/check-required-merge.sh"
+      ],
+      "values": {
+        "FIELD_PRESENCE_UNKNOWN": 0,
+        "EXPLICIT": 1,
+        "IMPLICIT": 2,
+        "LEGACY_REQUIRED": 3
+      }
+    },
+    {
+      "name": "enum_type",
+      "number": 2,
+      "status": "implemented",
+      "owner": "runtime",
+      "evidence": [
+        "compat/check-editions-fast.sh",
+        "compat/qualify/binary/wire_test.go.txt"
+      ],
+      "values": {
+        "ENUM_TYPE_UNKNOWN": 0,
+        "OPEN": 1,
+        "CLOSED": 2
+      }
+    },
+    {
+      "name": "repeated_field_encoding",
+      "number": 3,
+      "status": "implemented",
+      "owner": "runtime",
+      "evidence": [
+        "compat/check-editions-fast.sh"
+      ],
+      "values": {
+        "REPEATED_FIELD_ENCODING_UNKNOWN": 0,
+        "PACKED": 1,
+        "EXPANDED": 2
+      }
+    },
+    {
+      "name": "utf8_validation",
+      "number": 4,
+      "status": "implemented",
+      "owner": "runtime",
+      "evidence": [
+        "compat/check-editions-fast.sh"
+      ],
+      "values": {
+        "UTF8_VALIDATION_UNKNOWN": 0,
+        "VERIFY": 2,
+        "NONE": 3
+      }
+    },
+    {
+      "name": "message_encoding",
+      "number": 5,
+      "status": "implemented",
+      "owner": "runtime",
+      "evidence": [
+        "compat/check-editions-fast.sh"
+      ],
+      "values": {
+        "MESSAGE_ENCODING_UNKNOWN": 0,
+        "LENGTH_PREFIXED": 1,
+        "DELIMITED": 2
+      }
+    },
+    {
+      "name": "json_format",
+      "number": 6,
+      "status": "implemented",
+      "owner": "compiler and explicit standard entrypoints",
+      "evidence": [
+        "compat/check-conformance.sh"
+      ],
+      "values": {
+        "JSON_FORMAT_UNKNOWN": 0,
+        "ALLOW": 1,
+        "LEGACY_BEST_EFFORT": 2
+      }
+    },
+    {
+      "name": "enforce_naming_style",
+      "number": 7,
+      "status": "compiler",
+      "owner": "protoc",
+      "evidence": [
+        "compat/check-features.sh"
+      ],
+      "values": {
+        "ENFORCE_NAMING_STYLE_UNKNOWN": 0,
+        "STYLE2024": 1,
+        "STYLE_LEGACY": 2,
+        "STYLE2026": 3
+      }
+    },
+    {
+      "name": "default_symbol_visibility",
+      "number": 8,
+      "status": "compiler",
+      "owner": "protoc",
+      "evidence": [
+        "compat/check-editions.sh"
+      ],
+      "values": {
+        "DEFAULT_SYMBOL_VISIBILITY_UNKNOWN": 0,
+        "EXPORT_ALL": 1,
+        "EXPORT_TOP_LEVEL": 2,
+        "LOCAL_ALL": 3,
+        "STRICT": 4
+      }
+    },
+    {
+      "name": "enforce_proto_limits",
+      "number": 9,
+      "status": "compiler",
+      "owner": "protoc",
+      "evidence": [
+        "compat/check-features.sh"
+      ],
+      "values": {
+        "PROTO_LIMITS_UNKNOWN": 0,
+        "LEGACY_NO_EXPLICIT_LIMITS": 1,
+        "PROTO_LIMITS2026": 2
+      }
+    }
+  ],
+  "go": [
+    {
+      "name": "legacy_unmarshal_json_enum",
+      "number": 1,
+      "status": "implemented",
+      "owner": "enum JSON generation",
+      "evidence": [
+        "compat/check-go-enum-json.sh",
+        "compat/go-enum-json/README.md"
+      ]
+    },
+    {
+      "name": "api_level",
+      "number": 2,
+      "status": "gap",
+      "owner": "Go generated API",
+      "evidence": [
+        "protoc-gen-gogo/generator/go_features.go"
+      ],
+      "values": {
+        "API_LEVEL_UNSPECIFIED": 0,
+        "API_OPEN": 1,
+        "API_HYBRID": 2,
+        "API_OPAQUE": 3
+      }
+    },
+    {
+      "name": "strip_enum_prefix",
+      "number": 3,
+      "status": "implemented",
+      "owner": "Go enum names",
+      "evidence": [
+        "compat/check-go-enum-prefix.sh",
+        "compat/go-enum-prefix/README.md"
+      ],
+      "values": {
+        "STRIP_ENUM_PREFIX_UNSPECIFIED": 0,
+        "STRIP_ENUM_PREFIX_KEEP": 1,
+        "STRIP_ENUM_PREFIX_GENERATE_BOTH": 2,
+        "STRIP_ENUM_PREFIX_STRIP": 3
+      }
+    },
+    {
+      "name": "optimize_mode",
+      "number": 4,
+      "status": "implemented",
+      "owner": "explicit gogo generation strategies with retained backend defaults",
+      "evidence": [
+        "compat/check-go-optimize.sh",
+        "compat/go-optimize/README.md",
+        "compat/check-binary-fuzz.sh"
+      ],
+      "values": {
+        "OPTIMIZE_MODE_UNSPECIFIED": 0,
+        "SPEED": 1,
+        "CODE_SIZE": 2
+      }
+    }
+  ],
+  "remaining": [
+    {
+      "name": "legacy_proto2_closed_enum_policy",
+      "number": 0,
+      "status": "implemented",
+      "owner": "explicit regeneration policy; frozen bindings retain historical behavior",
+      "evidence": [
+        "compat/check-legacy-enums.sh",
+        "compat/legacy-enums/README.md"
+      ]
+    },
+    {
+      "name": "production_v2_interoperability",
+      "number": 0,
+      "status": "gap",
+      "owner": "optional modern integration API",
+      "evidence": [
+        "compat/modern/README.md"
+      ]
+    }
+  ]
+}

@@ -47,15 +47,6 @@ func (x Open) String() string {
 	return proto.EnumName(Open_name, int32(x))
 }
 
-func (x *Open) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(Open_value, data, "Open")
-	if err != nil {
-		return err
-	}
-	*x = Open(value)
-	return nil
-}
-
 func (Open) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_4c075f0e6f6cf0cd, []int{0}
 }
@@ -85,15 +76,6 @@ func (x Closed) Enum() *Closed {
 
 func (x Closed) String() string {
 	return proto.EnumName(Closed_name, int32(x))
-}
-
-func (x *Closed) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(Closed_value, data, "Closed")
-	if err != nil {
-		return err
-	}
-	*x = Closed(value)
-	return nil
 }
 
 func (Closed) EnumDescriptor() ([]byte, []int) {

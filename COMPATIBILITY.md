@@ -47,8 +47,9 @@ The ordinary enum name maps and `String` methods retain proto names.
   Custom field representations, unsafe codecs and other unverified extensions
   remain rejected. See `compat/README.md` for the exercised combinations.
 - Gogo preserves its Open Struct API in every edition. Explicit API_OPEN and
-  keeping enum prefixes are accepted. HYBRID/OPAQUE, prefix stripping and other
-  unimplemented explicit Go feature requests are rejected.
+  keeping enum prefixes are accepted. KEEP/STRIP/GENERATE_BOTH naming is
+  qualified separately. HYBRID/OPAQUE and other unimplemented explicit Go
+  feature requests are rejected.
 - Unvalidated auxiliary plugins do not inherit Editions support.
 - Unsupported/future editions fail instead of using the latest known defaults.
 
@@ -197,3 +198,40 @@ Required-reachable files assert Version14, including dependency-only enclosing
 files. Malformed occurrence boundaries and checked UTF-8 still fail immediately.
 The [required merge contract](compat/required-merge/README.md) lists presence
 restrictions, regeneration requirements and the five-backend qualification matrix.
+
+## Explicit legacy closed-enum policy
+
+`enforce_closed_enums=true` qualifies native closed enums in regenerated legacy
+files without changing frozen bindings. Unknown values retain unknown bytes
+instead of setting singular/required/oneof fields. Packed lists, maps, nested
+messages, definition-scoped imports and registered enum extensions share the
+policy; late registrations are consulted after an immutable table-cache miss.
+The option asserts Version15. Explicit unknown-storage/presence conflicts and
+alternate runtimes are rejected. See the
+[contract and independent cross-reads](compat/legacy-enums/README.md).
+
+## Go enum JSON generation features
+
+Fresh Editions enum output honors the official
+`features.(pb.go).legacy_unmarshal_json_enum` default (false), file inheritance
+and enum overrides. Set true when regenerating earlier Editions output that
+relies on the deprecated `UnmarshalJSON` method. Frozen bindings and legacy
+proto2/proto3 generation keep their existing method policy. A local Go 1.15
+`gofeatures` binding handles ordinary Edition 2023 feature imports without a V2
+runtime dependency. See [the generated API contract](compat/go-enum-json/README.md).
+
+Go enum prefix settings now support file/enum/entry overrides, stripped names
+and dual-name migration aliases across all five backends. Defaults/getters and
+cross-file/public imports use the resolved Go constants; raw proto names and
+binary/JSON encodings are unchanged. Ambiguous custom Go names and collisions
+are diagnosed. See [prefix compatibility](compat/go-enum-prefix/README.md).
+
+## Explicit optimization strategies
+
+Editions 2024/2026 implement `optimize_mode` file/message inheritance and
+SPEED/CODE_SIZE overrides. Unselected/UNSPECIFIED settings retain the chosen
+backend's existing strategy. Compact table wrappers keep field layouts and fast
+method interfaces; selected parents can safely reach compact/unselected children.
+Version16 prevents linking wrappers to a runtime that would recursively call
+its own Marshal/Size methods. Unmarked custom marshalers keep their dispatch.
+See [the strategy contract and independent qualification](compat/go-optimize/README.md).

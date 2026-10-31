@@ -1396,7 +1396,7 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			continue
 		}
 		p.atleastOne = true
-		if p.MergeRequiredFields(message) || (file.IsEditions() && p.NeedsDeferredEditionExtensions(message)) {
+		if p.UseTableCodec(message) || p.EnforceClosedEnums(file) || p.MergeRequiredFields(message) || (file.IsEditions() && p.NeedsDeferredEditionExtensions(message)) {
 			// The shared codec preserves per-occurrence wire checks while
 			// checking required and extension completeness after the outer graph merges.
 			p.P("func (m *", ccTypeName, ") Unmarshal(dAtA []byte) error {")

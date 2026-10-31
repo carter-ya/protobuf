@@ -43,3 +43,18 @@ GOMAXPROCS=2 go test -run '^$' -fuzz '^FuzzJSON$' -fuzztime=20s -parallel=2
 
 The historical root text/JSON entrypoints retain their existing behavior and
 are tested by the compatibility and runtime jobs separately.
+
+## JSON syntax oracle boundary
+
+CI minimized an official Go acceptance mismatch to `{"i":0e}`. RFC 8259 section 6
+requires exponent digits, so the SDK must reject this input even if a reference
+version accepts it. The JSON differential now checks the reference's successful
+parse against `encoding/json.Valid`; an invalid reference success is counted as
+an expected syntax rejection. The SDK's own parser is still always exercised:
+accepting the malformed input fails the comparison. Every syntactically valid
+input still takes the unchanged acceptance and decoded-value comparison.
+
+The minimized corpus and explicit incomplete/valid exponent regressions remain
+in the suite. This is oracle calibration, not a relaxed SDK parser or a blanket
+skip for semantic differences. Sources: [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259#section-6)
+and [ProtoJSON mapping](https://protobuf.dev/programming-guides/json/).

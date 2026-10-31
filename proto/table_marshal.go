@@ -147,6 +147,27 @@ func (a *InternalMessageInfo) Marshal(b []byte, msg Message, deterministic bool)
 	return u.marshal(b, ptr, deterministic)
 }
 
+// MarshalOneof is for compact generated oneof helpers. It emits the selected
+// member without requiring unrelated owner fields, while retaining validation
+// of the selected payload. The owner keeps the original native type metadata.
+func (a *InternalMessageInfo) MarshalOneof(b []byte, msg Message, name string) ([]byte, error) {
+	u := getMessageMarshalInfo(msg, a)
+	ptr := toPointer(&msg)
+	if ptr.isNil() {
+		return b, ErrNil
+	}
+	if !reflect.PtrTo(u.typ).Implements(tableCodecType) {
+		return b, fmt.Errorf("proto: oneof table helper requires a compact codec")
+	}
+	u.size(ptr) // Refresh nested length caches and initialize field metadata.
+	for _, field := range u.fields {
+		if field.name == name && len(field.oneofElems) != 0 {
+			return field.marshaler(b, ptr.offset(field.field), field.wiretag, false)
+		}
+	}
+	return b, fmt.Errorf("proto: no oneof %s in %T", name, msg)
+}
+
 func getMessageMarshalInfo(msg interface{}, a *InternalMessageInfo) *marshalInfo {
 	// u := a.marshal, but atomically.
 	// We use an atomic here to ensure memory consistency.
@@ -323,6 +344,12 @@ func (u *marshalInfo) marshal(b []byte, ptr pointer, deterministic bool) ([]byte
 	return b, errLater
 }
 
+// Generated compact codecs explicitly delegate to these tables. Their public
+// Marshal/Size methods must not be selected as custom shortcuts recursively.
+type tableCodec interface{ XXX_TableCodec() }
+
+var tableCodecType = reflect.TypeOf((*tableCodec)(nil)).Elem()
+
 // computeMarshalInfo initializes the marshal info.
 func (u *marshalInfo) computeMarshalInfo() {
 	u.Lock()
@@ -347,7 +374,7 @@ func (u *marshalInfo) computeMarshalInfo() {
 	}
 	// If the message can marshal itself, let it do it, for compatibility.
 	// NOTE: This is not efficient.
-	if reflect.PtrTo(t).Implements(marshalerType) {
+	if reflect.PtrTo(t).Implements(marshalerType) && !reflect.PtrTo(t).Implements(tableCodecType) {
 		u.hasmarshaler = true
 		atomic.StoreInt32(&u.initialized, 1)
 		return

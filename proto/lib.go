@@ -988,6 +988,10 @@ const (
 	GoGoProtoPackageIsVersion13 = true
 	// Version14 defers required completeness until the logical message merges.
 	GoGoProtoPackageIsVersion14 = true
+	// Version15 qualifies explicit legacy closed-enum generation and live extensions.
+	GoGoProtoPackageIsVersion15 = true
+	// Version16 supports generated compact table codec wrappers.
+	GoGoProtoPackageIsVersion16 = true
 
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.

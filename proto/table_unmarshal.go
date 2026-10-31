@@ -276,7 +276,18 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 				}
 			}
 		}
-		if c := u.closedExtensions[tag]; c != nil {
+		closedExtension := u.closedExtensions[tag]
+		if closedExtension == nil && len(u.extensionRanges) != 0 {
+			// Registrations can arrive after table initialization. Keep the
+			// immutable cache, but consult live metadata for a missed extension.
+			if extension := extensionMaps[u.typ][int32(tag)]; extension != nil {
+				property := extensionProperties(extension)
+				if len(property.ClosedEnum) != 0 {
+					closedExtension = &closedEnumFilter{values: property.ClosedEnum, allowPacked: property.Repeated}
+				}
+			}
+		}
+		if c := closedExtension; c != nil {
 			filtered, unknown, err := c.filter(b, wire, tag)
 			if err == errInternalBadWireType {
 				invalidExtension = true

@@ -1,0 +1,22 @@
+package qualify
+
+import (
+	bridge "example.com/enum-prefix/bridge"
+	pb "example.com/enum-prefix/pb"
+	use "example.com/enum-prefix/use"
+	"testing"
+)
+
+func TestGeneratedEnumAPI(t *testing.T) {
+	// Compile public constants and imported aliases, not just output text.
+	if pb.COLOR_RED_NAME != 1 || bridge.COLOR_RED_NAME != pb.COLOR_RED_NAME || pb.KEPT_VALUE_NAME != 1 || pb.DIRECTION_UP_NAME != 6 || pb.MIXED_ONE_NAME != 1 {
+		t.Fatal("wrong generated enum constants")
+	}
+	var got pb.Container
+	if got.GetColor() != 1 || got.GetDirection() != 5 {
+		t.Fatal("default getter lost enum reference")
+	}
+	if new(pb.Legacy).GetColor() != 1 || new(use.Consumer).GetColor() != 1 {
+		t.Fatal("imported default reference lost")
+	}
+}

@@ -18,8 +18,11 @@ type editionEnum struct {
 	first  string
 }
 type editionMetadata struct {
-	fields map[*d.FieldDescriptorProto]fieldmeta.Features
-	enums  map[string]editionEnum
+	fields       map[*d.FieldDescriptorProto]fieldmeta.Features
+	enums        map[string]editionEnum
+	legacyJSON   map[*d.EnumDescriptorProto]bool
+	enumPrefixes map[*d.EnumValueDescriptorProto]int32
+	optimize     map[*d.DescriptorProto]int32
 }
 
 // Collect enums from their definition scopes, including imported proto2 enums.
@@ -109,7 +112,19 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 	if err := checkOptions(file.Options, file.GetOptions().GetFeatures(), file.GetName()); err != nil {
 		return nil, nil, err
 	}
-	out := &editionMetadata{fields: state.Fields, enums: enums}
+	out := &editionMetadata{fields: state.Fields, enums: enums, legacyJSON: make(map[*d.EnumDescriptorProto]bool), enumPrefixes: make(map[*d.EnumValueDescriptorProto]int32), optimize: make(map[*d.DescriptorProto]int32)}
+	fileLegacyJSON, err := enumLegacyJSON(file.GetOptions().GetFeatures(), false)
+	if err != nil {
+		return nil, nil, err
+	}
+	fileEnumPrefix, err := enumPrefixFeature(file.GetOptions().GetFeatures(), 1)
+	if err != nil {
+		return nil, nil, err
+	}
+	fileOptimize, err := optimizeFeature(file.GetOptions().GetFeatures(), 0)
+	if err != nil {
+		return nil, nil, err
+	}
 	prepareExtensions := func(fields []*d.FieldDescriptorProto, scope string) error {
 		for _, f := range fields {
 			if err := checkOptions(f.Options, f.GetOptions().GetFeatures(), scope+"."+f.GetName()); err != nil {
@@ -143,19 +158,46 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 		if err := checkOptions(e.Options, e.GetOptions().GetFeatures(), scope); err != nil {
 			return err
 		}
+		value, err := enumLegacyJSON(e.GetOptions().GetFeatures(), fileLegacyJSON)
+		if err != nil {
+			return err
+		}
+		out.legacyJSON[e] = value
+		enumPrefix, err := enumPrefixFeature(e.GetOptions().GetFeatures(), fileEnumPrefix)
+		if err != nil {
+			return err
+		}
 		for _, v := range e.Value {
 			if err := checkOptions(v.Options, v.GetOptions().GetFeatures(), scope+"."+v.GetName()); err != nil {
 				return err
 			}
+			mode, err := enumPrefixFeature(v.GetOptions().GetFeatures(), enumPrefix)
+			if err != nil {
+				return err
+			}
+			if mode > 1 && (gogoproto.IsEnumCustomName(e) || gogoproto.IsEnumValueCustomName(v)) {
+				return fmt.Errorf("%s: %s.%s: enum prefix stripping conflicts with a custom Go enum name", file.GetName(), scope, v.GetName())
+			}
+			out.enumPrefixes[v] = mode
 		}
 		return nil
 	}
-	var visit func([]*d.DescriptorProto, string) error
-	visit = func(messages []*d.DescriptorProto, scope string) error {
+	var visit func([]*d.DescriptorProto, string, int32) error
+	visit = func(messages []*d.DescriptorProto, scope string, inheritedOptimize int32) error {
 		for _, m := range messages {
 			name := scope + "." + m.GetName()
 			if err := checkOptions(m.Options, m.GetOptions().GetFeatures(), name); err != nil {
 				return err
+			}
+			mode, err := optimizeFeature(m.GetOptions().GetFeatures(), inheritedOptimize)
+			if err != nil {
+				return err
+			}
+			if !m.GetOptions().GetMapEntry() {
+				if err := prepareOptimizedMessage(file, m, mode); err != nil {
+					return err
+				}
+				out.optimize[m] = mode
 			}
 			if err := prepareExtensions(m.Extension, name); err != nil {
 				return err
@@ -213,7 +255,7 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 					return err
 				}
 			}
-			if err := visit(m.NestedType, name); err != nil {
+			if err := visit(m.NestedType, name, mode); err != nil {
 				return err
 			}
 		}
@@ -224,7 +266,7 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 			return nil, nil, err
 		}
 	}
-	if err := visit(file.MessageType, file.GetPackage()); err != nil {
+	if err := visit(file.MessageType, file.GetPackage(), fileOptimize); err != nil {
 		return nil, nil, err
 	}
 	return file, out, nil
