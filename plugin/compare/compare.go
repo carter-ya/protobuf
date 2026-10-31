@@ -78,19 +78,23 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 	}
 }
 
-func (p *plugin) generateNullableField(fieldname string) {
+func (p *plugin) generateNullableField(fieldname string, floating bool) {
 	p.P(`if this.`, fieldname, ` != nil && that1.`, fieldname, ` != nil {`)
 	p.In()
-	p.P(`if *this.`, fieldname, ` != *that1.`, fieldname, `{`)
-	p.In()
-	p.P(`if *this.`, fieldname, ` < *that1.`, fieldname, `{`)
-	p.In()
-	p.P(`return -1`)
-	p.Out()
-	p.P(`}`)
-	p.P(`return 1`)
-	p.Out()
-	p.P(`}`)
+	if floating {
+		p.generateFloatCompare("*this."+fieldname, "*that1."+fieldname)
+	} else {
+		p.P(`if *this.`, fieldname, ` != *that1.`, fieldname, `{`)
+		p.In()
+		p.P(`if *this.`, fieldname, ` < *that1.`, fieldname, `{`)
+		p.In()
+		p.P(`return -1`)
+		p.Out()
+		p.P(`}`)
+		p.P(`return 1`)
+		p.Out()
+		p.P(`}`)
+	}
 	p.Out()
 	p.P(`} else if this.`, fieldname, ` != nil {`)
 	p.In()
@@ -224,9 +228,15 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				p.P(`return c`)
 				p.Out()
 				p.P(`}`)
+			} else if isFloatField(field) {
+				if nullable && !proto3 {
+					p.generateNullableField(fieldname, true)
+				} else {
+					p.generateFloatCompare("this."+fieldname, "that1."+fieldname)
+				}
 			} else if field.IsString() {
 				if nullable && !proto3 {
-					p.generateNullableField(fieldname)
+					p.generateNullableField(fieldname, false)
 				} else {
 					p.P(`if this.`, fieldname, ` != that1.`, fieldname, `{`)
 					p.In()
@@ -277,7 +287,7 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				}
 			} else {
 				if nullable && !proto3 {
-					p.generateNullableField(fieldname)
+					p.generateNullableField(fieldname, false)
 				} else {
 					p.P(`if this.`, fieldname, ` != that1.`, fieldname, `{`)
 					p.In()
@@ -353,6 +363,8 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 					p.P(`return c`)
 					p.Out()
 					p.P(`}`)
+				} else if isFloatField(mapValue) {
+					p.generateFloatCompare("this."+fieldname+"[i]", "that1."+fieldname+"[i]")
 				} else if mapValue.IsBool() {
 					p.P(`if this.`, fieldname, `[i] != that1.`, fieldname, `[i] {`)
 					p.In()
@@ -403,6 +415,8 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				p.P(`return c`)
 				p.Out()
 				p.P(`}`)
+			} else if isFloatField(field) {
+				p.generateFloatCompare("this."+fieldname+"[i]", "that1."+fieldname+"[i]")
 			} else if field.IsString() {
 				p.P(`if this.`, fieldname, `[i] != that1.`, fieldname, `[i] {`)
 				p.In()

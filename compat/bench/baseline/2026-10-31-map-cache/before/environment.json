@@ -1,0 +1,19 @@
+{
+  "current_commit": "6816daa8787f6ab422f9d3084f03e83b7a62e842",
+  "current_source_revision": "6fe392e3ce24d0cdc7dd0a8a1fbfd3d1d9e729b9",
+  "archived_current": true,
+  "working_tree_status": "",
+  "go": "go version go1.27.0 darwin/arm64",
+  "protoc": "libprotoc 36.2",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "architecture": "arm64",
+  "cpu": "Apple M5 Max",
+  "benchmark_script_sha256": "b870ed59a0910ec1a16abb2d604c24efc7912f2aa4b396730ada2489cf70fee8",
+  "benchmark_template_sha256": "47f59e7664152eec3b4a87b733d02a253faae88edf8ddb96931af22f459c5869",
+  "count": 5,
+  "benchtime": "200ms",
+  "GOMAXPROCS": 1,
+  "legacy_revision": "b03c65ea87cdc3521ede29f62fe3ce239267c1bc",
+  "pre_extension_revision": "9cba925c0b5bf1a8ed530583d0af6c1afa1af019",
+  "production_only_snapshot_go_mod": true
+}

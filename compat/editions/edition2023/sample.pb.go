@@ -18,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion13 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion14 // please upgrade the proto package
 
 type Open int32
 
@@ -357,7 +357,7 @@ func (*Sample) XXX_OneofWrappers() []interface{} {
 }
 
 type Required struct {
-	Value                *int32   `protobuf:"varint,1,req,name=value,proto3,explicit" json:"value,omitempty"`
+	Value                *int32   `protobuf:"varint,1,req,merge_required,name=value,proto3,explicit" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

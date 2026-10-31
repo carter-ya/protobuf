@@ -1,6 +1,37 @@
 name: Legacy compatibility
 on: [push, pull_request]
 jobs:
+  preview-qualification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install stable compiler for schema comparison
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify pinned compiler and Go previews
+        run: python3 compat/preview/run.py "$RUNNER_TEMP/protobuf-preview"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: protobuf-preview-qualification
+          path: |
+            ${{ runner.temp }}/protobuf-preview/qualification.json
+            ${{ runner.temp }}/protobuf-preview/schema-audit.json*
+            ${{ runner.temp }}/protobuf-preview/*.pb
+            ${{ runner.temp }}/protobuf-preview/*.log
+            ${{ runner.temp }}/protobuf-preview/**/testdata/fuzz/**
+          if-no-files-found: error
+
   performance-smoke:
     runs-on: ubuntu-latest
     steps:
@@ -112,10 +143,12 @@ jobs:
       - run: sh compat/check-entrypoints.sh
       - run: sh compat/check-optional-mappings.sh
       - run: sh compat/check-oneof-merge.sh
+      - run: sh compat/check-compare-floats.sh
       - run: sh compat/check-features.sh
       - run: sh compat/check-gostring.sh
       - run: sh compat/check-wkt-metadata.sh
       - run: sh compat/check-required.sh
+      - run: sh compat/check-required-merge.sh
       - run: sh compat/check-editions-plugins.sh
       - run: sh compat/check-editions-fast.sh
       - run: sh compat/check-editions.sh

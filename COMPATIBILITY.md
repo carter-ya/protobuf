@@ -1,5 +1,8 @@
 # Compatibility-first maintenance
 
+The current compiler/backend matrix, standard conformance results, migration
+steps and intentional boundaries are maintained in [compat/SUPPORT.md](compat/SUPPORT.md).
+
 This fork starts at gogo/protobuf v1.3.2 (`b03c65ea`). The module and generated
 imports remain `github.com/gogo/protobuf`. Existing generated files remain usable
 without regeneration. The runtime has no new module dependencies and retains
@@ -9,8 +12,8 @@ without regeneration. The runtime has no new module dependencies and retains
 | --- | --- | --- |
 | Existing proto2 / proto3 | Original API, field layout, tags and behavior | Version3 |
 | proto3 optional | gogo, gogofast, gogofaster, gogoslick, gogotypes | Version4 |
-| Editions 2023 / 2024 | Five gogo-runtime backends, historical Open Struct API | Version5 reflection / Version9 fast |
-| Edition 2026 | Same backends, custom JSON enum spellings in jsonpb | Version6 reflection / Version9 fast |
+| Editions 2023 / 2024 | Five gogo-runtime backends, historical Open Struct API | Version5 base; later capabilities up to Version14 |
+| Edition 2026 | Same backends, custom JSON enum spellings in jsonpb | Version6 base; later capabilities up to Version14 |
 
 New optional fields preserve absent vs explicit zero values. Synthetic oneofs
 remain in descriptors but do not appear as public Go oneof wrappers. Explicit
@@ -184,3 +187,13 @@ Go message-cycle detection. Map entries, wrappers, expanded Any, reserved values
 and printed unknown messages observe the budget. Shared submessages are allowed,
 and encoder failure leaves the destination writer untouched. Existing root text
 bridges and historical configuration literals remain source compatible.
+
+## Required initialization after merging
+
+Fresh Editions bindings check required initialization after the final surviving
+message graph merges. Legacy proto2/proto3 select this policy explicitly with
+`merge_required_fields=true`; unmarked historical bindings retain their timing.
+Required-reachable files assert Version14, including dependency-only enclosing
+files. Malformed occurrence boundaries and checked UTF-8 still fail immediately.
+The [required merge contract](compat/required-merge/README.md) lists presence
+restrictions, regeneration requirements and the five-backend qualification matrix.

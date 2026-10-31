@@ -40,3 +40,9 @@ extensions once. This validates the harness and result inventory; one iteration
 is not a meaningful speed measurement. It records artifacts and imposes no
 hardware-dependent performance threshold. For a release decision, rerun the full
 matrix on otherwise idle release hardware and retain the result directory.
+
+`--current-revision COMMIT` runs the current-profile schemas against an archived
+production revision while keeping the harness from the working checkout. This
+supports matched comparisons across runtime fixes. The environment separates the
+harness commit from the actual production source revision; snapshot production
+source is unchanged and receives the same temporary dependency normalization.

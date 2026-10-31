@@ -588,10 +588,18 @@ func (this *Sample) Compare(that interface{}) int {
 	}
 	if this.FloatValue != nil && that1.FloatValue != nil {
 		if *this.FloatValue != *that1.FloatValue {
+			if aNaN, bNaN := math.IsNaN(float64(*this.FloatValue)), math.IsNaN(float64(*that1.FloatValue)); aNaN != bNaN {
+				if aNaN {
+					return -1
+				}
+				return 1
+			}
 			if *this.FloatValue < *that1.FloatValue {
 				return -1
 			}
-			return 1
+			if *this.FloatValue > *that1.FloatValue {
+				return 1
+			}
 		}
 	} else if this.FloatValue != nil {
 		return 1
@@ -600,10 +608,18 @@ func (this *Sample) Compare(that interface{}) int {
 	}
 	if this.DoubleValue != nil && that1.DoubleValue != nil {
 		if *this.DoubleValue != *that1.DoubleValue {
+			if aNaN, bNaN := math.IsNaN(float64(*this.DoubleValue)), math.IsNaN(float64(*that1.DoubleValue)); aNaN != bNaN {
+				if aNaN {
+					return -1
+				}
+				return 1
+			}
 			if *this.DoubleValue < *that1.DoubleValue {
 				return -1
 			}
-			return 1
+			if *this.DoubleValue > *that1.DoubleValue {
+				return 1
+			}
 		}
 	} else if this.DoubleValue != nil {
 		return 1

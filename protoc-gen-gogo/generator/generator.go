@@ -538,9 +538,9 @@ func (g *Generator) CommandLineParameters(parameter string) {
 			if v == "true" {
 				g.annotateCode = true
 			}
-		case "merge_oneof_messages":
+		case "merge_oneof_messages", "merge_required_fields":
 			if v != "true" && v != "false" {
-				g.Fail("merge_oneof_messages must be true or false")
+				g.Fail(k + " must be true or false")
 			}
 		default:
 			if len(k) > 0 && k[0] == 'M' {
@@ -1222,6 +1222,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 	g.file = file
 	g.validateEditionFastDependencies(file)
 	oneofMerge := g.validateOneofMessageMerging(file)
+	requiredMerge := g.validateRequiredMerging(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
@@ -1262,6 +1263,9 @@ func (g *Generator) generate(file *FileDescriptor) {
 		}
 		if file.IsEditions() && (fileNeedsEditionExtensionPolicy(file.FileDescriptorProto) || g.fileNeedsDeferredEditionExtensions(file)) {
 			codeVersion = 13
+		}
+		if requiredMerge {
+			codeVersion = 14
 		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
@@ -1847,6 +1851,9 @@ func (g *Generator) goTag(message *Descriptor, field *descriptor.FieldDescriptor
 	wktptr := ""
 	if gogoproto.IsWktPtr(field) {
 		wktptr = ",wktptr"
+	}
+	if field.Extendee == nil && g.MergeRequiredFields(message) {
+		optrepreq += ",merge_required"
 	}
 	return strconv.Quote(fmt.Sprintf("%s,%d,%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
 		wiretype,

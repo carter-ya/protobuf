@@ -1,0 +1,46 @@
+[
+  {
+    "profile": "legacy-current",
+    "backend": "gogo",
+    "operation": "BenchmarkCodec/bytes64/Encode",
+    "generated_bytes": 6577,
+    "samples": 5,
+    "ns/op": 1268.0,
+    "wire-B": 183.0,
+    "B/op": 1408.0,
+    "allocs/op": 67.0
+  },
+  {
+    "profile": "legacy-current",
+    "backend": "gogo",
+    "operation": "BenchmarkCodec/bytes64/Decode",
+    "generated_bytes": 6577,
+    "samples": 5,
+    "ns/op": 1567.0,
+    "wire-B": 183.0,
+    "B/op": 1680.0,
+    "allocs/op": 57.0
+  },
+  {
+    "profile": "legacy-current",
+    "backend": "gogo",
+    "operation": "BenchmarkCodec/bytes4096/Encode",
+    "generated_bytes": 6577,
+    "samples": 5,
+    "ns/op": 1438.0,
+    "wire-B": 4216.0,
+    "B/op": 6080.0,
+    "allocs/op": 67.0
+  },
+  {
+    "profile": "legacy-current",
+    "backend": "gogo",
+    "operation": "BenchmarkCodec/bytes4096/Decode",
+    "generated_bytes": 6577,
+    "samples": 5,
+    "ns/op": 1715.0,
+    "wire-B": 4216.0,
+    "B/op": 5712.0,
+    "allocs/op": 57.0
+  }
+]

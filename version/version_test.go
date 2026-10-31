@@ -25,3 +25,25 @@ func TestMalformedVersions(t *testing.T) {
 		}
 	}
 }
+
+func TestCompilerReleaseCandidateOrdering(t *testing.T) {
+	for _, test := range []struct {
+		minimum, actual string
+		want            bool
+	}{
+		{"3.0.0", "37.0-rc1", true}, {"36.2", "37.0-rc1", true},
+		{"37.0", "37.0-rc1", false}, {"37.0-rc1", "37.0", true},
+		{"37.0-rc1", "37.0.0-rc1", true}, {"37.0-rc2", "37.0-rc1", false},
+		{"37.0-rc2", "37.0-rc10", true}, {"37.0-rc10", "37.0-rc2", false},
+		{"37.0-rc-1", "37.0-rc1", true}, {"37.0.1-rc1", "37.0", false},
+	} {
+		if got := less(test.minimum, test.actual); got != test.want {
+			t.Errorf("minimum %s actual %s: %v want %v", test.minimum, test.actual, got, test.want)
+		}
+	}
+	for _, input := range []string{"37.0-rc", "37.0-rc-", "37.0-rcx", "37.0-beta1", "37.0-rc1-extra", "37.0-rc999999999999999999999999999999"} {
+		if _, err := parseCompilerVersion(input); err == nil {
+			t.Errorf("accepted %q", input)
+		}
+	}
+}

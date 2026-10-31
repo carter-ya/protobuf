@@ -582,10 +582,18 @@ func (this *DoubleValue) Compare(that interface{}) int {
 		return -1
 	}
 	if this.Value != that1.Value {
+		if aNaN, bNaN := math.IsNaN(float64(this.Value)), math.IsNaN(float64(that1.Value)); aNaN != bNaN {
+			if aNaN {
+				return -1
+			}
+			return 1
+		}
 		if this.Value < that1.Value {
 			return -1
 		}
-		return 1
+		if this.Value > that1.Value {
+			return 1
+		}
 	}
 	if c := bytes.Compare(this.XXX_unrecognized, that1.XXX_unrecognized); c != 0 {
 		return c
@@ -618,10 +626,18 @@ func (this *FloatValue) Compare(that interface{}) int {
 		return -1
 	}
 	if this.Value != that1.Value {
+		if aNaN, bNaN := math.IsNaN(float64(this.Value)), math.IsNaN(float64(that1.Value)); aNaN != bNaN {
+			if aNaN {
+				return -1
+			}
+			return 1
+		}
 		if this.Value < that1.Value {
 			return -1
 		}
-		return 1
+		if this.Value > that1.Value {
+			return 1
+		}
 	}
 	if c := bytes.Compare(this.XXX_unrecognized, that1.XXX_unrecognized); c != 0 {
 		return c

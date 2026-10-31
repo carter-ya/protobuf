@@ -358,3 +358,52 @@ func TestEditionExtensionNonNullableMapValues(t *testing.T) {
 		}
 	}
 }
+
+type requiredMergeChild struct {
+	A *int32 `protobuf:"varint,1,req,merge_required,name=a"`
+	B *int32 `protobuf:"varint,2,req,merge_required,name=b"`
+}
+
+func (m *requiredMergeChild) Reset()         { *m = requiredMergeChild{} }
+func (m *requiredMergeChild) String() string { return CompactTextString(m) }
+func (*requiredMergeChild) ProtoMessage()    {}
+
+type requiredMergeParent struct {
+	Child *requiredMergeChild `protobuf:"bytes,1,opt,merge_required,name=child"`
+}
+
+func (m *requiredMergeParent) Reset()         { *m = requiredMergeParent{} }
+func (m *requiredMergeParent) String() string { return CompactTextString(m) }
+func (*requiredMergeParent) ProtoMessage()    {}
+func TestRequiredMergePolicy(t *testing.T) {
+	var got requiredMergeParent
+	if err := Unmarshal([]byte{10, 2, 8, 1, 10, 2, 16, 2}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := UnmarshalMerge(nil, &got); err != nil {
+		t.Fatal("populated required child", err)
+	}
+	var child requiredMergeChild
+	if err := Unmarshal([]byte{8, 1, 16, 2}, &child); err != nil {
+		t.Fatal(err)
+	}
+	if err := UnmarshalMerge(nil, &child); err != nil {
+		t.Fatal("populated required root", err)
+	}
+	if err := Unmarshal([]byte{10, 2, 8, 1}, &got); err == nil {
+		t.Fatal("incomplete required child was accepted")
+	}
+	var p, q Properties
+	p.Parse("bytes,1,opt,merge_required,name=x,def=hello,merge_required,tail")
+	q.Parse(p.String())
+	if !p.mergeRequired || !q.mergeRequired || p.Default != q.Default {
+		t.Fatal("required policy roundtrip")
+	}
+	for _, tag := range []string{"bytes,1,opt,name=x,def=hello,merge_required,tail", "bytes,1,opt,name=x,json=hello,merge_required,proto3"} {
+		var p Properties
+		p.Parse(tag)
+		if p.mergeRequired {
+			t.Fatal("legacy string selected required policy", tag)
+		}
+	}
+}

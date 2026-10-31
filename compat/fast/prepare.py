@@ -44,7 +44,7 @@ def main():
                         path.write_text(path.read_text() + '\nimport "gogoproto/gogo.proto";\n' + '\n'.join('option (gogoproto.' + opt + '_all) = true;' for opt in ['gostring','populate','equal','compare']))
                 subprocess.run(['protoc', '-I' + str(dest), '-I' + str(ROOT), '--plugin=protoc-gen-test=' + str(output / driver), '--test_out=paths=source_relative:' + str(dest / 'pb')] + inputs, check=True)
                 code = (dest / ('pb/' + schema + '.pb.go')).read_text()
-                if backend != 'gogo' and ('GoGoProtoPackageIsVersion13' if schema == 'complex' else 'GoGoProtoPackageIsVersion9') not in code:
+                if backend != 'gogo' and ('GoGoProtoPackageIsVersion13' if schema == 'complex' else 'GoGoProtoPackageIsVersion14') not in code:
                     raise RuntimeError('fast runtime guard missing')
                 (dest / 'go.mod').write_text('module example.com/gogo-' + ('fast' if schema == 'scalars' else 'complex') + '\ngo 1.15\nrequire github.com/gogo/protobuf v1.3.2\nreplace github.com/gogo/protobuf => ' + str(ROOT) + '\n')
                 shutil.copyfile(ROOT / 'go.sum', dest / 'go.sum')

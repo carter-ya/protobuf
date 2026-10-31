@@ -48,7 +48,7 @@ MOD
   echo "Edition $edition compiled with original runtime" >&2; exit 1
  fi
  case "$edition" in
-  2023) required=13 ;; # The maintained fixture declares Editions extensions.
+  2023) required=14 ;; # The maintained fixture includes required initialization metadata.
   2026) required=6 ;;
   *) required=5 ;;
  esac

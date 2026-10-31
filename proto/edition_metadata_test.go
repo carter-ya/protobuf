@@ -102,3 +102,30 @@ func TestEditionMetadataPropertiesRoundTrip(t *testing.T) {
 		t.Fatalf("metadata roundtrip: %+v %+v", p, q)
 	}
 }
+
+func TestEditionMapDefaultsAreIndependent(t *testing.T) {
+	input := []byte{58, 3, 10, 1, 'a', 58, 5, 10, 1, 'b', 16, 2, 58, 3, 10, 1, 'c', 58, 5, 10, 1, 'd', 16, 2, 58, 3, 10, 1, 'b'}
+	want := map[string]int32{"a": 1, "b": 1, "c": 1, "d": 2}
+	for worker := 0; worker < 8; worker++ {
+		t.Run("decoder", func(t *testing.T) {
+			t.Parallel()
+			for iteration := 0; iteration < 100; iteration++ {
+				var got editionMetadata
+				if err := proto.Unmarshal(input, &got); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(got.Map, want) {
+					t.Fatalf("entry defaults leaked: %v", got.Map)
+				}
+				encoded, err := proto.Marshal(&got)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var back editionMetadata
+				if err := proto.Unmarshal(encoded, &back); err != nil || !reflect.DeepEqual(back.Map, want) {
+					t.Fatalf("default roundtrip: %v %v", back.Map, err)
+				}
+			}
+		})
+	}
+}

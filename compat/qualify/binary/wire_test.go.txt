@@ -479,3 +479,27 @@ func TestEnclosingEditionExtensionFragments(t *testing.T) {
 	}
 	checkWire(t, 1, append(field(18, proto.WireBytes, a), field(18, proto.WireBytes, b)...))
 }
+
+func TestOrdinaryRequiredChildFragments(t *testing.T) {
+	first := field(19, proto.WireBytes, []byte{8, 1})
+	second := field(19, proto.WireBytes, []byte{16, 2})
+	input := append(first, second...)
+	if !oracles[1].request(t, append([]byte{0}, input...)) {
+		t.Fatal("C++ rejected complete required child fragments")
+	}
+	if err := (modern.UnmarshalOptions{Resolver: resolver}).Unmarshal(input, dynamicpb.NewMessage(schemas[1])); err != nil {
+		t.Fatal("official Go rejected complete required child fragments", err)
+	}
+	checkWire(t, 1, input)
+	checkWire(t, 1, first)
+	var got closed.Record
+	if err := proto.Unmarshal(first, &got); err == nil {
+		t.Fatal("incomplete child accepted")
+	}
+	if err := proto.UnmarshalMerge(second, &got); err != nil {
+		t.Fatal("later call completes required child", err)
+	}
+	if err := proto.UnmarshalMerge(nil, &got); err != nil {
+		t.Fatal("valid prior child", err)
+	}
+}

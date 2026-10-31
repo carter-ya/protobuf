@@ -31,7 +31,7 @@ def main():
     mappings += ['Mgoogle/protobuf/' + name + '.proto=github.com/gogo/protobuf/types'
                  for name in ['any', 'duration', 'empty', 'field_mask', 'struct', 'timestamp', 'wrappers']]
     if args.merge_oneof_messages:
-        mappings.append('merge_oneof_messages=true')
+        mappings += ['merge_oneof_messages=true', 'merge_required_fields=true']
     for key, path in SCHEMAS.items():
         stage = output / 'stage'
         stage.mkdir()

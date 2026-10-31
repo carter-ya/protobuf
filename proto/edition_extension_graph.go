@@ -50,3 +50,22 @@ func hasEditionExtensionGraph(typ reflect.Type) bool {
 	editionExtensionGraphTypes.Store(typ, result)
 	return result
 }
+
+// The marker has a fixed header position, so commas inside legacy JSON names
+// or default strings cannot accidentally select this new generation policy.
+func hasRequiredMergePolicy(t reflect.Type) bool {
+	properties := GetProperties(t)
+	for _, property := range properties.Prop {
+		if property.mergeRequired {
+			return true
+		}
+	}
+	for _, oneof := range properties.OneofTypes {
+		var property Properties
+		property.Parse(oneof.Type.Elem().Field(0).Tag.Get("protobuf"))
+		if property.mergeRequired {
+			return true
+		}
+	}
+	return false
+}
