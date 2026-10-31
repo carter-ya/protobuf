@@ -1,0 +1,145 @@
+package consumer_test
+
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"reflect"
+	"testing"
+
+	modern "example.com/gogo-modern-integration"
+	pb "example.com/optional-mappings/pb"
+	"github.com/gogo/protobuf/jsonpb/standard"
+	gogo "github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
+)
+
+func TestModernMappedSnapshots(t *testing.T) {
+	raw, err := os.ReadFile("schema.pb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Fast entrypoints add their enabled gogo generator options to the
+	// runtime descriptor. Use that actual descriptor rather than pretending
+	// the common compiler input has byte-identical option metadata.
+	set := new(descriptorpb.FileDescriptorSet)
+	if err := proto.Unmarshal(raw, set); err != nil {
+		t.Fatal(err)
+	}
+	compressed, _ := new(pb.Sample).Descriptor()
+	z, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(z)
+	z.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := new(descriptorpb.FileDescriptorProto)
+	if err := proto.Unmarshal(data, file); err != nil {
+		t.Fatal(err)
+	}
+	for i, candidate := range set.File {
+		if candidate.GetName() == file.GetName() {
+			set.File[i] = file
+		}
+	}
+	for i, candidate := range set.File {
+		path := candidate.GetName()
+		source := gogo.FileDescriptor(path)
+		if len(source) == 0 && (path == "gogoproto/gogo.proto" || path == "github.com/gogo/protobuf/gogoproto/gogo.proto") {
+			source = gogo.FileDescriptor("gogo.proto")
+		}
+		if len(source) == 0 && path == "google/protobuf/descriptor.proto" {
+			source = gogo.FileDescriptor("descriptor.proto")
+		}
+		if len(source) == 0 {
+			continue
+		}
+		z, err := gzip.NewReader(bytes.NewReader(source))
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(z)
+		z.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		dependency := new(descriptorpb.FileDescriptorProto)
+		if err := proto.Unmarshal(data, dependency); err != nil {
+			t.Fatal(err)
+		}
+		dependency.Name = proto.String(path)
+		set.File[i] = dependency
+	}
+	raw, err = proto.Marshal(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := modern.NewRegistry(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, original := range []*pb.Sample{new(pb.Sample), POPULATED} {
+		m, err := r.Snapshot(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		modernJSON, err := (protojson.MarshalOptions{Resolver: r.Types, UseEnumNumbers: true}).Marshal(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		gogoJSON, err := (&standard.Marshaler{EnumsAsInts: true}).MarshalToString(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var a, b interface{}
+		if err := json.Unmarshal(modernJSON, &a); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal([]byte(gogoJSON), &b); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(a, b) {
+			t.Fatalf("JSON differs: %s %s", modernJSON, gogoJSON)
+		}
+		// Enum names and numbers are both legal JSON output. Verify that
+		// each implementation can consume the other's natural spelling.
+		natural, err := (protojson.MarshalOptions{Resolver: r.Types}).Marshal(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fromOfficial pb.Sample
+		if err := standard.UnmarshalString(string(natural), &fromOfficial); err != nil || !gogo.Equal(original, &fromOfficial) {
+			t.Fatalf("official JSON -> mapped gogo: %s %v", natural, err)
+		}
+		parsed := dynamicpb.NewMessage(m.Descriptor())
+		if err := (protojson.UnmarshalOptions{Resolver: r.Types}).Unmarshal([]byte(gogoJSON), parsed); err != nil || !proto.Equal(m, parsed) {
+			t.Fatalf("mapped gogo JSON -> official: %v", err)
+		}
+		var back pb.Sample
+		if err := r.Apply(&back, m); err != nil || !gogo.Equal(original, &back) {
+			t.Fatalf("mapped roundtrip: %v", err)
+		}
+	}
+	if CUSTOM_STD {
+		original := POPULATED
+		before := gogo.Clone(original)
+		m, err := r.Snapshot(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Mapped time.Time cannot store an unknown field within Timestamp.
+		m.Mutable(m.Descriptor().Fields().ByNumber(2)).Message().SetUnknown([]byte{24, 1})
+		if err := r.Apply(original, m); !errors.Is(err, modern.ErrLossyConversion) || !gogo.Equal(original, before) {
+			t.Fatalf("inner WKT loss was not rejected transactionally: %v", err)
+		}
+	}
+}

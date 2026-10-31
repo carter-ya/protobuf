@@ -9,8 +9,8 @@ without regeneration. The runtime has no new module dependencies and retains
 | --- | --- | --- |
 | Existing proto2 / proto3 | Original API, field layout, tags and behavior | Version3 |
 | proto3 optional | gogo, gogofast, gogofaster, gogoslick, gogotypes | Version4 |
-| Editions 2023 / 2024 | gogo reflection backend, historical Open Struct API | Version5 |
-| Edition 2026 | Same backend, custom JSON enum spellings in jsonpb | Version6 |
+| Editions 2023 / 2024 | Five gogo-runtime backends, historical Open Struct API | Version5 reflection / Version9 fast |
+| Edition 2026 | Same backends, custom JSON enum spellings in jsonpb | Version6 reflection / Version9 fast |
 
 New optional fields preserve absent vs explicit zero values. Synthetic oneofs
 remain in descriptors but do not appear as public Go oneof wrappers. Explicit
@@ -40,8 +40,9 @@ The ordinary enum name maps and `String` methods retain proto names.
   values retain representation-specific range and metadata limits. Explicit
   unsafe codecs and conflicting mappings are rejected.
   See `compat/optional/README.md` for the exact presence contract.
-- Editions currently use reflection output. Fast generators and gogo custom
-  extensions are rejected until their feature combinations are validated.
+- Editions permit the tested fast codecs and auxiliary/naming/tag allowlist.
+  Custom field representations, unsafe codecs and other unverified extensions
+  remain rejected. See `compat/README.md` for the exercised combinations.
 - Gogo preserves its Open Struct API in every edition. Explicit API_OPEN and
   keeping enum prefixes are accepted. HYBRID/OPAQUE, prefix stripping and other
   unimplemented explicit Go feature requests are rejected.
@@ -123,3 +124,14 @@ generated equality/ordering. Unknown-field storage cannot be disabled. Custom
 representations, unsafe codecs, face/union and unverified options still fail
 with a scoped diagnostic. Auxiliary plugins advertise Editions only through an
 explicit capability; unrecognized plugins do not inherit it.
+
+## Modern Go conversion experiment
+
+`compat/modern` evaluates detached V2 dynamic snapshots with explicit replacement,
+local registries, protojson, Any, extensions and five-backend optional mappings.
+It also exercises actual frozen raft and CockroachDB errors bindings. It is an
+isolated Go 1.23 test module, not a generated ProtoReflect API or a released
+adapter. Data that cannot be retained on replacement is rejected before mutation.
+The pinned official dynamic runtime's closed-enum unknown interpretation and
+MessageSet restrictions are recorded in `compat/modern/README.md`; no transparent
+adaptation claim is made for those cases.

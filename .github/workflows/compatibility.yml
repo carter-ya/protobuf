@@ -102,3 +102,26 @@ jobs:
           name: conformance-results
           path: ${{ runner.temp }}/conformance-report
           if-no-files-found: error
+
+  modern-go:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned protoc release
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Check explicit modern Go integration
+        run: sh compat/check-modern.sh

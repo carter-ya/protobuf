@@ -64,3 +64,30 @@ old callers. The report directories identify the entrypoint explicitly.
 B05 fixes message-oneof merging only for explicit Editions metadata. Six exact
 Editions_Proto2/Proto3 binary/JSON failures are removed from each baseline.
 Historical proto2/proto3 oneof behavior and text baselines are unchanged.
+
+The table sint32 decoder now truncates an incoming varint to 32 bits before
+ZigZag decoding, matching the existing Buffer codec, generated codecs and the
+upstream reference. Sixty exact binary/JSON failures are removed from each
+baseline; the standard entrypoint has 54 remaining binary/JSON failures and
+223 text failures. Pointer/scalar, packed/unpacked and map key/value regressions
+also run with purego. Canonical 32-bit inputs retain their previous results.
+
+Reflection decoding also rejects invalid/overlong field keys and mismatched
+outer or nested group tags, including unknown fields and map entries. Matching
+groups retain their payload and legal maximum field numbers remain accepted.
+Group scanning uses an iterative stack with the same 10,000-group limit as the
+existing Editions fast helper. Twenty more exact binary/JSON failures are
+removed from both baselines (34 standard binary/JSON failures remain).
+
+Standard JSON's configured unknown-name handling now omits enum fields,
+collection elements and map entries rather than inventing zero/presence; ignored
+oneof enum names do not conflict with a real selection. Its explicit 100-container
+JSON limit rejects the recommended deep-WKT cases. Twenty-six standard-only
+binary/JSON failures are removed (8 remain); legacy JSON results are unchanged.
+
+Registered string extensions carrying UTF-8-checking metadata are validated
+when the enclosing message is parsed, including repeated strings and extensions
+registered after a type's first use. Wrong-wire checked strings remain unknown
+fields. UTF8_NONE and historical extension tags retain their prior behavior.
+The corresponding Editions failure is removed from both inventories; standard
+binary/JSON now has 7 failures (text still has 223).

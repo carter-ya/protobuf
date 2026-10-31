@@ -154,11 +154,13 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		// Read tag and wire type.
 		// Special case 1 and 2 byte varints.
 		var x uint64
+		tagSize := 1
 		if b[0] < 128 {
 			x = uint64(b[0])
 			b = b[1:]
 		} else if len(b) >= 2 && b[1] < 128 {
 			x = uint64(b[0]&0x7f) + uint64(b[1])<<7
+			tagSize = 2
 			b = b[2:]
 		} else {
 			var n int
@@ -166,7 +168,11 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			if n == 0 {
 				return io.ErrUnexpectedEOF
 			}
+			tagSize = n
 			b = b[n:]
+		}
+		if err := validateWireKey(x, tagSize); err != nil {
+			return err
 		}
 		tag := x >> 3
 		wire := int(x) & 7
@@ -228,6 +234,18 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		// Registered Editions closed-enum extensions need the same unknown-value
 		// routing as ordinary fields before the bytes enter the extension store.
 		invalidExtension := false
+		// String extension payloads are otherwise decoded lazily. Consult
+		// the live registry so registration after table initialization also
+		// honors explicit UTF-8 policy, while legacy tags keep their rules.
+		if len(u.extensionRanges) != 0 {
+			if ext := extensionMaps[u.typ][int32(tag)]; checkedStringExtensionType(ext) {
+				if wire != WireBytes {
+					invalidExtension = true
+				} else if err := validateStringExtension(b, ext.Name); err != nil {
+					return err
+				}
+			}
+		}
 		if c := u.closedExtensions[tag]; c != nil {
 			filtered, unknown, err := c.filter(b, wire, tag)
 			if err == errInternalBadWireType {
@@ -246,7 +264,7 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		if !u.unrecognized.IsValid() {
 			// Don't keep unrecognized data; just skip it.
 			var err error
-			b, err = skipField(b, wire)
+			b, err = skipField(b, wire, tag)
 			if err != nil {
 				return err
 			}
@@ -290,7 +308,7 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		// Use wire type to skip data.
 		var err error
 		b0 := b
-		b, err = skipField(b, wire)
+		b, err = skipField(b, wire, tag)
 		if err != nil {
 			return err
 		}
@@ -322,6 +340,30 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		}
 	}
 	return errLater
+}
+
+func checkedStringExtensionType(ext *ExtensionDesc) bool {
+	if ext == nil || !strings.Contains(ext.Tag, ",proto3") {
+		return false
+	}
+	t := reflect.TypeOf(ext.ExtensionType)
+	if t == nil || (t.Kind() != reflect.Ptr && t.Kind() != reflect.Slice) || t.Elem().Kind() != reflect.String {
+		return false
+	}
+	var policy Properties
+	policy.Parse(ext.Tag)
+	return policy.proto3 && !policy.UTF8None
+}
+
+func validateStringExtension(data []byte, name string) error {
+	length, n := decodeVarint(data)
+	if n == 0 || length > uint64(len(data)-n) {
+		return io.ErrUnexpectedEOF
+	}
+	if !utf8.Valid(data[n : n+int(length)]) {
+		return &invalidUTF8Error{name}
+	}
+	return nil
 }
 
 // computeUnmarshalInfo fills in u with information for use
@@ -929,10 +971,14 @@ func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 			}
 			return makeUnmarshalMessagePtr(getUnmarshalInfo(t), name)
 		case "group":
-			if slice {
-				return makeUnmarshalGroupSlicePtr(getUnmarshalInfo(t), name)
+			tag, err := strconv.ParseUint(tagArray[1], 10, 29)
+			if err != nil || tag == 0 {
+				panic("proto: invalid group field tag")
 			}
-			return makeUnmarshalGroupPtr(getUnmarshalInfo(t), name)
+			if slice {
+				return makeUnmarshalGroupSlicePtr(getUnmarshalInfo(t), name, tag)
+			}
+			return makeUnmarshalGroupPtr(getUnmarshalInfo(t), name, tag)
 		}
 	}
 	panic(fmt.Sprintf("unmarshaler not found type:%s encoding:%s", t, encoding))
@@ -1211,7 +1257,7 @@ func unmarshalSint32Value(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	*f.toInt32() = v
 	return b, nil
 }
@@ -1225,7 +1271,7 @@ func unmarshalSint32Ptr(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	f.setInt32Ptr(v)
 	return b, nil
 }
@@ -1248,7 +1294,7 @@ func unmarshalSint32Slice(b []byte, f pointer, w int) ([]byte, error) {
 				return nil, io.ErrUnexpectedEOF
 			}
 			b = b[n:]
-			v := int32(x>>1) ^ int32(x)<<31>>31
+			v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 			f.appendInt32Slice(v)
 		}
 		return res, nil
@@ -1261,7 +1307,7 @@ func unmarshalSint32Slice(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	f.appendInt32Slice(v)
 	return b, nil
 }
@@ -1966,12 +2012,12 @@ func makeUnmarshalMessageSlicePtr(sub *unmarshalInfo, name string) unmarshaler {
 	}
 }
 
-func makeUnmarshalGroupPtr(sub *unmarshalInfo, name string) unmarshaler {
+func makeUnmarshalGroupPtr(sub *unmarshalInfo, name string, tag uint64) unmarshaler {
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		if w != WireStartGroup {
 			return b, errInternalBadWireType
 		}
-		x, y := findEndGroup(b)
+		x, y := findEndGroup(b, tag)
 		if x < 0 {
 			return nil, io.ErrUnexpectedEOF
 		}
@@ -1992,12 +2038,12 @@ func makeUnmarshalGroupPtr(sub *unmarshalInfo, name string) unmarshaler {
 	}
 }
 
-func makeUnmarshalGroupSlicePtr(sub *unmarshalInfo, name string) unmarshaler {
+func makeUnmarshalGroupSlicePtr(sub *unmarshalInfo, name string, tag uint64) unmarshaler {
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		if w != WireStartGroup {
 			return b, errInternalBadWireType
 		}
-		x, y := findEndGroup(b)
+		x, y := findEndGroup(b, tag)
 		if x < 0 {
 			return nil, io.ErrUnexpectedEOF
 		}
@@ -2072,6 +2118,9 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 			if n == 0 {
 				return nil, io.ErrUnexpectedEOF
 			}
+			if err := validateWireKey(x, n); err != nil {
+				return nil, err
+			}
 			wire := int(x) & 7
 			b = b[n:]
 
@@ -2093,7 +2142,7 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 			}
 
 			// Skip past unknown fields.
-			b, err = skipField(b, wire)
+			b, err = skipField(b, wire, x>>3)
 			if err != nil {
 				return nil, err
 			}
@@ -2158,8 +2207,16 @@ func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler, mergeMess
 // Error used by decode internally.
 var errInternalBadWireType = errors.New("proto: internal error: bad wiretype")
 
+// A wire key is a uint32 varint with a nonzero 29-bit field number.
+func validateWireKey(key uint64, size int) error {
+	if size > 5 || key>>3 == 0 || key>>3 > 536870911 {
+		return fmt.Errorf("proto: invalid field tag %d", key>>3)
+	}
+	return nil
+}
+
 // skipField skips past a field of type wire and returns the remaining bytes.
-func skipField(b []byte, wire int) ([]byte, error) {
+func skipField(b []byte, wire int, tag uint64) ([]byte, error) {
 	switch wire {
 	case WireVarint:
 		_, k := decodeVarint(b)
@@ -2184,7 +2241,7 @@ func skipField(b []byte, wire int) ([]byte, error) {
 		}
 		b = b[uint64(k)+m:]
 	case WireStartGroup:
-		_, i := findEndGroup(b)
+		_, i := findEndGroup(b, tag)
 		if i == -1 {
 			return b, io.ErrUnexpectedEOF
 		}
@@ -2200,12 +2257,21 @@ func skipField(b []byte, wire int) ([]byte, error) {
 // unpaired EndGroup.
 // findEndGroup returns the indexes of the start and end of the EndGroup tag.
 // Returns (-1,-1) if it can't find one.
-func findEndGroup(b []byte) (int, int) {
-	depth := 1
+func findEndGroup(b []byte, expected ...uint64) (int, int) {
+	// Buffer.DecodeGroup has no outer field number (zero is its wildcard).
+	// Table decoders provide the number consumed in the opening tag.
+	var small [16]uint64
+	groups := small[:1]
+	if len(expected) != 0 {
+		groups[0] = expected[0]
+	}
 	i := 0
 	for {
 		x, n := decodeVarint(b[i:])
 		if n == 0 {
+			return -1, -1
+		}
+		if validateWireKey(x, n) != nil {
 			return -1, -1
 		}
 		j := i
@@ -2238,10 +2304,16 @@ func findEndGroup(b []byte) (int, int) {
 			}
 			i += int(m)
 		case WireStartGroup:
-			depth++
+			if len(groups) >= 10000 {
+				return -1, -1
+			}
+			groups = append(groups, x>>3)
 		case WireEndGroup:
-			depth--
-			if depth == 0 {
+			if tag := groups[len(groups)-1]; tag != 0 && tag != x>>3 {
+				return -1, -1
+			}
+			groups = groups[:len(groups)-1]
+			if len(groups) == 0 {
 				return j, i
 			}
 		default:

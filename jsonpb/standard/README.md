@@ -35,3 +35,14 @@ independent official C++ and Go interoperability checks. No modern official runt
 
 The current standard baseline retains 120 binary/JSON and 223 text failures.
 Legacy mode retains its separate historical baseline and behavior.
+
+With `AllowUnknownFields`, unknown enum **names** are discarded: an optional
+field/oneof stays absent, repeated elements are omitted and map entries are
+omitted. Known names and ordinary numeric enum handling retain their existing
+rules. Malformed enum input is still an error. Legacy jsonpb retains its prior
+unknown-enum behavior even when AllowUnknownFields is set.
+
+Standard JSON permits at most 100 nested object/array containers, counting the
+root container. Both input and emitted JSON are checked. Scalar leaves do not
+consume another container level. Legacy jsonpb keeps its existing nesting
+behavior. This is the standard entrypoint's documented resource bound.
