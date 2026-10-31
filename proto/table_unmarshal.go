@@ -2139,8 +2139,17 @@ func makeUnmarshalMap(f *reflect.StructField, fragment bool) unmarshaler {
 			valTags = append(valTags, t)
 		}
 	}
+	valueTag := strings.Join(valTags, ",")
 	unmarshalKey := typeUnmarshalerWithPolicy(kt, f.Tag.Get("protobuf_key"), fragment)
-	unmarshalVal := typeUnmarshalerWithPolicy(vt, strings.Join(valTags, ","), fragment)
+	unmarshalVal := typeUnmarshalerWithPolicy(vt, valueTag, fragment)
+	// The tag is immutable codec metadata, shared by every map entry.
+	var valueProp Properties
+	valueProp.Parse(valueTag)
+	hasEnumDefault := valueProp.HasDefault && vt.Kind() == reflect.Int32 && len(valueProp.ClosedEnum) > 0
+	var enumDefault int64
+	if hasEnumDefault {
+		enumDefault, _ = strconv.ParseInt(valueProp.Default, 10, 32)
+	}
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		// The map entry is a submessage. Figure out how big it is.
 		if w != WireBytes {
@@ -2165,11 +2174,8 @@ func makeUnmarshalMap(f *reflect.StructField, fragment bool) unmarshaler {
 		var nerr nonFatal
 		k := reflect.New(kt)
 		v := reflect.New(vt)
-		var valueProp Properties
-		valueProp.Parse(strings.Join(valTags, ","))
-		if valueProp.HasDefault && vt.Kind() == reflect.Int32 && len(valueProp.ClosedEnum) > 0 {
-			n, _ := strconv.ParseInt(valueProp.Default, 10, 32)
-			v.Elem().SetInt(n)
+		if hasEnumDefault {
+			v.Elem().SetInt(enumDefault)
 		}
 		for len(b) > 0 {
 			x, n := decodeVarint(b)

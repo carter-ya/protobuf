@@ -79,6 +79,7 @@ def main():
     parser.add_argument('--backend', action='append', choices=BACKENDS)
     parser.add_argument('--profile', action='append', choices=PROFILES)
     parser.add_argument('--count', type=int, default=3)
+    parser.add_argument('--current-revision', help='archive this production revision for current profiles; harness stays at the checked-out revision')
     parser.add_argument('--benchtime', default='100ms')
     args = parser.parse_args()
     if args.count < 1:
@@ -88,8 +89,11 @@ def main():
     if (root / 'modules').exists():
         parser.error('use a fresh output directory; existing results are retained')
     backends, profiles = args.backend or BACKENDS, args.profile or list(PROFILES)
+    current_revision = output(['git', 'rev-parse', '--verify', (args.current_revision or 'HEAD') + '^{commit}'])
     environment = {
         'current_commit': output(['git', 'rev-parse', 'HEAD']),
+        'current_source_revision': current_revision,
+        'archived_current': args.current_revision is not None,
         'working_tree_status': output(['git', 'status', '--porcelain']),
         'go': output(['go', 'version']), 'protoc': output(['protoc', '--version']),
         'platform': platform.platform(), 'architecture': platform.machine(),
@@ -107,7 +111,7 @@ def main():
         except (OSError, subprocess.CalledProcessError):
             pass
     (root / 'environment.json').write_text(json.dumps(environment, indent=2) + '\n')
-    sources = {'current': ROOT}
+    sources = {'current': archive(current_revision, root / 'snapshots/current') if args.current_revision else ROOT}
     for revision in sorted({PROFILES[p][0] for p in profiles} - {'current'}):
         sources[revision] = archive(revision, root / 'snapshots' / revision)
     drivers = {}
