@@ -18,14 +18,14 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion5 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion13 // please upgrade the proto package
 
 var E_ExtFromForeignScope = &proto.ExtensionDesc{
 	ExtendedType:  (*Extensible)(nil),
 	ExtensionType: (*string)(nil),
 	Field:         120,
 	Name:          "compat.editions.v2023.ext_from_foreign_scope",
-	Tag:           "bytes,120,opt,name=ext_from_foreign_scope,proto3,explicit,utf8_none",
+	Tag:           "bytes,120,edition_ext,opt,name=ext_from_foreign_scope,proto3,explicit,utf8_none",
 	Filename:      "compat/editions/edition2023/foreign_ext.proto",
 }
 

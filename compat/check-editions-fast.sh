@@ -5,9 +5,9 @@ case "$(protoc --version)" in 'libprotoc 36.2') ;; *) echo 'Editions fast matrix
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 python3 "$repo/compat/fast/prepare.py" "$tmp/consumer"
-# Complex bindings require B05's group/extension behavior, even on a runtime
-# that already understands Editions scalar fast codecs.
-introduction=$(git -C "$repo" log --reverse --format=%H -S GoGoProtoPackageIsVersion9 HEAD -- proto/lib.go | sed -n '1p')
+# Regenerated extensible bindings require Version13's validation/merge policy,
+# even on a runtime that already understands Editions group/extension codecs.
+introduction=$(git -C "$repo" log --reverse --format=%H -S GoGoProtoPackageIsVersion13 HEAD -- proto/lib.go | sed -n '1p')
 revision=HEAD
 if test -n "$introduction"; then revision="$introduction^"; fi
 mkdir -p "$tmp/pre-complex" "$tmp/negative-complex"
@@ -23,4 +23,4 @@ MOD
 if (cd "$tmp/negative-complex" && go build ./...) > "$tmp/error" 2>&1; then
  echo 'complex Editions code compiled against the incomplete runtime' >&2; exit 1
 fi
-grep -q GoGoProtoPackageIsVersion9 "$tmp/error"
+grep -q GoGoProtoPackageIsVersion13 "$tmp/error"

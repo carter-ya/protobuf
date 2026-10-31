@@ -1396,6 +1396,15 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			continue
 		}
 		p.atleastOne = true
+		if file.IsEditions() && p.NeedsDeferredEditionExtensions(message) {
+			// The shared codec preserves per-occurrence wire checks while
+			// checking extension completeness after the outer graph merges.
+			p.P("func (m *", ccTypeName, ") Unmarshal(dAtA []byte) error {")
+			p.P("var info ", protoPkg.Use(), ".InternalMessageInfo")
+			p.P("return info.Unmarshal(m, dAtA)")
+			p.P("}")
+			continue
+		}
 
 		// build a map required field_id -> bitmask offset
 		rfMap := make(map[int32]uint)
@@ -1660,7 +1669,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			p.P(`return `, p.ioPkg.Use(), `.ErrUnexpectedEOF`)
 			p.Out()
 			p.P(`}`)
-			p.P(protoPkg.Use(), `.AppendExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy])`)
+			if file.IsEditions() {
+				p.P(`if err := `, protoPkg.Use(), `.AppendEditionExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy]); err != nil { return err }`)
+			} else {
+				p.P(protoPkg.Use(), `.AppendExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy])`)
+			}
 			p.P(`iNdEx += skippy`)
 			p.Out()
 			p.P(`} else {`)
@@ -1727,7 +1740,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		p.P(`return ` + p.ioPkg.Use() + `.ErrUnexpectedEOF`)
 		p.Out()
 		p.P(`}`)
-		p.P(`return nil`)
+		if file.IsEditions() && message.DescriptorProto.HasExtension() {
+			p.P(`return `, protoPkg.Use(), `.ValidateEditionMessageExtensions(m)`)
+		} else {
+			p.P(`return nil`)
+		}
 		p.Out()
 		p.P(`}`)
 	}

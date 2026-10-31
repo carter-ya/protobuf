@@ -67,6 +67,11 @@ func (a *InternalMessageInfo) Unmarshal(msg Message, b []byte) error {
 type unmarshalInfo struct {
 	typ reflect.Type // type of the protobuf struct
 
+	// Extension fragment decoding checks newly encountered wire payloads only.
+	// Required-field completeness is checked after all fragments have merged.
+	editionFragment bool
+	extensionGraph  bool
+
 	// 0 = only typ field is initialized
 	// 1 = completely initialized
 	initialized     int32
@@ -108,26 +113,35 @@ type unmarshalFieldInfo struct {
 }
 
 var (
-	unmarshalInfoMap  = map[reflect.Type]*unmarshalInfo{}
-	unmarshalInfoLock sync.Mutex
+	unmarshalInfoMap       = map[reflect.Type]*unmarshalInfo{}
+	editionFragmentInfoMap = map[reflect.Type]*unmarshalInfo{}
+	unmarshalInfoLock      sync.Mutex
 )
 
 // getUnmarshalInfo returns the data structure which can be
 // subsequently used to unmarshal a message of the given type.
 // t is the type of the message (note: not pointer to message).
 func getUnmarshalInfo(t reflect.Type) *unmarshalInfo {
+	return getUnmarshalInfoWithPolicy(t, false)
+}
+
+func getUnmarshalInfoWithPolicy(t reflect.Type, fragment bool) *unmarshalInfo {
 	// It would be correct to return a new unmarshalInfo
 	// unconditionally. We would end up allocating one
 	// per occurrence of that type as a message or submessage.
 	// We use a cache here just to reduce memory usage.
 	unmarshalInfoLock.Lock()
 	defer unmarshalInfoLock.Unlock()
-	u := unmarshalInfoMap[t]
+	cache := unmarshalInfoMap
+	if fragment {
+		cache = editionFragmentInfoMap
+	}
+	u := cache[t]
 	if u == nil {
-		u = &unmarshalInfo{typ: t}
+		u = &unmarshalInfo{typ: t, editionFragment: fragment}
 		// Note: we just set the type here. The rest of the fields
 		// will be initialized on first use.
-		unmarshalInfoMap[t] = u
+		cache[t] = u
 	}
 	return u
 }
@@ -220,7 +234,8 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			}
 			if err != errInternalBadWireType {
 				if err == errInvalidUTF8 {
-					if errLater == nil {
+					_, required := errLater.(*RequiredNotSetError)
+					if errLater == nil || required {
 						fullName := revProtoTypes[reflect.PtrTo(u.typ)] + "." + f.name
 						errLater = &invalidUTF8Error{fullName}
 					}
@@ -243,6 +258,20 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 					invalidExtension = true
 				} else if err := validateStringExtension(b, ext.Name); err != nil {
 					return err
+				}
+			}
+		}
+		if len(u.extensionRanges) != 0 {
+			extension := extensionMaps[u.typ][int32(tag)]
+			if editionExtensionPolicy(extension) {
+				properties := extensionProperties(extension)
+				expected := properties.WireType
+				if properties.Wire == "group" {
+					expected = WireStartGroup
+				}
+				packed := properties.Repeated && wire == WireBytes && (expected == WireVarint || expected == WireFixed32 || expected == WireFixed64)
+				if wire != expected && !packed {
+					invalidExtension = true
 				}
 			}
 		}
@@ -312,6 +341,25 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		if err != nil {
 			return err
 		}
+		// Validate only this new occurrence in fragment mode. Inspecting the
+		// accumulated store here would reparse earlier fragments recursively.
+		if u.editionFragment && !invalidExtension && len(u.extensionRanges) != 0 {
+			extension := extensionMaps[u.typ][int32(tag)]
+			if _, native := nativeEditionMessageExtension(extension); native {
+				occurrence := encodeVarint(nil, tag<<3|uint64(wire))
+				occurrence = append(occurrence, b0[:len(b0)-len(b)]...)
+				if _, err := decodeEditionMessageExtensionPartial(occurrence, extension, false); err != nil {
+					return err
+				}
+			}
+		}
+		if emap != nil {
+			e, err = materializeEditionExtension(e, extensionMaps[u.typ][int32(tag)])
+			if err != nil {
+				return err
+			}
+			z = &e.enc
+		}
 		*z = encodeVarint(*z, tag<<3|uint64(wire))
 		*z = append(*z, b0[:len(b0)-len(b)]...)
 
@@ -337,6 +385,11 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 				errLater = &RequiredNotSetError{n}
 			}
 			reqMask >>= 1
+		}
+	}
+	if !u.editionFragment && u.extensionGraph {
+		if err := validateEditionExtensionsInGraph(m.asPointerTo(u.typ).Interface().(Message)); err != nil {
+			return err
 		}
 	}
 	return errLater
@@ -375,6 +428,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		return
 	}
 	t := u.typ
+	u.extensionGraph = hasEditionExtensionGraph(t)
 	n := t.NumField()
 
 	// Set up the "not found" value for the unrecognized byte buffer.
@@ -453,7 +507,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		}
 
 		// Extract unmarshaling function from the field (its type and tags).
-		unmarshal := fieldUnmarshaler(&f)
+		unmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph)
 
 		// Required field?
 		var reqMask uint64
@@ -485,7 +539,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 			typ := tptr.Elem()        // Msg_X
 
 			f := typ.Field(0) // oneof implementers have one field
-			baseUnmarshal := fieldUnmarshaler(&f)
+			baseUnmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph)
 			tags := strings.Split(f.Tag.Get("protobuf"), ",")
 			fieldNum, err := strconv.Atoi(tags[1])
 			if err != nil {
@@ -580,20 +634,24 @@ func (u *unmarshalInfo) setTag(tag int, field field, unmarshal unmarshaler, reqM
 }
 
 // fieldUnmarshaler returns an unmarshaler for the given field.
-func fieldUnmarshaler(f *reflect.StructField) unmarshaler {
+func fieldUnmarshaler(f *reflect.StructField, fragment bool) unmarshaler {
 	if f.Type.Kind() == reflect.Map {
-		return makeUnmarshalMap(f)
+		return makeUnmarshalMap(f, fragment)
 	}
-	return typeUnmarshaler(f.Type, f.Tag.Get("protobuf"))
+	return typeUnmarshalerWithPolicy(f.Type, f.Tag.Get("protobuf"), fragment)
 }
 
 // typeUnmarshaler returns an unmarshaler for the given field type / field tag pair.
 func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
+	return typeUnmarshalerWithPolicy(t, tags, false)
+}
+
+func typeUnmarshalerWithPolicy(t reflect.Type, tags string, fragment bool) unmarshaler {
 	tagArray := strings.Split(tags, ",")
 	if !unsafeAllowed && optionalCastTags(tagArray) {
 		builtinType := optionalCastType(t)
 		if builtinType != t {
-			unmarshal := typeUnmarshaler(builtinType, tags)
+			unmarshal := typeUnmarshalerWithPolicy(builtinType, tags, fragment)
 			return func(data []byte, field pointer, wire int) ([]byte, error) {
 				slot := optionalCastPointer(field, t, builtinType)
 				remaining, err := unmarshal(data, slot, wire)
@@ -959,26 +1017,26 @@ func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 			switch encoding {
 			case "bytes":
 				if slice {
-					return makeUnmarshalMessageSlice(getUnmarshalInfo(t), name)
+					return makeUnmarshalMessageSlice(getUnmarshalInfoWithPolicy(t, fragment), name)
 				}
-				return makeUnmarshalMessage(getUnmarshalInfo(t), name)
+				return makeUnmarshalMessage(getUnmarshalInfoWithPolicy(t, fragment), name)
 			}
 		}
 		switch encoding {
 		case "bytes":
 			if slice {
-				return makeUnmarshalMessageSlicePtr(getUnmarshalInfo(t), name)
+				return makeUnmarshalMessageSlicePtr(getUnmarshalInfoWithPolicy(t, fragment), name)
 			}
-			return makeUnmarshalMessagePtr(getUnmarshalInfo(t), name)
+			return makeUnmarshalMessagePtr(getUnmarshalInfoWithPolicy(t, fragment), name)
 		case "group":
 			tag, err := strconv.ParseUint(tagArray[1], 10, 29)
 			if err != nil || tag == 0 {
 				panic("proto: invalid group field tag")
 			}
 			if slice {
-				return makeUnmarshalGroupSlicePtr(getUnmarshalInfo(t), name, tag)
+				return makeUnmarshalGroupSlicePtr(getUnmarshalInfoWithPolicy(t, fragment), name, tag)
 			}
-			return makeUnmarshalGroupPtr(getUnmarshalInfo(t), name, tag)
+			return makeUnmarshalGroupPtr(getUnmarshalInfoWithPolicy(t, fragment), name, tag)
 		}
 	}
 	panic(fmt.Sprintf("unmarshaler not found type:%s encoding:%s", t, encoding))
@@ -2061,7 +2119,7 @@ func makeUnmarshalGroupSlicePtr(sub *unmarshalInfo, name string, tag uint64) unm
 	}
 }
 
-func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
+func makeUnmarshalMap(f *reflect.StructField, fragment bool) unmarshaler {
 	t := f.Type
 	kt := t.Key()
 	vt := t.Elem()
@@ -2081,8 +2139,8 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 			valTags = append(valTags, t)
 		}
 	}
-	unmarshalKey := typeUnmarshaler(kt, f.Tag.Get("protobuf_key"))
-	unmarshalVal := typeUnmarshaler(vt, strings.Join(valTags, ","))
+	unmarshalKey := typeUnmarshalerWithPolicy(kt, f.Tag.Get("protobuf_key"), fragment)
+	unmarshalVal := typeUnmarshalerWithPolicy(vt, strings.Join(valTags, ","), fragment)
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		// The map entry is a submessage. Figure out how big it is.
 		if w != WireBytes {

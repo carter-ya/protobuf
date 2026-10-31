@@ -445,6 +445,9 @@ func defaultExtensionValue(extension *ExtensionDesc) (interface{}, error) {
 
 // decodeExtension decodes an extension encoded in b.
 func decodeExtension(b []byte, extension *ExtensionDesc) (interface{}, error) {
+	if _, ok := nativeEditionMessageExtension(extension); ok {
+		return decodeEditionMessageExtension(b, extension)
+	}
 	t := reflect.TypeOf(extension.ExtensionType)
 	unmarshal := typeUnmarshaler(t, extension.Tag)
 
