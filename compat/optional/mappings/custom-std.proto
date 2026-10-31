@@ -3,6 +3,7 @@ package compat.optional.mapping;
 option go_package = "example.com/optional-mappings/pb";
 import "gogoproto/gogo.proto";
 option (gogoproto.equal_all) = true;
+option (gogoproto.verbose_equal_all) = true;
 option (gogoproto.compare_all) = true;
 option (gogoproto.populate_all) = true;
 option (gogoproto.gostring_all) = true;

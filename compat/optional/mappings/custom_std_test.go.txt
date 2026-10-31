@@ -3,6 +3,7 @@ package consumer_test
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"math/rand"
 	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -348,4 +350,72 @@ func TestMappedReflectionCloneAndMerge(t *testing.T) {
 	same(t, (*pb.Sample)(original), populated(true))
 	proto.Merge(original, (*reflected)(populated(false)))
 	same(t, (*pb.Sample)(original), populated(false))
+}
+
+func TestMappedEqualityPresenceBothDirections(t *testing.T) {
+	for _, nonzero := range []bool{false, true} {
+		for i := 0; i < 12; i++ {
+			t.Run(fmt.Sprintf("nonzero=%t/field=%d", nonzero, i+1), func(t *testing.T) {
+				present, absent := new(pb.Sample), new(pb.Sample)
+				reflect.ValueOf(present).Elem().Field(i).Set(reflect.ValueOf(populated(nonzero)).Elem().Field(i))
+				for _, pair := range [][2]*pb.Sample{{absent, present}, {present, absent}} {
+					if pair[0].Equal(pair[1]) || pair[0].VerboseEqual(pair[1]) == nil || proto.Equal(pair[0], pair[1]) || pair[0].Compare(pair[1]) == 0 {
+						t.Fatal("presence mismatch accepted")
+					}
+				}
+				for _, value := range []*pb.Sample{absent, present} {
+					clone := proto.Clone(value).(*pb.Sample)
+					if !value.Equal(clone) || value.VerboseEqual(clone) != nil {
+						t.Fatal("equal values rejected")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestMappedTextInteroperability(t *testing.T) {
+	negativeDouble, negativeFloat := math.Copysign(0, -1), float32(math.Copysign(0, -1))
+	for _, value := range []*pb.Sample{new(pb.Sample), populated(false), populated(true), {Value_4: &negativeDouble, Value_5: &negativeFloat}} {
+		for _, text := range []string{proto.CompactTextString(value), proto.MarshalTextString(value)} {
+			command := exec.Command("protoc", "-I.", "-IINCLUDE", "--encode=compat.optional.mapping.Sample", "sample.proto")
+			command.Stdin = strings.NewReader(text)
+			wire, err := command.Output()
+			if err != nil {
+				t.Fatalf("official rejected mapped text %s: %v", text, err)
+			}
+			var back pb.Sample
+			if err := proto.Unmarshal(wire, &back); err != nil {
+				t.Fatal(err)
+			}
+			same(t, value, &back)
+			if value.Value_4 != nil && math.Signbit(*value.Value_4) && (back.Value_4 == nil || !math.Signbit(*back.Value_4)) {
+				t.Fatal("text lost double negative zero")
+			}
+			if value.Value_5 != nil && math.Signbit(float64(*value.Value_5)) && (back.Value_5 == nil || !math.Signbit(float64(*back.Value_5))) {
+				t.Fatal("text lost float negative zero")
+			}
+			command = exec.Command("protoc", "-I.", "-IINCLUDE", "--decode=compat.optional.mapping.Sample", "sample.proto")
+			command.Stdin = bytes.NewReader(wire)
+			official, err := command.Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := proto.UnmarshalText(string(official), &back); err != nil {
+				t.Fatalf("rejected official text %s: %v", official, err)
+			}
+			same(t, value, &back)
+		}
+	}
+	for _, text := range []string{`value_8 { value: 5 }`, `value_8: < value: 5 >`, `value_11 { value: "snow" }`, `value_12 { value: "abc" }`, `value_11 {}`, `value_12: <>`} {
+		var value pb.Sample
+		if err := proto.UnmarshalText(text, &value); err != nil {
+			t.Fatalf("valid wrapper text %s: %v", text, err)
+		}
+	}
+	for _, text := range []string{`value_8: 5`, `value_11: "snow"`, `value_12: "abc"`, `value_8 { value: 1 value: 2 }`, `value_8 { unknown: 1 }`} {
+		if err := proto.UnmarshalText(text, new(pb.Sample)); err == nil {
+			t.Fatalf("invalid wrapper text accepted: %s", text)
+		}
+	}
 }

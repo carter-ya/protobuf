@@ -59,7 +59,7 @@ and `purego` configurations. Pure-Go table merging preserves the actual named
 field type rather than asserting a builtin scalar pointer. The per-field
 Clone/Merge checks cover all scalar families, enum casts, string casts and
 nil/empty/nonempty bytes, including copy ownership and explicit zero updates.
-This runtime path is shared with the App Engine and JS pointer implementations;
+This runtime path is shared with the App Engine and JS pointer implementations.
 Codec tables likewise adapt named fields to temporary builtin slots in pure-Go
 builds and restore their named types after decoding. Legacy fields without
 optional cast metadata keep their existing paths.
@@ -96,3 +96,11 @@ and validity constraints; time.Duration cannot represent the full Protobuf
 Duration range. Keep ordinary message fields when that metadata or range is
 needed. The default message representation retains its separate contract;
 Editions representation mappings and gofast remain unsupported.
+
+Optional custom/Timestamp/BytesValue equality checks presence in both directions
+before invoking value methods or dereferencing. Equal and VerboseEqual have the
+same presence contract. Optional wrapper text codecs retain the declared message
+shape (`field { value: ... }`), including an empty body and a colon-free string
+or bytes wrapper. Compact and expanded text interoperate in both directions with
+protoc; flattened scalar input is rejected for these mapped message fields.
+Historical non-optional mapping text and generated equality remain unchanged.
