@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"sync"
 
 	gogo "github.com/gogo/protobuf/proto"
@@ -224,7 +225,9 @@ func model(t reflect.Type) (*messageType, error) {
 			return nil, fmt.Errorf("gogoreflect: MessageSet is unsupported")
 		}
 		if md.ExtensionRanges().Len() > 0 {
-			return nil, fmt.Errorf("gogoreflect: extensions require the extension bridge")
+			if _, ok := reflect.Zero(t).Interface().(interface{ GetExtensions() *[]byte }); ok {
+				return nil, fmt.Errorf("gogoreflect: %s requires map-backed extensions", md.FullName())
+			}
 		}
 		m := &messageType{typ: t, desc: md, fields: make(map[protoreflect.FieldNumber]*fieldInfo), unknown: -1}
 		pending[t] = m
@@ -304,7 +307,16 @@ func model(t reflect.Type) (*messageType, error) {
 				}
 			}
 			if target.Enum() != nil && target.Enum().IsClosed() {
-				return nil, fmt.Errorf("gogoreflect: %s requires the closed-enum decoder bridge", fd.FullName())
+				tag := st.Field(fi.index).Tag.Get("protobuf")
+				if fd.IsMap() {
+					tag = st.Field(fi.index).Tag.Get("protobuf_val")
+				}
+				if fi.wrapper != nil {
+					tag = fi.wrapper.Elem().Field(0).Tag.Get("protobuf")
+				}
+				if !strings.Contains(tag, "enum_closed=") {
+					return nil, fmt.Errorf("gogoreflect: %s requires enforce_closed_enums regeneration", fd.FullName())
+				}
 			}
 		}
 		return m, nil

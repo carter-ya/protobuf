@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"sort"
 
 	gogo "github.com/gogo/protobuf/proto"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -21,6 +22,9 @@ func Wrap(m gogo.Message) (protoreflect.ProtoMessage, error) {
 	}
 	info, err := model(reflect.TypeOf(m))
 	if err != nil {
+		return nil, err
+	}
+	if err := qualify(info, make(map[reflect.Type]bool)); err != nil {
 		return nil, err
 	}
 	return &message{info: info, value: reflect.ValueOf(m)}, nil
@@ -107,6 +111,14 @@ func (m *message) slot(f *fieldInfo) slot {
 	}}
 }
 func (m *message) Has(fd protoreflect.FieldDescriptor) bool {
+	if fd.IsExtension() {
+		x := m.extension(fd)
+		if !m.IsValid() || !gogo.HasExtension(m.native(), x.native) {
+			return false
+		}
+		return !fd.IsList() || m.extensionSlot(x).get().Len() > 0
+	}
+
 	f := m.field(fd)
 	if !m.IsValid() {
 		return false
@@ -133,8 +145,7 @@ func (m *message) Has(fd protoreflect.FieldDescriptor) bool {
 	return !v.IsZero()
 }
 func (m *message) Get(fd protoreflect.FieldDescriptor) protoreflect.Value {
-	f := m.field(fd)
-	s := m.slot(f)
+	f, s := m.storage(fd)
 	if fd.IsList() {
 		if s.get().Len() == 0 {
 			return protoreflect.ValueOfList(&list{fd: fd, slot: detached(f.typ, reflect.Zero(f.typ)), readonly: true})
@@ -167,14 +178,19 @@ func (m *message) Get(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	return reflectValue(fd, v)
 }
 func (m *message) Set(fd protoreflect.FieldDescriptor, v protoreflect.Value) {
-	f := m.field(fd)
-	s := m.slot(f)
+	f, s := m.storage(fd)
 	if fd.Kind() == protoreflect.BytesKind && fd.HasPresence() && (fd.ContainingOneof() == nil || fd.ContainingOneof().IsSynthetic()) && v.Bytes() == nil {
 		v = protoreflect.ValueOfBytes([]byte{})
 	}
 	s.set(convertField(fd, v, f.typ))
 }
 func (m *message) Clear(fd protoreflect.FieldDescriptor) {
+	if fd.IsExtension() {
+		x := m.extension(fd)
+		m.requireMutable()
+		gogo.ClearExtension(m.native(), x.native)
+		return
+	}
 	f := m.field(fd)
 	m.requireMutable()
 	if f.wrapper != nil {
@@ -192,11 +208,22 @@ func (m *message) Range(fn func(protoreflect.FieldDescriptor, protoreflect.Value
 			return
 		}
 	}
+	if m.IsValid() && m.info.desc.ExtensionRanges().Len() > 0 {
+		for _, e := range gogo.RegisteredExtensions(m.native()) {
+			x, err := extensionFor(e)
+			if err != nil {
+				panic(err)
+			}
+			fd := x.TypeDescriptor()
+			if m.Has(fd) && !fn(fd, m.Get(fd)) {
+				return
+			}
+		}
+	}
 }
 func (m *message) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
-	f := m.field(fd)
+	f, s := m.storage(fd)
 	m.requireMutable()
-	s := m.slot(f)
 	if fd.IsMap() {
 		if s.get().IsNil() {
 			s.set(reflect.MakeMap(f.typ))
@@ -215,7 +242,7 @@ func (m *message) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	panic("gogoreflect: Mutable requires a composite field")
 }
 func (m *message) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
-	f := m.field(fd)
+	f, _ := m.storage(fd)
 	return newValue(fd, f.typ)
 }
 func (m *message) WhichOneof(od protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
@@ -234,20 +261,63 @@ func (m *message) GetUnknown() protoreflect.RawFields {
 	if !m.IsValid() {
 		return nil
 	}
-	return m.value.Elem().Field(m.info.unknown).Bytes()
+	raw := m.value.Elem().Field(m.info.unknown).Bytes()
+	if m.info.desc.ExtensionRanges().Len() == 0 {
+		return raw
+	}
+	fields, err := gogo.UnregisteredExtensionWire(m.native())
+	if err != nil {
+		panic(err)
+	}
+	if len(fields) == 0 {
+		return raw
+	}
+	out := append([]byte(nil), raw...)
+	numbers := make([]int, 0, len(fields))
+	for n := range fields {
+		numbers = append(numbers, int(n))
+	}
+	sort.Ints(numbers)
+	for _, n := range numbers {
+		out = append(out, fields[int32(n)]...)
+	}
+	return out
 }
 func (m *message) SetUnknown(b protoreflect.RawFields) {
 	m.requireMutable()
+	var regular []byte
+	extensionFields := make(map[int32][]byte)
+	registered := gogo.RegisteredExtensions(m.native())
 	for rest := []byte(b); len(rest) > 0; {
-		_, _, n := protowire.ConsumeField(rest)
+		number, _, n := protowire.ConsumeField(rest)
 		if n < 0 {
 			panic("gogoreflect: malformed unknown fields")
 		}
+		raw := rest[:n]
+		if m.info.desc.ExtensionRanges().Has(number) && registered[int32(number)] == nil {
+			extensionFields[int32(number)] = append(extensionFields[int32(number)], raw...)
+		} else {
+			regular = append(regular, raw...)
+		}
 		rest = rest[n:]
 	}
-	m.value.Elem().Field(m.info.unknown).SetBytes(b)
+	if m.info.desc.ExtensionRanges().Len() > 0 {
+		if err := gogo.ReplaceUnregisteredExtensions(m.native(), extensionFields); err != nil {
+			panic(err)
+		}
+	}
+	m.value.Elem().Field(m.info.unknown).SetBytes(regular)
 }
-func (m *message) ProtoMethods() *protoiface.Methods { return nil }
+func (m *message) ProtoMethods() *protoiface.Methods { return &nativeMethods }
+
+func (m *message) storage(fd protoreflect.FieldDescriptor) (*fieldInfo, slot) {
+	if fd.IsExtension() {
+		x := m.extension(fd)
+		return &fieldInfo{fd: fd, typ: x.typ, index: -1}, m.extensionSlot(x)
+	}
+	f := m.field(fd)
+	return f, m.slot(f)
+}
 
 type slot struct {
 	typ reflect.Type

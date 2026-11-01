@@ -1,0 +1,41 @@
+syntax = "proto2";
+package live;
+option go_package = "github.com/gogo/protobuf/reflect/internal/testpb";
+import "reflect/internal/testpb/schema.proto";
+enum Status {
+  GOOD = 5;
+  BAD = 7;
+}
+enum Flag {
+  ZERO = 0;
+  ONE = 1;
+}
+message Required {
+  required int32 value = 1;
+}
+message Closed {
+  optional Status status = 1;
+  repeated Status list = 2 [packed = true];
+  map<string, Flag> flags = 3;
+  oneof choice {
+    Status selected = 4;
+    int32 number = 5;
+  }
+  optional Required child = 6;
+  repeated Required children = 7;
+  map<string, Required> nodes = 8;
+  extensions 100 to max;
+}
+extend Closed {
+  optional Status status_ext = 100;
+  repeated Status list_ext = 101 [packed = true];
+  optional Node msg_ext = 102;
+  repeated Node msgs_ext = 103;
+  optional int32 scalar_ext = 104 [default = 42];
+  optional bytes blob_ext = 105;
+}
+message GroupContainer {
+  optional group Legacy = 1 {
+    required int32 value = 2;
+  }
+}

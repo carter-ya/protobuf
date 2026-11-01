@@ -992,6 +992,8 @@ const (
 	GoGoProtoPackageIsVersion15 = true
 	// Version16 supports generated compact table codec wrappers.
 	GoGoProtoPackageIsVersion16 = true
+	// Version17 adds the optional V2 reflection extension bridge.
+	GoGoProtoPackageIsVersion17 = true
 
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.
