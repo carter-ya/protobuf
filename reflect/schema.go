@@ -41,6 +41,15 @@ func inflate(raw []byte) ([]byte, error) {
 	}
 	return b, err
 }
+func canonicalPath(path string) string {
+	switch path {
+	case "gogo.proto", "gogoproto/gogo.proto", "github.com/gogo/protobuf/gogoproto/gogo.proto":
+		return "gogoproto/gogo.proto"
+	case "descriptor.proto", "google/protobuf/descriptor.proto":
+		return "google/protobuf/descriptor.proto"
+	}
+	return path
+}
 func source(path string) []byte {
 	if b := gogo.FileDescriptor(path); len(b) > 0 {
 		return b
@@ -62,16 +71,19 @@ func (u *schemaUniverse) load(raw []byte, path string, active map[string]bool) (
 	if err = v2.Unmarshal(b, f); err != nil {
 		return nil, err
 	}
-	name := f.GetName()
-	if path != "" && name != path {
-		if (name == "gogo.proto" && (path == "gogoproto/gogo.proto" || path == "github.com/gogo/protobuf/gogoproto/gogo.proto")) || (name == "descriptor.proto" && path == "google/protobuf/descriptor.proto") {
-			f.Name = v2.String(path)
-			b, _ = v2.Marshal(f)
-			name = path
-		} else {
-			return nil, fmt.Errorf("gogoreflect: descriptor %q declares %q", path, name)
-		}
+	name := canonicalPath(f.GetName())
+	if path != "" && canonicalPath(path) != name {
+		return nil, fmt.Errorf("gogoreflect: descriptor %q declares %q", path, f.GetName())
 	}
+	f.Name = v2.String(name)
+	for i, dep := range f.Dependency {
+		f.Dependency[i] = canonicalPath(dep)
+	}
+	b, err = (v2.MarshalOptions{Deterministic: true}).Marshal(f)
+	if err != nil {
+		return nil, err
+	}
+
 	if previous, ok := u.raw[name]; ok {
 		if !bytes.Equal(previous, b) {
 			return nil, fmt.Errorf("gogoreflect: conflicting source descriptor %q", name)
