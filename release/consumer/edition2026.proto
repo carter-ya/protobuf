@@ -1,0 +1,15 @@
+edition = "2026";
+package releaseedition;
+option go_package = "example.com/release-consumer/pb";
+import option "google/protobuf/go_features.proto";
+import option "google/protobuf/json_enumvalue_options.proto";
+option features.enforce_naming_style = STYLE_LEGACY;
+option features.(pb.go).api_level = API_HYBRID;
+enum State {
+  ZERO = 0;
+  READY = 1 [(pb.enumvalue.json).string = "ready"];
+}
+message Event {
+  string name = 1;
+  State state = 2;
+}

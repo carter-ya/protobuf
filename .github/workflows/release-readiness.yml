@@ -1,0 +1,75 @@
+name: Remote release consumers
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      published:
+        description: Verify the proposed published version pair at the selected commit
+        required: false
+        type: boolean
+        default: false
+jobs:
+  remote-consumers:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - go: '1.15.15'
+            legacy: true
+          - go: '1.23.x'
+            legacy: false
+          - go: '1.27.x'
+            legacy: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check candidate contract and remote-source guards
+        run: |
+          python3 release/check.py
+          python3 release/test_contract.py
+          python3 release/test_remote.py
+          python3 release/test_plan.py
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Download remote modules and test external consumers in a cold cache
+        env:
+          RELEASE_REPOSITORY: github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          LEGACY_ONLY: ${{ matrix.legacy }}
+          PUBLISHED_INPUT: ${{ inputs.published }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -- "$RUNNER_TEMP/release-consumers" --revision "$(git rev-parse HEAD)" --repository "$RELEASE_REPOSITORY"
+          if [ "$LEGACY_ONLY" = true ]; then set -- "$@" --legacy-only; else set -- "$@" --probe-stable; fi
+          if [ "$PUBLISHED_INPUT" = true ]; then set -- "$@" --published; fi
+          case "$GITHUB_REF" in refs/tags/*) set -- "$@" --published;; esac
+          python3 release/remote.py "$@"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: release-consumers-${{ matrix.go }}
+          path: |
+            ${{ runner.temp }}/release-consumers/qualification.json
+            ${{ runner.temp }}/release-consumers/*.log
+            ${{ runner.temp }}/release-consumers/tools/go.mod
+            ${{ runner.temp }}/release-consumers/tools/go.sum
+            ${{ runner.temp }}/release-consumers/consumers/**/go.mod
+            ${{ runner.temp }}/release-consumers/consumers/**/go.sum
+            ${{ runner.temp }}/release-consumers/stable-reference/go.mod
+            ${{ runner.temp }}/release-consumers/stable-reference/go.sum
+          if-no-files-found: error

@@ -1,0 +1,14 @@
+syntax = "proto3";
+package releasehybrid;
+option go_package = "example.com/release-consumer/pb";
+message Record {
+  optional int32 count = 1;
+  optional string name = 2;
+  bytes data = 3;
+  repeated Record children = 4;
+  map<string, Record> nodes = 5;
+  oneof choice {
+    string text = 6;
+    Record child = 7;
+  }
+}

@@ -18,7 +18,8 @@ supported storage profile and public APIs must be stated explicitly. Both tags
 must identify the same reviewed commit from `baseline/v1.3.2`. Do not retag an
 existing version. Upstream v1.3.2 remains an immutable comparison baseline.
 
-See [installation](INSTALL.md) for actual remote-consumer commands and
+See [installation](INSTALL.md) for actual remote-consumer commands,
+[the cold-cache gate and publication plan](REMOTE.md), and
 [release notes](NOTES.md) for capabilities and migration boundaries.
 
 ## Official runtime decision
