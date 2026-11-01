@@ -1,0 +1,29 @@
+package consumer
+
+import (
+	pb "example.com/release-consumer/pb"
+	"github.com/gogo/protobuf/proto"
+	"testing"
+)
+
+func TestLegacyConsumer(t *testing.T) {
+	n := new(pb.Legacy)
+	input := []byte{8, 7, 18, 6, 'n', 'a', 't', 'i', 'v', 'e', 24, 1, 24, 2, 34, 6, 10, 1, 'x', 18, 1, 'y', 42, 3, 'o', 'l', 'd'}
+	if err := proto.Unmarshal(input, n); err != nil || n.GetCount() != 7 || n.GetName() != "native" || n.GetText() != "old" {
+		t.Fatal("legacy decode", err)
+	}
+	wire, err := proto.Marshal(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := new(pb.Legacy)
+	if err = proto.Unmarshal(wire, out); err != nil || !proto.Equal(n, out) {
+		t.Fatal("legacy roundtrip", err)
+	}
+	if !proto.Equal(n, proto.Clone(n)) {
+		t.Fatal("legacy clone")
+	}
+	if new(pb.Legacy).GetName() != "old" {
+		t.Fatal("default changed")
+	}
+}
