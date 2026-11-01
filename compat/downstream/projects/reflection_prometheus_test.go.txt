@@ -1,0 +1,22 @@
+package projects
+
+import (
+ "testing"
+ gogo "github.com/gogo/protobuf/proto"
+ live "github.com/gogo/protobuf/reflect"
+ "github.com/prometheus/prometheus/prompb"
+ v2 "google.golang.org/protobuf/proto"
+ "google.golang.org/protobuf/encoding/protojson"
+ "google.golang.org/protobuf/reflect/protoreflect"
+ "google.golang.org/protobuf/testing/prototest"
+)
+func TestLivePrometheusBindings(t *testing.T){
+ sample:=&prompb.Sample{Value:1.25,Timestamp:17}
+ n,err:=live.Wrap(sample);if err!=nil{t.Fatal(err)}
+ fd:=n.ProtoReflect().Descriptor().Fields().ByName("value");n.ProtoReflect().Set(fd,protoreflect.ValueOfFloat64(2.5));if sample.Value!=2.5{t.Fatal("not live")}
+ wire,err:=v2.Marshal(n);if err!=nil{t.Fatal(err)};target:=new(prompb.Sample);if err=gogo.Unmarshal(wire,target);err!=nil||!gogo.Equal(sample,target){t.Fatal("cross decode",err)}
+ json,err:=protojson.Marshal(n);if err!=nil{t.Fatal(err)};other:=new(prompb.Sample);view,err:=live.Wrap(other);if err!=nil{t.Fatal(err)};if err=protojson.Unmarshal(json,view);err!=nil||!gogo.Equal(sample,other){t.Fatal("JSON",err)}
+ n.ProtoReflect().SetUnknown([]byte{0xa0,6,1});if len(sample.XXX_unrecognized)!=3{t.Fatal("native unknown storage")}
+ prototest.Message{}.Test(t,n.ProtoReflect().Type())
+ label,err:=live.Wrap(new(prompb.Label));if err!=nil{t.Fatal(err)};prototest.Message{}.Test(t,label.ProtoReflect().Type())
+}

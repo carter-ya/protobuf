@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	_ "github.com/gogo/protobuf/gogoproto"
 	gogo "github.com/gogo/protobuf/proto"
 	v2 "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"

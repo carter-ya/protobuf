@@ -149,8 +149,10 @@
       "name": "api_level",
       "number": 2,
       "status": "gap",
-      "owner": "Go generated API",
+      "owner": "OPEN and HYBRID implemented; OPAQUE remains deferred",
       "evidence": [
+        "compat/hybrid/README.md",
+        "compat/check-hybrid.sh",
         "protoc-gen-gogo/generator/go_features.go"
       ],
       "values": {
@@ -207,10 +209,12 @@
     {
       "name": "production_v2_interoperability",
       "number": 0,
-      "status": "gap",
-      "owner": "optional modern integration API",
+      "status": "implemented",
+      "owner": "optional Go 1.23 live native profile; explicit storage boundaries",
       "evidence": [
-        "compat/modern/README.md"
+        "reflect/README.md",
+        "compat/check-live-reflect.sh",
+        "compat/check-hybrid.sh"
       ]
     }
   ]

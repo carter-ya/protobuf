@@ -89,3 +89,7 @@ Option-only dependency descriptors travel with the generated file as compressed
 metadata. `RegisterFileSet` validates duplicate registrations transactionally;
 it does not register V2 global types. Use `NewRegistry` explicitly for Any and
 Edition 2026 custom enum JSON metadata, including nested imported options.
+
+The qualified HYBRID form retains exported fields. The official `protoopaque`
+alternate build and OPAQUE layout are deferred together; this implementation
+does not provide an opaque alternate file for that build tag.

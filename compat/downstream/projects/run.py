@@ -131,6 +131,12 @@ def main():
                             for index, (before, after) in enumerate(zip(generated_outputs['original'], outputs)):
                                 run(label + '-compare-' + str(index), ['go', 'run', './compat/compare-generated', '--', before, after])
                         mod += 'replace ' + modules[0]['Path'] + ' => ' + str(source) + '\n'
+                    if runtime == 'fork':
+                        mod += 'require (\n github.com/gogo/protobuf/reflect v0.0.0\n google.golang.org/protobuf v1.36.13-0.20261007182434-0c373ff94f29\n)\n'
+                        mod += 'replace github.com/gogo/protobuf/reflect => ' + str(ROOT / 'reflect') + '\n'
+                        (consumer / 'reflection_test.go').write_text((HERE / 'reflection_test.go.txt').read_text())
+                        if name == 'prometheus':
+                            (consumer / 'reflection_prometheus_test.go').write_text((HERE / 'reflection_prometheus_test.go.txt').read_text())
                     (consumer / 'go.mod').write_text(mod)
                     shutil.copyfile(ROOT / 'go.sum', consumer / 'go.sum')
                     records = []

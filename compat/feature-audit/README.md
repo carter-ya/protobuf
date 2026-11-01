@@ -49,12 +49,17 @@ The [optimization strategies](../go-optimize/README.md) implement explicit
 SPEED/CODE_SIZE settings and nested overrides while retaining unselected backend
 defaults.
 
-* Non-OPEN `api_level` is diagnosed rather than implemented.
-  Their individual fields/values remain in the inventory as gaps. Core Editions
-  support is not equivalent to support for all official Go generator APIs.
-* The C02 V2 conversion experiment is not a production ProtoReflect adapter and
-  rejects documented lossy/unsupported cases. A production integration contract
-  remains separate from the old Go 1.15 runtime and public struct layouts.
+* OPEN remains the default. Optional [HYBRID](../hybrid/README.md) implements
+  setters, presence/clear/which methods and builders with scoped API overrides.
+  OPAQUE remains diagnosed and recorded as a gap; the audit still cannot claim
+  all Go API features are implemented.
+* The optional [live reflection module](../../reflect/README.md) implements
+  production V2 interoperability over the documented native storage profile.
+  Generated native ProtoReflect preserves actual Go type identity. Frozen
+  bindings can use Wrap when their storage qualifies. Custom/std mappings,
+  value message storage, absent unknown storage and MessageSet are explicitly
+  unsupported; historical downstream compatibility does not imply that every
+  frozen binding qualifies for live reflection.
 * Historical JSON/text entrypoints intentionally preserve legacy behavior;
   standard entrypoints are explicit. Unsupported gogo representations must be
   diagnosed or individually qualified, not silently included in a blanket claim.

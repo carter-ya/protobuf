@@ -304,6 +304,16 @@ jobs:
           for mode in SPEED CODE_SIZE; do
             BINARY_OPTIMIZE_MODE="$mode" BINARY_FUZZ_OUTPUT="$RUNNER_TEMP/conformance-report/binary-$mode" sh compat/check-binary-fuzz.sh
           done
+      - name: Compare native HYBRID all-types with official Go
+        env:
+          PROTOBUF_CONFORMANCE_SOURCE: ${{ runner.temp }}/conformance/protobuf-36.2
+          PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
+        run: |
+          python3 compat/native-conformance/test_gate.py
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go-native" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/native-conformance/prepare.py "$PROTOBUF_CONFORMANCE_SOURCE" "$RUNNER_TEMP/native-conformance/native"
+          python3 compat/native-conformance/prepare.py "$PROTOBUF_CONFORMANCE_SOURCE" "$RUNNER_TEMP/native-conformance/official" --official-generator "$RUNNER_TEMP/protoc-gen-go-native"
+          python3 compat/native-conformance/run.py "$PROTOBUF_CONFORMANCE_RUNNER" "$RUNNER_TEMP/native-conformance/native/testee" "$RUNNER_TEMP/conformance-report/native-hybrid" --official-testee "$RUNNER_TEMP/native-conformance/official/testee"
       - uses: actions/upload-artifact@v6
         if: always()
         with:
