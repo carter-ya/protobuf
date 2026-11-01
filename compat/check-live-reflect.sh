@@ -6,10 +6,11 @@ case "$(protoc --version)" in 'libprotoc 36.2') ;; *) echo 'Live reflection fixt
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 go build -o "$tmp/protoc-gen-gogo" ./protoc-gen-gogo
+go build -o "$tmp/compare-generated" ./compat/compare-generated
 for schema in reflect/internal/testpb/*.proto; do
   protoc -I . -I protobuf --plugin=protoc-gen-gogo="$tmp/protoc-gen-gogo" \
     --gogo_out=paths=source_relative,merge_required_fields=true,enforce_closed_enums=true:"$tmp" "$schema"
-  diff -u "${schema%.proto}.pb.go" "$tmp/${schema%.proto}.pb.go"
+  "$tmp/compare-generated" "${schema%.proto}.pb.go" "$tmp/${schema%.proto}.pb.go"
 done
 cd reflect
 go test ./...
