@@ -7,6 +7,14 @@ proto3 optional, Editions 2023–2026, standard JSON/text, gogo representations 
 remaining boundaries. Stable Protobuf 36.2 and the 37.0/Go 1.37 previews are
 qualified separately.
 
+The next maintenance release is being prepared as **v1.4.0-rc.1**, paired with
+**reflect/v0.1.0-rc.1**. These are proposed tags, not published releases.
+Use the [maintained-fork installation guide](release/INSTALL.md),
+[release notes](release/NOTES.md), and [release/dependency policy](release/README.md).
+Original import paths stay unchanged; a direct versioned `go install` using the
+fork's repository path is not supported. Native ProtoReflect/HYBRID is opt-in;
+its Go 1.23 module has a separately pinned official runtime dependency.
+
 The [original ownership discussion](https://github.com/gogo/protobuf/issues/691)
 and the upstream project documentation below are retained for historical context.
 
