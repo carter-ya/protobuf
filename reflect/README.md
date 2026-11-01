@@ -93,3 +93,20 @@ Edition 2026 custom enum JSON metadata, including nested imported options.
 The qualified HYBRID form retains exported fields. The official `protoopaque`
 alternate build and OPAQUE layout are deferred together; this implementation
 does not provide an opaque alternate file for that build tag.
+
+When consuming this maintained fork, replace both modules at the same qualified
+revision. The nested module's local `replace` directive is not inherited by
+applications. For a checkout beside your application:
+
+```go
+require github.com/gogo/protobuf/reflect v0.0.0
+replace github.com/gogo/protobuf => ../protobuf
+replace github.com/gogo/protobuf/reflect => ../protobuf/reflect
+```
+
+For remote builds, pin the corresponding root and `/reflect` replacements to
+the same reviewed commit in `github.com/carter-ya/protobuf`; do not invent a
+nested-module release tag. Generate with the same revision. The version-17
+compile guard detects an older root runtime. Custom generator wrappers that
+normalize descriptors should use `command.ReadWithSources` and
+`command.GenerateWithSources` so shared option metadata remains source-stable.
