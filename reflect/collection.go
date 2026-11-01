@@ -99,14 +99,19 @@ func (m *mapping) Get(k protoreflect.MapKey) protoreflect.Value {
 	return reflectValue(m.fd.MapValue(), v)
 }
 func (m *mapping) Set(k protoreflect.MapKey, v protoreflect.Value) {
-	x := convertScalar(m.fd.MapValue(), v, m.slot.typ.Elem())
-	s := m.slot.get()
-	if s.IsNil() {
+	if m.readonly {
 		panic("gogoreflect: mutation of read-only map")
 	}
-	s.SetMapIndex(m.key(k), x)
-	m.slot.set(s)
+	x := convertScalar(m.fd.MapValue(), v, m.slot.typ.Elem())
+	key := m.key(k)
+	storage := m.slot.get()
+	if storage.IsNil() {
+		storage = reflect.MakeMap(m.slot.typ)
+	}
+	storage.SetMapIndex(key, x)
+	m.slot.set(storage)
 }
+
 func (m *mapping) Mutable(k protoreflect.MapKey) protoreflect.Value {
 	if m.fd.MapValue().Message() == nil {
 		panic("gogoreflect: Mutable requires message values")

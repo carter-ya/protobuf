@@ -295,3 +295,25 @@ func TestSelectedNilMessageOneof(t *testing.T) {
 		t.Fatal("merge decode did not allocate selected payload")
 	}
 }
+
+func TestMutableMapAfterNativeClear(t *testing.T) {
+	native := new(pb.Node)
+	m := view(t, native)
+	key := protoreflect.ValueOfString("x").MapKey()
+	scores := m.Mutable(field(m, "scores")).Map()
+	native.Scores = nil
+	scores.Set(key, protoreflect.ValueOfInt32(7))
+	if native.Scores["x"] != 7 {
+		t.Fatal("mutable scalar map did not attach new storage")
+	}
+	nodes := m.Mutable(field(m, "nodes")).Map()
+	native.Nodes = nil
+	nodes.Mutable(key).Message().Set(field(m, "count"), protoreflect.ValueOfInt32(9))
+	if native.Nodes["x"] == nil || native.Nodes["x"].Count != 9 {
+		t.Fatal("mutable message map did not attach storage")
+	}
+	m.Clear(field(m, "scores"))
+	readonly := m.Get(field(m, "scores")).Map()
+	native.Scores = map[string]int32{"y": 3}
+	mustPanic(t, func() { readonly.Set(key, protoreflect.ValueOfInt32(1)) })
+}
