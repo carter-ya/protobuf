@@ -1,6 +1,56 @@
 name: Legacy compatibility
 on: [push, pull_request]
 jobs:
+  native-hybrid:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: reflect/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify native reflection and HYBRID across five generators
+        run: |
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/hybrid/prepare.py "$RUNNER_TEMP/native-hybrid" --official-generator "$RUNNER_TEMP/protoc-gen-go"
+          python3 compat/hybrid/mixed.py "$RUNNER_TEMP/native-hybrid-mixed"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: native-hybrid-${{ matrix.go }}
+          path: ${{ runner.temp }}/native-hybrid/qualification.json
+          if-no-files-found: error
+
+  live-reflection:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: reflect/go.sum
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Verify live reflection and official reflection contracts
+        run: sh compat/check-live-reflect.sh
+
   preview-qualification:
     runs-on: ubuntu-latest
     steps:
@@ -254,6 +304,16 @@ jobs:
           for mode in SPEED CODE_SIZE; do
             BINARY_OPTIMIZE_MODE="$mode" BINARY_FUZZ_OUTPUT="$RUNNER_TEMP/conformance-report/binary-$mode" sh compat/check-binary-fuzz.sh
           done
+      - name: Compare native HYBRID all-types with official Go
+        env:
+          PROTOBUF_CONFORMANCE_SOURCE: ${{ runner.temp }}/conformance/protobuf-36.2
+          PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
+        run: |
+          python3 compat/native-conformance/test_gate.py
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go-native" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/native-conformance/prepare.py "$PROTOBUF_CONFORMANCE_SOURCE" "$RUNNER_TEMP/native-conformance/native"
+          python3 compat/native-conformance/prepare.py "$PROTOBUF_CONFORMANCE_SOURCE" "$RUNNER_TEMP/native-conformance/official" --official-generator "$RUNNER_TEMP/protoc-gen-go-native"
+          python3 compat/native-conformance/run.py "$PROTOBUF_CONFORMANCE_RUNNER" "$RUNNER_TEMP/native-conformance/native/testee" "$RUNNER_TEMP/conformance-report/native-hybrid" --official-testee "$RUNNER_TEMP/native-conformance/official/testee"
       - uses: actions/upload-artifact@v6
         if: always()
         with:

@@ -1,0 +1,31 @@
+syntax = "proto3";
+package live;
+option go_package = "github.com/gogo/protobuf/reflect/internal/testpb";
+message Node {
+  int32 count = 1;
+  string name = 2;
+  bytes data = 3;
+  optional int32 present = 4;
+  Node child = 5;
+  repeated int32 values = 6;
+  repeated Node children = 7;
+  map<string, int32> scores = 8;
+  map<string, Node> nodes = 9;
+  oneof choice {
+    int32 number = 10;
+    Node selected = 11;
+    string title = 18;
+  }
+  optional string present_text = 19;
+  double ratio = 12;
+  float small = 13;
+  bool enabled = 14;
+  uint64 large = 15;
+  optional bytes present_data = 16;
+  oneof other_choice {
+    bytes blob = 17;
+  }
+}
+message Cold {
+  Node child = 1;
+}

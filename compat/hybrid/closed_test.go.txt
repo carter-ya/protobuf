@@ -1,0 +1,15 @@
+package consumer
+import (
+ "testing"
+ pb "example.com/native/pb"
+ live "github.com/gogo/protobuf/reflect"
+ v2 "google.golang.org/protobuf/proto"
+ "google.golang.org/protobuf/testing/prototest"
+)
+func TestNativeClosedAndExtensions(t *testing.T){
+ n:=new(pb.Closed);r,e:=live.NewRegistry(n);if e!=nil{t.Fatal(e)}
+ if e=v2.Unmarshal([]byte{8,99},n);e!=nil||n.Status!=nil||len(n.ProtoReflect().GetUnknown())==0{t.Fatal("closed enum",e,n)}
+ x,e:=r.FindExtensionByNumber("live.Closed",100);if e!=nil{t.Fatal(e)};v2.SetExtension(n,x,pb.Status(5));if e=(v2.UnmarshalOptions{Merge:true}).Unmarshal([]byte{0xa0,6,7},n);e!=nil||v2.GetExtension(n,x).(pb.Status)!=pb.Status(7){t.Fatal("extension merge",e)}
+ wire:=[]byte{0x32,0,0x32,2,8,7};if e=v2.Unmarshal(wire,n);e!=nil||n.Child.GetValue()!=7{t.Fatal("required fragments",e)}
+ prototest.Message{Resolver:r}.Test(t,n.ProtoReflect().Type());prototest.Message{}.Test(t,new(pb.GroupContainer).ProtoReflect().Type())
+}

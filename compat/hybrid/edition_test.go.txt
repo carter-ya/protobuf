@@ -1,0 +1,27 @@
+package consumer
+import (
+ "bytes"
+ "reflect"
+ "testing"
+ gogo "github.com/gogo/protobuf/proto"
+ live "github.com/gogo/protobuf/reflect"
+ pb "example.com/native/pb"
+ v2 "google.golang.org/protobuf/proto"
+ "google.golang.org/protobuf/encoding/protojson"
+ "google.golang.org/protobuf/testing/prototest"
+)
+func TestEditionNativeHybrid(t *testing.T){
+ n:=pb.Sample_builder{Count:gogo.Int32(0),Data:[]byte{},Number:gogo.Int32(0)}.Build()
+ if !n.HasCount()||!n.HasData()||!n.HasNumber()||n.WhichChoice()!=pb.Sample_Number_case{t.Fatal("builder presence")}
+ nativeChild:=new(pb.Child);nativeChild.SetName("");if !nativeChild.HasName(){t.Fatal("string setter lost presence")};nativeChild.SetName("child");
+ n.SetCount(7);n.SetState(pb.State(1));n.SetChild(&pb.Child{Name:gogo.String("child")});n.SetNodes(map[string]*pb.Child{"x":{Name:gogo.String("mapped")}})
+ if _,ok:=reflect.TypeOf(new(pb.Open)).MethodByName("ProtoReflect");ok{t.Fatal("OPEN override ignored")}
+ if _,ok:=reflect.TypeOf(new(pb.Outer_Nested)).MethodByName("ProtoReflect");!ok{t.Fatal("nested HYBRID override ignored")}
+ r,e:=live.NewRegistry(n,new(pb.Outer_Nested));if e!=nil{t.Fatal(e)}
+ data,e:=(protojson.MarshalOptions{Resolver:r}).Marshal(n);if e!=nil{t.Fatal(e)}
+ if EDITION==2026&&!bytes.Contains(data,[]byte("named-one")){t.Fatal("custom enum JSON metadata lost",string(data))}
+ target:=new(pb.Sample);if e=(protojson.UnmarshalOptions{Resolver:r}).Unmarshal(data,target);e!=nil||!v2.Equal(n,target){t.Fatal("JSON roundtrip",e,target)}
+ wire,e:=v2.Marshal(n);if e!=nil{t.Fatal(e)};old:=new(pb.Sample);if e=gogo.Unmarshal(wire,old);e!=nil||!gogo.Equal(n,old){t.Fatal("cross decode",e)}
+ if e=v2.Unmarshal([]byte{0x30,99},target);e!=nil||target.HasState()||len(target.ProtoReflect().GetUnknown())==0{t.Fatal("closed enum",e,target)}
+ prototest.Message{}.Test(t,n.ProtoReflect().Type());prototest.Message{}.Test(t,new(pb.Outer_Nested).ProtoReflect().Type())
+}

@@ -450,6 +450,10 @@ type Generator struct {
 
 	Pkg map[string]string // The names under which we import support packages
 
+	// ReflectionSources holds immutable descriptors captured before backend
+	// normalization. It affects supplemental metadata only, not legacy output.
+	ReflectionSources map[string]*descriptor.FileDescriptorProto
+
 	outputImportPath GoImportPath                   // Package we're generating code for.
 	allFiles         []*FileDescriptor              // All files in the tree
 	allFilesByName   map[string]*FileDescriptor     // All files by filename.
@@ -784,6 +788,14 @@ func (g *Generator) SetPackageNames() {
 // and FileDescriptorProtos into file-referenced objects within the Generator.
 // It also creates the list of files to generate and so should be called before GenerateAllFiles.
 func (g *Generator) WrapTypes() {
+	if err := PrepareReflectionRequest(g.Request); err != nil {
+		g.Fail(err.Error())
+	}
+	if g.Param["proto_reflect"] == "true" || g.Param["default_api_level"] == "API_HYBRID" {
+		g.Param["enforce_closed_enums"] = "true"
+		g.Param["merge_required_fields"] = "true"
+	}
+
 	g.allFiles = make([]*FileDescriptor, 0, len(g.Request.ProtoFile))
 	g.allFilesByName = make(map[string]*FileDescriptor, len(g.allFiles))
 	genFileNames := make(map[string]bool)
@@ -1234,6 +1246,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 	requiredMerge := g.validateRequiredMerging(file)
 	g.validateClosedEnumPolicy(file)
 	g.validateEnumNames(file)
+	g.validateReflection(file)
 	g.usedPackages = make(map[GoImportPath]bool)
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
@@ -1287,6 +1300,12 @@ func (g *Generator) generate(file *FileDescriptor) {
 				break
 			}
 		}
+		for _, m := range file.Messages() {
+			if g.ReflectMessage(m) {
+				codeVersion = 17
+				break
+			}
+		}
 		g.P("const _ = ", g.Pkg["proto"], ".GoGoProtoPackageIsVersion", codeVersion, " // please upgrade the proto package")
 	} else {
 		g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
@@ -1312,6 +1331,7 @@ func (g *Generator) generate(file *FileDescriptor) {
 	}
 	g.generateInitFunction()
 	g.generateFileDescriptor(file)
+	g.generateReflectionDependencies(file)
 
 	// Run the plugins before the imports so we know which imports are necessary.
 	g.runPlugins(file)
@@ -3151,6 +3171,8 @@ func (g *Generator) generateMessage(message *Descriptor) {
 	g.generateSetters(mc, topLevelFields)
 	g.P()
 	g.generateOneofFuncs(mc, topLevelFields)
+	g.P()
+	g.generateReflectionMethods(mc, topLevelFields)
 	g.P()
 
 	var oneofTypes []string

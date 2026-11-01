@@ -1,0 +1,25 @@
+syntax = "proto2";
+package live;
+option go_package = "github.com/gogo/protobuf/reflect/internal/testpb";
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+message BytesExtensions {
+  option (gogoproto.goproto_extensions_map) = false;
+  extensions 100 to max;
+}
+message NoUnknown {
+  option (gogoproto.goproto_unrecognized) = false;
+  optional int32 value = 1;
+}
+message Flattened {
+  optional Missing value = 1 [(gogoproto.nullable) = false];
+}
+message Missing {
+  optional int32 value = 1;
+}
+message StdMapping {
+  optional google.protobuf.Timestamp value = 1 [(gogoproto.stdtime) = true];
+}
+message CustomMapping {
+  optional bytes value = 1 [(gogoproto.customtype) = "time.Duration"];
+}

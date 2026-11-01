@@ -16,7 +16,7 @@ GOGO_EDITION_PROTOC="$(command -v protoc)" go test ./compat/editions/...
 # replacing the legacy standard-proto fixtures used by old projects.
 protoc -I . --plugin=protoc-gen-test="$tmp/gogo" --test_out=paths=source_relative:"$tmp" compat/editions/edition2024/sample.proto
 go run ./compat/compare-generated -- compat/editions/edition2024/sample.pb.go "$tmp/compat/editions/edition2024/sample.pb.go"
-for api in API_HYBRID API_OPAQUE; do
+for api in API_OPAQUE; do
  sed "s/API_OPEN/$api/" compat/editions/edition2024/sample.proto > "$tmp/unsupported.proto"
  if protoc -I "$tmp" -I . --plugin=protoc-gen-test="$tmp/gogo" --test_out="$tmp" unsupported.proto > "$tmp/error" 2>&1; then
   echo "unsupported $api accepted" >&2; exit 1

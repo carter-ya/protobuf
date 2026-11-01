@@ -115,6 +115,10 @@ def main():
             '--official-generator', output / 'protoc-gen-go', '--official-module', GO_RELEASE])
         run('official-enum-prefix', ['python3', ROOT / 'compat/go-enum-prefix/prepare.py', output / 'official-enum-prefix',
             '--official-generator', output / 'protoc-gen-go', '--official-module', GO_RELEASE])
+        run('native-hybrid', ['python3', ROOT / 'compat/hybrid/prepare.py', output / 'native-hybrid',
+            '--runtime-version', GO_RELEASE, '--official-generator', output / 'protoc-gen-go'])
+        run('native-hybrid-mixed', ['python3', ROOT / 'compat/hybrid/mixed.py', output / 'native-hybrid-mixed',
+            '--runtime-version', GO_RELEASE])
         report['schema_audit'] = json.loads((output / 'schema-audit.json').read_text())
         report['schema_audit']['raw_sha256'] = {name: hashlib.sha256((output / (name + '.pb')).read_bytes()).hexdigest() for name in ['stable', 'preview']}
         record()

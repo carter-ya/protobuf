@@ -1,0 +1,17 @@
+package projects
+
+import (
+ "strings"
+ "testing"
+ live "github.com/gogo/protobuf/reflect"
+)
+// Preserve the exact frozen/regenerated upstream representations. Their custom,
+// value-message or missing-unknown storage must fail qualification explicitly.
+func TestLiveReflectionRepresentationBoundary(t *testing.T) {
+ for _,n:=range samples(){
+  if _,err:=live.Wrap(n);err==nil{t.Fatalf("unexpected qualification for %T",n)}else{
+   text:=err.Error()
+   if !strings.Contains(text,"pointer message storage")&&!strings.Contains(text,"must retain unknown fields")&&!strings.Contains(text,"custom/std mapping"){t.Fatalf("unexpected representation diagnostic for %T: %v",n,err)}
+  }
+ }
+}

@@ -31,8 +31,8 @@ func validateGoFeatures(features *d.FeatureSet) error {
 	if err != nil {
 		return err
 	}
-	if f.ApiLevel != nil && *f.ApiLevel != 0 && *f.ApiLevel != 1 {
-		return fmt.Errorf("Go api_level %d is unsupported; gogo preserves the Open Struct API", *f.ApiLevel)
+	if f.ApiLevel != nil && *f.ApiLevel != 0 && *f.ApiLevel != 1 && *f.ApiLevel != 2 {
+		return fmt.Errorf("Go api_level %d is unsupported; supported levels are OPEN and HYBRID; OPAQUE is not implemented", *f.ApiLevel)
 	}
 	if f.StripEnumPrefix != nil && (*f.StripEnumPrefix < 0 || *f.StripEnumPrefix > 3) {
 		return fmt.Errorf("Go strip_enum_prefix %d is invalid", *f.StripEnumPrefix)

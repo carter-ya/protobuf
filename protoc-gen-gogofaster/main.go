@@ -34,7 +34,7 @@ import (
 )
 
 func main() {
-	req := command.Read()
+	req, sources := command.ReadWithSources()
 	files := req.GetProtoFile()
 	files = vanity.FilterFiles(files, vanity.NotGoogleProtobufDescriptorProto)
 
@@ -47,6 +47,6 @@ func main() {
 	vanity.ForEachFile(files, vanity.TurnOffGoUnkeyedAll)
 	vanity.ForEachFile(files, vanity.TurnOffGoSizecacheAll)
 
-	resp := command.Generate(req)
+	resp := command.GenerateWithSources(req, sources)
 	command.Write(resp)
 }

@@ -59,6 +59,13 @@ import (
 )
 
 func Read() *plugin.CodeGeneratorRequest {
+	req, _ := ReadWithSources()
+	return req
+}
+
+// ReadWithSources preserves option-dependency source metadata before backend
+// defaults mutate the request. Pass sources to GenerateWithSources.
+func ReadWithSources() (*plugin.CodeGeneratorRequest, map[string]*descriptor.FileDescriptorProto) {
 	g := generator.New()
 	data, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
@@ -72,8 +79,21 @@ func Read() *plugin.CodeGeneratorRequest {
 	if len(g.Request.FileToGenerate) == 0 {
 		g.Fail("no files to generate")
 	}
+	var sources map[string]*descriptor.FileDescriptorProto
+	for _, f := range g.Request.ProtoFile {
+		if len(f.OptionDependency) > 0 {
+			sources = make(map[string]*descriptor.FileDescriptorProto)
+			for _, original := range g.Request.ProtoFile {
+				sources[original.GetName()] = proto.Clone(original).(*descriptor.FileDescriptorProto)
+			}
+			break
+		}
+	}
+	if err := generator.PrepareReflectionRequest(g.Request); err != nil {
+		g.Error(err)
+	}
 	prepareClosedEnumPolicy(g.Request)
-	return g.Request
+	return g.Request, sources
 }
 
 // filenameSuffix replaces the .pb.go at the end of each filename.
@@ -123,11 +143,18 @@ func goformat(resp *plugin.CodeGeneratorResponse) error {
 }
 
 func Generate(req *plugin.CodeGeneratorRequest) *plugin.CodeGeneratorResponse {
+	return GenerateWithSources(req, nil)
+}
+
+// GenerateWithSources uses the immutable source metadata returned by
+// ReadWithSources for supplemental reflection descriptors.
+func GenerateWithSources(req *plugin.CodeGeneratorRequest, sources map[string]*descriptor.FileDescriptorProto) *plugin.CodeGeneratorResponse {
 	// Begin by allocating a generator. The request and response structures are stored there
 	// so we can do error handling easily - the response structure contains the field to
 	// report failure.
 	g := generator.New()
 	g.Request = req
+	g.ReflectionSources = sources
 
 	g.CommandLineParameters(g.Request.GetParameter())
 

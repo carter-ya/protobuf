@@ -77,3 +77,20 @@ errors 9. It includes eight real message fixtures, both runtime implementations,
 all three build variants and two regenerated projects. The maintained production
 source is PR #63 head ad6fa08b; compiler is 36.2 and Go is 1.27.0. Full remote CI
 remains required for each submitted PR head and future changes.
+
+## Live reflection boundaries
+
+Maintained-runtime consumers additionally test the optional live reflection
+module. Actual Prometheus Sample/Label storage qualifies and runs live writes,
+modern JSON/binary interoperability and official `prototest.Message` in each
+variant. The existing complex project fixtures retain their original Go
+representations: flattened/value messages, custom mappings and missing unknown
+storage are rejected explicitly rather than silently copied into dynamic types.
+The runtime supplies the gogo option descriptor itself, so Kubernetes packages
+that omit that Go import still reach the precise storage diagnostic.
+
+These checks are distinct from native HYBRID regeneration. Upstream schema
+options are not rewritten to make a migration appear transparent. The full
+68-check original/replacement matrix remains required, including frozen and
+regenerated consumers. New reflection tests run only against the maintained
+runtime; original controls retain their original dependency graph.
