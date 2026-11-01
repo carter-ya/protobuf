@@ -8,7 +8,8 @@ remaining boundaries. Stable Protobuf 36.2 and the 37.0/Go 1.37 previews are
 qualified separately.
 
 The next maintenance release is being prepared as **v1.4.0-rc.1**, paired with
-**reflect/v0.1.0-rc.1**. These are proposed tags, not published releases.
+**reflect/v0.1.0-rc.1**. Preparation of these proposed tags does not publish releases; check remote tags
+and Releases for current publication status.
 Use the [maintained-fork installation guide](release/INSTALL.md),
 [release notes](release/NOTES.md), and [release/dependency policy](release/README.md).
 Original import paths stay unchanged; a direct versioned `go install` using the

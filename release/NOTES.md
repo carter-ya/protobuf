@@ -1,6 +1,7 @@
 # Proposed v1.4.0-rc.1 and reflect/v0.1.0-rc.1
 
-Status: preparation only; tags and GitHub Releases have not been published.
+This document is a prepared RC announcement. This preparation does not publish
+tags or GitHub Releases; consult remote tags and Releases for publication status.
 Both components must come from the same qualified commit. The root module keeps
 `github.com/gogo/protobuf`; the optional module keeps its `/reflect` suffix.
 Use the fork replacements in [INSTALL.md](INSTALL.md).

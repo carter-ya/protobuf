@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "state": "candidate-unpublished",
+  "state": "release-candidate",
   "repository": "github.com/carter-ya/protobuf",
   "trunk": "baseline/v1.3.2",
   "root": {
@@ -29,5 +29,6 @@
       "kind": "edition-2026-runtime-support",
       "diagnostic": "edition EDITION_2026 not yet supported by the Go Protobuf runtime"
     }
-  }
+  },
+  "publication": "manual"
 }

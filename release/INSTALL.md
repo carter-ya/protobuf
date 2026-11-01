@@ -65,7 +65,7 @@ confirm both selected fork versions and their downloaded module directories.
 ## After publication
 
 Proposed pairing: root `v1.4.0-rc.1`, submodule tag `reflect/v0.1.0-rc.1` (its
-Go version string is `v0.1.0-rc.1`, without the tag prefix). Neither exists yet.
+Go version string is `v0.1.0-rc.1`, without the tag prefix). Their existence must be verified remotely; preparing these names does not publish them.
 After both tags are published at the same reviewed commit, replace the two
 commit queries with their respective version strings. A tag URL is not proof
 that both module zips can be fetched: run the published-version consumer gate

@@ -115,7 +115,7 @@ normalize descriptors should use `command.ReadWithSources` and
 ## Release pairing
 
 The proposed initial module release is `reflect/v0.1.0-rc.1`, paired with root
-`v1.4.0-rc.1` at the exact same commit. Neither tag is published by this change.
+`v1.4.0-rc.1` at the exact same commit. This preparation does not publish either tag.
 The minimum root requirement is explicit in go.mod; an application must replace
 both canonical module paths with their corresponding remote fork versions.
 The local replace is for repository development and is ignored by dependent

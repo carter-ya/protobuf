@@ -1,9 +1,11 @@
 # Maintenance release contract
 
-The candidate is **not published**. `manifest.json` is the machine-readable
+This change prepares a candidate; it does not publish it. `manifest.json` is the machine-readable
 source of truth for proposed versions, minimum toolchains, compiler and the
 optional official-runtime pin. Preparing this contract does not create tags,
-GitHub Releases or artifacts.
+GitHub Releases or artifacts. The manifest records the RC channel and manual
+publication policy; actual publication status is established by remote tags and
+GitHub Releases, not a permanently embedded unpublished flag.
 
 | Component | Import/module path | Proposed tag | Minimum Go |
 | --- | --- | --- | --- |

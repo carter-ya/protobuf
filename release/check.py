@@ -22,7 +22,7 @@ def require_version(text, module):
 
 
 def validate(manifest, root_mod, reflect_mod, sums):
-    if manifest['schema'] != 1 or manifest['state'] != 'candidate-unpublished':
+    if manifest['schema'] != 1 or manifest['state'] != 'release-candidate' or manifest['publication'] != 'manual':
         raise ValueError('unknown release contract state')
     root, modern, runtime = (manifest[k] for k in ['root', 'reflect', 'official_runtime'])
     if root['module'] != 'github.com/gogo/protobuf' or modern['module'] != root['module'] + '/reflect':
