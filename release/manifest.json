@@ -24,6 +24,10 @@
     "sum": "h1:Db62vhun1XhVGqirFuk8Le0HVcu3X6yQneFbrNE06Ig=",
     "go_mod_sum": "h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=",
     "stable_reference": "v1.36.12",
-    "policy": "pinned-development-runtime-for-rc"
+    "policy": "pinned-development-runtime-for-rc",
+    "stable_reference_gap": {
+      "kind": "edition-2026-runtime-support",
+      "diagnostic": "edition EDITION_2026 not yet supported by the Go Protobuf runtime"
+    }
   }
 }

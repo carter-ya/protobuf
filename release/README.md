@@ -27,7 +27,10 @@ Its module and go.mod checksums are pinned in `manifest.json` and reflect/go.sum
 The root runtime/generators do not gain this dependency or a newer Go requirement.
 
 The checked stable reference is v1.36.12; stable protoc is 36.2. The development
-revision is required for the qualified Edition 2026 custom enum JSON metadata.
+revision is required for the qualified Edition 2026 descriptor and custom enum
+JSON metadata. The cold-cache stable control using v1.36.12 returns
+`edition EDITION_2026 not yet supported by the Go Protobuf runtime` before
+JSON decoding; this exact capability gap is recorded in the manifest.
 Replacing it with the lower stable reference must not silently remove that
 implemented feature. The release remote-consumer gate exercises that metadata,
 not just message compilation. Go 1.37-rc previews remain separate qualification

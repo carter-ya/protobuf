@@ -23,7 +23,8 @@ class ReleaseContract(unittest.TestCase):
                  ('reflect', 'minimum_root', 'v1.3.2'),
                  ('official_runtime', 'version', 'v1.36.12'),
                  ('official_runtime', 'sum', 'h1:wrong'),
-                 ('official_runtime', 'commit_prefix', '0123456789ab')]
+                 ('official_runtime', 'commit_prefix', '0123456789ab'),
+                 ('official_runtime', 'stable_reference_gap', {'kind': 'any-failure', 'diagnostic': 'FAIL'})]
         for section, field, value in cases:
             bad = copy.deepcopy(self.manifest)
             bad[section][field] = value

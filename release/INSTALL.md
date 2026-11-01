@@ -17,7 +17,7 @@ go mod init example.com/protobuf-tools
 go mod edit -require=github.com/gogo/protobuf@v1.3.2
 go mod edit -replace=github.com/gogo/protobuf=github.com/carter-ya/protobuf@5fe34bcbecd8b90338da596c7161cc7fd5e863eb
 go mod download github.com/gogo/protobuf
-go install github.com/gogo/protobuf/protoc-gen-gogo github.com/gogo/protobuf/protoc-gen-gogofast github.com/gogo/protobuf/protoc-gen-gogofaster github.com/gogo/protobuf/protoc-gen-gogoslick github.com/gogo/protobuf/protoc-gen-gogotypes
+go install -mod=mod github.com/gogo/protobuf/protoc-gen-gogo github.com/gogo/protobuf/protoc-gen-gogofast github.com/gogo/protobuf/protoc-gen-gogofaster github.com/gogo/protobuf/protoc-gen-gogoslick github.com/gogo/protobuf/protoc-gen-gogotypes
 ```
 
 Choose `GOBIN` to keep these tools isolated, and use that directory explicitly

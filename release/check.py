@@ -41,6 +41,8 @@ def validate(manifest, root_mod, reflect_mod, sums):
         raise ValueError('submodule tag/version pairing changed')
     if modern['minimum_root'] != root['version'] or require_version(reflect_mod, root['module']) != root['version']:
         raise ValueError('minimum root must match paired candidate')
+    if runtime['stable_reference_gap'] != {'kind': 'edition-2026-runtime-support', 'diagnostic': 'edition EDITION_2026 not yet supported by the Go Protobuf runtime'}:
+        raise ValueError('stable reference capability gap needs explicit review')
     if runtime['policy'] != 'pinned-development-runtime-for-rc':
         raise ValueError('runtime policy needs explicit review')
     if require_version(reflect_mod, runtime['module']) != runtime['version']:
