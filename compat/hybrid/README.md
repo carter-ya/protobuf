@@ -21,3 +21,10 @@ Unselected output remains in the historical compatibility and real-project
 gates. Selection normalizes convenience-generator defaults to the qualified
 native storage profile; explicitly incompatible mappings produce diagnostics.
 OPAQUE is outside this implementation.
+
+`mixed.py` imports gogo and gogofaster HYBRID packages sharing option-only
+metadata in one process, under the race detector. CLI entrypoints preserve
+source descriptors through `command.ReadWithSources` / `GenerateWithSources`
+before backend defaults are injected, so equivalent option dependencies cannot
+conflict at initialization. The live module also races local resolver lookups
+against cold discovery of further option extensions.

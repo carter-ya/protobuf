@@ -3,6 +3,7 @@ package gogoreflect
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"testing"
 
 	_ "github.com/gogo/protobuf/gogoproto"
@@ -41,4 +42,38 @@ func TestHistoricalDescriptorAliasCoexistence(t *testing.T) {
 	if a.Imports().Get(0).Path() != "gogoproto/gogo.proto" {
 		t.Fatal("unexpected canonical dependency", a.Imports().Get(0).Path())
 	}
+}
+
+// Native package registration has finished, but another type may still discover
+// option extensions on its first reflection. Local registries must remain safe.
+func TestColdMetadataResolverRace(t *testing.T) {
+	r := new(Registry)
+	done := make(chan struct{})
+	reader := make(chan struct{})
+	go func() {
+		defer close(reader)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+			r.FindExtensionByName("coldmetadata.option_0")
+			r.FindExtensionByNumber("google.protobuf.FileOptions", 80000)
+		}
+	}()
+	for i := 0; i < 40; i++ {
+		file := &descriptorpb.FileDescriptorProto{Name: v2.String(fmt.Sprintf("coldmetadata_%d.proto", i)), Package: v2.String("coldmetadata"), Syntax: v2.String("proto2"), Dependency: []string{"google/protobuf/descriptor.proto"}, Extension: []*descriptorpb.FieldDescriptorProto{{Name: v2.String(fmt.Sprintf("option_%d", i)), Number: v2.Int32(int32(80000 + i)), Extendee: v2.String(".google.protobuf.FileOptions"), Type: descriptorpb.FieldDescriptorProto_TYPE_INT32.Enum(), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum()}}}
+		raw := compressedFile(t, file)
+		schemas.Lock()
+		_, err := schemas.load(raw, "", make(map[string]bool))
+		schemas.Unlock()
+		if err != nil {
+			close(done)
+			<-reader
+			t.Fatal(err)
+		}
+	}
+	close(done)
+	<-reader
 }

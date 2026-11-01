@@ -29,7 +29,10 @@ func (g *Generator) generateReflectionDependencies(file *FileDescriptor) {
 		if f == nil {
 			g.Fail("missing reflection option dependency ", name)
 		}
-		raw := f.original
+		raw := g.ReflectionSources[name]
+		if raw == nil {
+			raw = f.original
+		}
 		if raw == nil {
 			raw = f.FileDescriptorProto
 		}

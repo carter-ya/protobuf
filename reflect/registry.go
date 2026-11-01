@@ -91,6 +91,8 @@ func (r *Registry) FindExtensionByNumber(name protoreflect.FullName, n protorefl
 	m := r.types[name]
 	if m == nil {
 		if descriptorOption(name) {
+			schemas.Lock()
+			defer schemas.Unlock()
 			return schemas.types.FindExtensionByNumber(name, n)
 		}
 		return nil, protoregistry.NotFound
@@ -109,6 +111,8 @@ func (r *Registry) FindExtensionByName(name protoreflect.FullName) (protoreflect
 			}
 		}
 	}
+	schemas.Lock()
+	defer schemas.Unlock()
 	if x, err := schemas.types.FindExtensionByName(name); err == nil && descriptorOption(x.TypeDescriptor().ContainingMessage().FullName()) {
 		return x, nil
 	}

@@ -450,6 +450,10 @@ type Generator struct {
 
 	Pkg map[string]string // The names under which we import support packages
 
+	// ReflectionSources holds immutable descriptors captured before backend
+	// normalization. It affects supplemental metadata only, not legacy output.
+	ReflectionSources map[string]*descriptor.FileDescriptorProto
+
 	outputImportPath GoImportPath                   // Package we're generating code for.
 	allFiles         []*FileDescriptor              // All files in the tree
 	allFilesByName   map[string]*FileDescriptor     // All files by filename.

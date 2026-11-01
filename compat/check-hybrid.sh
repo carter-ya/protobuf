@@ -5,3 +5,4 @@ cd "$repo"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 python3 compat/hybrid/prepare.py "$tmp/consumers" "$@"
+python3 compat/hybrid/mixed.py "$tmp/mixed"
