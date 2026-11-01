@@ -110,3 +110,18 @@ nested-module release tag. Generate with the same revision. The version-17
 compile guard detects an older root runtime. Custom generator wrappers that
 normalize descriptors should use `command.ReadWithSources` and
 `command.GenerateWithSources` so shared option metadata remains source-stable.
+
+
+## Release pairing
+
+The proposed initial module release is `reflect/v0.1.0-rc.1`, paired with root
+`v1.4.0-rc.1` at the exact same commit. This preparation does not publish either tag.
+The minimum root requirement is explicit in go.mod; an application must replace
+both canonical module paths with their corresponding remote fork versions.
+The local replace is for repository development and is ignored by dependent
+applications. Follow [the remote installation guide](../release/INSTALL.md).
+
+This RC retains the exact development runtime revision in go.mod for Edition
+2026 option/JSON semantics. The parent runtime has no V2 dependency. See the
+[dependency decision and promotion gates](../release/README.md#official-runtime-decision)
+before upgrading or attempting a downgrade to the stable reference.

@@ -20,7 +20,7 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Production backends | gogo, gogofast, gogofaster, gogoslick, gogotypes | Optional, Editions, auxiliary and binary differential matrices |
 | Legacy closed enums | Explicit `enforce_closed_enums=true`; definition-scoped imports, unknown retention and extensions | [Five-backend matrix and migration contract](legacy-enums/README.md) |
 | Proto3 optional | Scalar/enum/message/bytes presence, synthetic oneofs, supported cast/custom/std rows | [Representation contract](optional/README.md) and five-backend default/purego tests |
-| Editions | 2023, 2024 and 2026; gogo Open Struct API | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
+| Editions | 2023, 2024 and 2026; default OPEN and opt-in HYBRID profile | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
 | Core Editions semantics | Presence, LEGACY_REQUIRED, UTF8 VERIFY/NONE, packed/expanded, open/closed enums, maps, oneofs, DELIMITED, extensions and option retention | `check-editions.sh`, `check-editions-fast.sh`, required-boundary and binary checks |
 | Go optimization | Explicit SPEED/CODE_SIZE, inherited/nested overrides and mixed graphs; retained backend defaults | [Five-backend strategy contract](go-optimize/README.md) |
 | Go enum prefixes | KEEP/STRIP/GENERATE_BOTH, inherited and per-entry settings; imported defaults and aliases | [Five-backend naming/interop matrix](go-enum-prefix/README.md) |
@@ -28,14 +28,17 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Edition 2026 JSON | Custom enum names, aliases and empty strings | Pinned 36.2 descriptors, independent Go development oracle and Go 1.37 preview oracle |
 | Native message extensions | Original occurrence boundaries, singular merges, required completeness after outer merges, decoded caches, map and byte storage | Runtime/direct-codec regressions; all five binary backends, both storage forms |
 | Standard JSON/text | Explicit `jsonpb/standard` and `textpb/standard` entrypoints | Complete pinned 36.2 standard conformance profile and differential fuzz |
-| Modern Go interoperability | Explicit detached Snapshot/Apply experiment, local Any/extensions and frozen downstreams | [C02 scope and restrictions](modern/README.md); no production ProtoReflect |
+| Native modern Go interoperability | Optional Go 1.23 live native ProtoReflect; native type identity, required/closed enum/group/map-backed extension profile | [Runtime contract](../reflect/README.md), `check-live-reflect.sh` and official prototest |
+| HYBRID | Opt-in setters, Has/Clear/Which, builders and file/message/nested API overrides | [Five-backend native consumer and official API matrix](hybrid/README.md) |
+| Detached modern conversion | Historical explicit Snapshot/Apply experiment | [C02 scope and restrictions](modern/README.md); separate from the live module |
 | Preview | protoc 37.0-rc1 and official Go v1.37.0-rc.1 | [Separate preview qualification](preview/README.md), isolated Go 1.26+ consumers |
 
 Go 1.15 refers to this project's runtime and generated consumers. The stable
 JSON/text differential module uses Go 1.23+ and official Go v1.36.12. The existing
 2026/C02 oracle pins development commit `0c373ff94f29`; the newer official Go
-preview requires Go 1.26. None of those official runtimes becomes a dependency
-of the production gogo module. Historical compiler/toolchain combinations absent
+preview requires Go 1.26. None becomes a dependency of the legacy root module. The optional live
+reflection module pins its official runtime explicitly; see the
+[RC dependency decision](../release/README.md#official-runtime-decision). Historical compiler/toolchain combinations absent
 from the current matrix are not qualified by the retained old workflow file.
 
 The stable protocol reference is [Protobuf 36.2](https://github.com/protocolbuffers/protobuf/releases/tag/v36.2).
@@ -90,7 +93,9 @@ recursion limit with default 10,000. Binary differential inputs are bounded at
 ## Migrating an existing project
 
 First consume this fork's runtime while retaining existing imports and frozen
-bindings. For a local checkout, use a consumer replacement:
+bindings. Use the [remote tools/application installation guide](../release/INSTALL.md)
+for versioned fork consumption and paired modules. For local development only,
+a checkout replacement is also supported:
 
 ```sh
 go mod edit -replace=github.com/gogo/protobuf=/absolute/path/to/protobuf
@@ -129,6 +134,7 @@ module release versions; keep the generated guard and use the matching runtime.
 | Version14 | Required initialization after final logical-message merging |
 | Version15 | Explicit legacy closed-enum policy and late extension registration |
 | Version16 | Explicit optimization strategies and compact table wrappers |
+| Version17 | Native modern reflection and extension snapshot/materialization helpers |
 
 Version13 also applies to a newly generated enclosing Editions file that reaches
 extensible children but declares no ranges itself. Its fast decoder uses the
@@ -173,11 +179,20 @@ previous Editions output; frozen bindings and legacy proto2/proto3 methods retai
 their original behavior. Local `gofeatures` metadata avoids a V2 dependency for
 ordinary feature imports in Edition 2023.
 
-Explicit Go HYBRID/OPAQUE API requests and unsupported Go
-features produce diagnostics. This backend preserves its Open Struct API. The
-C02 conversion experiment rejects MessageSet, unknown closed-enum reflection
-mismatches, lossy mappings and incomplete descriptor metadata; it is not a
-released transparent V2 adapter. Unknown or future Editions are rejected.
+OPEN remains the default. Native ProtoReflect (`proto_reflect=true`) and HYBRID
+(`default_api_level=API_HYBRID` or scoped Editions settings) are explicit opt-ins.
+The live profile requires unknown storage, independent presence and supported
+native pointer/message layouts; incompatible custom/std/embedded mappings,
+flattened messages, byte-backed extensions and MessageSet are diagnosed. Selected
+convenience backends default to qualified pointer/unknown storage, so review
+regenerated field types. OPAQUE and the `protoopaque` alternate build remain
+unsupported. Unknown or future Editions are rejected.
+
+The separate native proto3 all-types differential exercises 1,930 cases against
+the pinned official Go control. It has zero additional native failures/skips,
+with eleven shared official codec differences recorded individually. It does
+not replace the standard/legacy conformance profiles above or qualify proto2
+MessageSet. See [native conformance](native-conformance/README.md).
 
 The [performance baseline](bench/BASELINE.md) retains all five backends, actual
 wire/code sizes and raw measurements. The [map metadata follow-up](bench/MAP-CACHE.md)
