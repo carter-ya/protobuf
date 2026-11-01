@@ -63,3 +63,36 @@ func ReplaceUnregisteredExtensions(pb Message, fields map[int32][]byte) error {
 	}
 	return nil
 }
+
+// MaterializeExtensionWire converts an already decoded map-backed extension to
+// its current wire representation before an opt-in decoder merges another
+// occurrence. It does not alter default legacy decoding behavior. Callers must
+// synchronize writes and use the registered native descriptor.
+func MaterializeExtensionWire(pb Message, desc *ExtensionDesc) error {
+	if _, ok := pb.(extensionsBytes); ok {
+		return fmt.Errorf("proto: reflection requires map-backed extensions")
+	}
+	epb, err := extendable(pb)
+	if err != nil {
+		return err
+	}
+	if err = checkExtensionTypes(epb, desc); err != nil {
+		return err
+	}
+	fields, mu := epb.extensionsRead()
+	if fields == nil {
+		return nil
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	e, ok := fields[desc.Field]
+	if !ok || e.value == nil {
+		return nil
+	}
+	e.enc = nil
+	if err = e.Encode(); err != nil {
+		return err
+	}
+	fields[desc.Field] = Extension{enc: append([]byte(nil), e.enc...)}
+	return nil
+}

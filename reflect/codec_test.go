@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -404,4 +405,67 @@ func mustRegistry(t *testing.T, n gogo.Message) *live.Registry {
 		t.Fatal(e)
 	}
 	return r
+}
+
+func TestNestedExtensionResolvers(t *testing.T) {
+	for _, explicit := range []bool{false, true} {
+		t.Run(fmt.Sprint(explicit), func(t *testing.T) {
+			n := new(pb.Envelope)
+			wrapped, e := live.Wrap(n)
+			if e != nil {
+				t.Fatal(e)
+			}
+			opts := v2.UnmarshalOptions{}
+			if explicit {
+				r, e := live.NewRegistry(n)
+				if e != nil {
+					t.Fatal(e)
+				}
+				opts.Resolver = r
+			}
+			entry := append(delimited(1, []byte("x")), delimited(2, varint(104, 11))...)
+			wire := append(append(delimited(1, varint(104, 7)), delimited(2, varint(104, 9))...), delimited(3, entry)...)
+			if e = opts.Unmarshal(wire, wrapped); e != nil {
+				t.Fatal(e)
+			}
+			for i, m := range []*pb.Closed{n.Child, n.Children[0], n.Nodes["x"]} {
+				got, e := gogo.GetExtension(m, pb.E_ScalarExt)
+				if e != nil || *got.(*int32) != int32(7+2*i) {
+					t.Fatal("nested extension", i, e, got)
+				}
+			}
+		})
+	}
+}
+func TestMergeDecodedClosedExtensions(t *testing.T) {
+	n := new(pb.Closed)
+	m := closedView(t, n)
+	r := mustRegistry(t, n)
+	status := mustExtension(t, r, 100)
+	list := mustExtension(t, r, 101)
+	v2.SetExtension(m.Interface(), status, pb.Status_GOOD)
+	if e := (v2.UnmarshalOptions{Merge: true}).Unmarshal(varint(100, 7), m.Interface()); e != nil {
+		t.Fatal(e)
+	}
+	if v := v2.GetExtension(m.Interface(), status).(pb.Status); v != pb.Status_BAD {
+		t.Fatal("decoded singular update lost", v)
+	}
+	v2.SetExtension(m.Interface(), list, []pb.Status{pb.Status_GOOD})
+	if e := (v2.UnmarshalOptions{Merge: true}).Unmarshal(delimited(101, []byte{7}), m.Interface()); e != nil {
+		t.Fatal(e)
+	}
+	got := v2.GetExtension(m.Interface(), list).([]pb.Status)
+	if len(got) != 2 || got[0] != 5 || got[1] != 7 {
+		t.Fatal("decoded repeated update lost", got)
+	}
+	// Materialized-by-read storage must also see subsequent valid/unknown values.
+	if e := (v2.UnmarshalOptions{Merge: true}).Unmarshal(append(varint(100, 5), varint(100, 99)...), m.Interface()); e != nil {
+		t.Fatal(e)
+	}
+	if v := v2.GetExtension(m.Interface(), status).(pb.Status); v != pb.Status_GOOD {
+		t.Fatal("last valid enum lost", v)
+	}
+	if !bytes.Equal(m.GetUnknown(), varint(100, 99)) {
+		t.Fatal("unknown closed extension lost", m.GetUnknown())
+	}
 }

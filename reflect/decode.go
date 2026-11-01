@@ -25,7 +25,15 @@ var nativeMethods = protoiface.Methods{
 			return out, fmt.Errorf("gogoreflect: recursion limit exceeded")
 		}
 		m := in.Message.(*message)
-		resolver := nativeResolver{provided: in.Resolver, owner: m}
+		provided := in.Resolver
+		for {
+			parent, ok := provided.(nativeResolver)
+			if !ok {
+				break
+			}
+			provided = parent.provided
+		}
+		resolver := nativeResolver{provided: provided, owner: m}
 		options := v2.UnmarshalOptions{Merge: true, AllowPartial: true, DiscardUnknown: in.Flags&protoiface.UnmarshalDiscardUnknown != 0, Resolver: resolver, RecursionLimit: in.Depth}
 		slow := slowView{m}
 		for buf := in.Buf; len(buf) > 0; {
@@ -55,6 +63,12 @@ var nativeMethods = protoiface.Methods{
 				var previous []byte
 				if options.DiscardUnknown {
 					previous = append([]byte(nil), m.GetUnknown()...)
+				}
+				if fd.IsExtension() {
+					x := m.extension(fd)
+					if err := gogo.MaterializeExtensionWire(m.native(), x.native); err != nil {
+						return out, err
+					}
 				}
 				err := gogo.UnmarshalMerge(raw, m.native())
 				var required *gogo.RequiredNotSetError
