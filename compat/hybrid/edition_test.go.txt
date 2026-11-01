@@ -13,6 +13,7 @@ import (
 func TestEditionNativeHybrid(t *testing.T){
  n:=pb.Sample_builder{Count:gogo.Int32(0),Data:[]byte{},Number:gogo.Int32(0)}.Build()
  if !n.HasCount()||!n.HasData()||!n.HasNumber()||n.WhichChoice()!=pb.Sample_Number_case{t.Fatal("builder presence")}
+ nativeChild:=new(pb.Child);nativeChild.SetName("");if !nativeChild.HasName(){t.Fatal("string setter lost presence")};nativeChild.SetName("child");
  n.SetCount(7);n.SetState(pb.State(1));n.SetChild(&pb.Child{Name:gogo.String("child")});n.SetNodes(map[string]*pb.Child{"x":{Name:gogo.String("mapped")}})
  if _,ok:=reflect.TypeOf(new(pb.Open)).MethodByName("ProtoReflect");ok{t.Fatal("OPEN override ignored")}
  if _,ok:=reflect.TypeOf(new(pb.Outer_Nested)).MethodByName("ProtoReflect");!ok{t.Fatal("nested HYBRID override ignored")}

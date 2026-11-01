@@ -14,7 +14,9 @@ message Node {
   oneof choice {
     int32 number = 10;
     Node selected = 11;
+    string title = 18;
   }
+  optional string present_text = 19;
   double ratio = 12;
   float small = 13;
   bool enabled = 14;

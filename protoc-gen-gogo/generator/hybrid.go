@@ -43,7 +43,7 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 		case *simpleField:
 			claim("Set" + f.goName)
 			t := f.goType
-			pointer := strings.HasPrefix(t, "*") && f.protoField.IsScalar()
+			pointer := strings.HasPrefix(t, "*") && !f.protoField.IsMessage() && !g.IsGroup(f.protoField)
 			if pointer {
 				t = t[1:]
 			}
@@ -107,7 +107,7 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 		case *oneofField:
 			for _, s := range f.subFields {
 				typ := s.goType
-				if s.protoField.IsScalar() && !s.protoField.IsBytes() {
+				if !s.protoField.IsMessage() && !g.IsGroup(s.protoField) && !s.protoField.IsBytes() {
 					typ = "*" + typ
 				}
 				g.P(s.goName, " ", typ)
@@ -123,7 +123,7 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 		case *oneofField:
 			for _, s := range f.subFields {
 				value := "b." + s.goName
-				if s.protoField.IsScalar() && !s.protoField.IsBytes() {
+				if !s.protoField.IsMessage() && !g.IsGroup(s.protoField) && !s.protoField.IsBytes() {
 					value = "*" + value
 				}
 				g.P("if b.", s.goName, " != nil { m.", f.goName, " = &", s.oneofTypeName, "{", s.goName, ":", value, "} }")
