@@ -60,6 +60,16 @@ func (g *Generator) OptimizeMode(message *Descriptor) int32 {
 // When an unselected dependency has no fast methods, use tables for that parent
 // instead of generating references to non-existent dependency methods.
 func (g *Generator) UseTableCodec(message *Descriptor) bool {
+	// Legacy fast plugins do not emit group codecs. The explicit modern profile
+	// can retain the native representation using its qualified table wrappers.
+	if g.ReflectMessage(message) {
+		for _, f := range message.Field {
+			if f.GetType() == d.FieldDescriptorProto_TYPE_GROUP {
+				return true
+			}
+		}
+	}
+
 	mode := g.OptimizeMode(message)
 	if mode == 0 {
 		return false

@@ -27,17 +27,34 @@ func Wrap(m gogo.Message) (protoreflect.ProtoMessage, error) {
 	if err := qualify(info, make(map[reflect.Type]bool)); err != nil {
 		return nil, err
 	}
+	if modern, ok := m.(protoreflect.ProtoMessage); ok {
+		if _, own := m.(interface{ XXX_GogoReflect() }); !own {
+			return nil, fmt.Errorf("gogoreflect: unrelated ProtoReflect implementation")
+		}
+		return modern, nil
+	}
 	return &message{info: info, value: reflect.ValueOf(m)}, nil
 }
 
 // MessageOf is the generated ProtoReflect entrypoint. Unsupported manually
 // supplied representations panic; use Wrap when a fallible API is needed.
 func MessageOf(m gogo.Message) protoreflect.Message {
-	p, err := Wrap(m)
+	if m == nil {
+		panic("gogoreflect: nil interface")
+	}
+	info, err := model(reflect.TypeOf(m))
 	if err != nil {
 		panic(err)
 	}
-	return p.ProtoReflect()
+	if err := qualify(info, make(map[reflect.Type]bool)); err != nil {
+		panic(err)
+	}
+	if _, modern := m.(protoreflect.ProtoMessage); modern {
+		if _, own := m.(interface{ XXX_GogoReflect() }); !own {
+			panic("gogoreflect: unrelated ProtoReflect implementation")
+		}
+	}
+	return &message{info: info, value: reflect.ValueOf(m)}
 }
 
 // Unwrap returns the original gogo message behind this module's live view.

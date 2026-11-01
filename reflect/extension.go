@@ -94,7 +94,7 @@ func extensionFor(e *gogo.ExtensionDesc) (*extensionType, error) {
 		return nil, fmt.Errorf("gogoreflect: incomplete extension %d", e.Field)
 	}
 	schemas.Lock()
-	raw := source(e.Filename)
+	raw := schemas.source(e.Filename)
 	var err error
 	if len(raw) == 0 {
 		err = fmt.Errorf("gogoreflect: missing extension source %q", e.Filename)

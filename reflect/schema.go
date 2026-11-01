@@ -22,9 +22,10 @@ import (
 
 type schemaUniverse struct {
 	sync.Mutex
-	files *protoregistry.Files
-	types *protoregistry.Types
-	raw   map[string][]byte
+	files        *protoregistry.Files
+	types        *protoregistry.Types
+	raw          map[string][]byte
+	supplemental map[string][]byte
 }
 
 var schemas = schemaUniverse{files: new(protoregistry.Files), types: new(protoregistry.Types), raw: make(map[string][]byte)}
@@ -51,15 +52,22 @@ func canonicalPath(path string) string {
 	}
 	return path
 }
-func source(path string) []byte {
+func (u *schemaUniverse) source(path string) []byte {
 	if b := gogo.FileDescriptor(path); len(b) > 0 {
 		return b
 	}
 	if path == "gogoproto/gogo.proto" || path == "github.com/gogo/protobuf/gogoproto/gogo.proto" {
-		return gogo.FileDescriptor("gogo.proto")
+		if b := gogo.FileDescriptor("gogo.proto"); len(b) > 0 {
+			return b
+		}
 	}
 	if path == "google/protobuf/descriptor.proto" {
-		return gogo.FileDescriptor("descriptor.proto")
+		if b := gogo.FileDescriptor("descriptor.proto"); len(b) > 0 {
+			return b
+		}
+	}
+	if b := u.supplemental[canonicalPath(path)]; b != nil {
+		return compressMetadata(b)
 	}
 	return nil
 }
@@ -80,6 +88,9 @@ func (u *schemaUniverse) load(raw []byte, path string, active map[string]bool) (
 	for i, dep := range f.Dependency {
 		f.Dependency[i] = canonicalPath(dep)
 	}
+	for i, dep := range f.OptionDependency {
+		f.OptionDependency[i] = canonicalPath(dep)
+	}
 	b, err = (v2.MarshalOptions{Deterministic: true}).Marshal(f)
 	if err != nil {
 		return nil, err
@@ -96,8 +107,8 @@ func (u *schemaUniverse) load(raw []byte, path string, active map[string]bool) (
 	}
 	active[name] = true
 	defer delete(active, name)
-	for _, dep := range f.Dependency {
-		raw := source(dep)
+	for _, dep := range append(append([]string(nil), f.Dependency...), f.OptionDependency...) {
+		raw := u.source(dep)
 		if len(raw) == 0 {
 			return nil, fmt.Errorf("gogoreflect: missing runtime descriptor %q", dep)
 		}

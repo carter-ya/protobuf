@@ -90,6 +90,9 @@ func (r *Registry) FindMessageByURL(url string) (protoreflect.MessageType, error
 func (r *Registry) FindExtensionByNumber(name protoreflect.FullName, n protoreflect.FieldNumber) (protoreflect.ExtensionType, error) {
 	m := r.types[name]
 	if m == nil {
+		if descriptorOption(name) {
+			return schemas.types.FindExtensionByNumber(name, n)
+		}
 		return nil, protoregistry.NotFound
 	}
 	e := gogo.RegisteredExtensions(reflect.Zero(m.typ).Interface().(gogo.Message))[int32(n)]
@@ -105,6 +108,9 @@ func (r *Registry) FindExtensionByName(name protoreflect.FullName) (protoreflect
 				return extensionFor(e)
 			}
 		}
+	}
+	if x, err := schemas.types.FindExtensionByName(name); err == nil && descriptorOption(x.TypeDescriptor().ContainingMessage().FullName()) {
+		return x, nil
 	}
 	return nil, protoregistry.NotFound
 }
@@ -167,4 +173,8 @@ func qualify(info *messageType, seen map[reflect.Type]bool) error {
 		}
 	}
 	return nil
+}
+
+func descriptorOption(name protoreflect.FullName) bool {
+	return strings.HasPrefix(string(name), "google.protobuf.") && (strings.HasSuffix(string(name), "Options") || name == "google.protobuf.FeatureSet")
 }

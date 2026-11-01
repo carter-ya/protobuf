@@ -60,3 +60,32 @@ thread-safety layer or an immutable copy.
 default, purego and race checks, including the official `prototest.Message`
 contract suite and independent binary/JSON/text, Clone/Merge/Equal tests. The
 root's historical compatibility and real-project matrix remain separate gates.
+
+## Generating native V2 methods and HYBRID
+
+Use `--gogo_out=proto_reflect=true:OUT` to add native `ProtoReflect` while
+retaining the OPEN field API. Use `default_api_level=API_HYBRID` to also generate
+setters, presence/clear methods, oneof case queries and builders. The same flags
+work with all five maintained generators. Editions can select
+`features.(pb.go).api_level = API_HYBRID` at file or message scope; explicit OPEN
+and nested overrides are honored. OPAQUE is rejected.
+
+Selected generated types implement both gogo and V2 Message directly. V2
+`Interface`, `New`, `Clone` and `Wrap` preserve the actual generated Go type.
+HYBRID retains exported fields and legacy getters; builders retain protobuf
+pointer/slice/map aliasing and setters preserve official nil/presence semantics.
+New API name collisions are diagnosed rather than renaming existing Go fields.
+
+The default generator output and the root module's Go requirement are unchanged.
+Opting in adds this module and V2 dependencies, a version-17 runtime guard, closed
+native enum semantics and final required-field validation. Convenience backends
+such as gogofaster normally choose lossy value storage and disable unknowns;
+the selected profile instead defaults to native pointer/unknown storage. Review
+these opt-in field-type changes when migrating. Explicit incompatible schema
+options fail generation; imports are validated across the reachable graph at
+runtime qualification. Registration must finish before reflection is used.
+
+Option-only dependency descriptors travel with the generated file as compressed
+metadata. `RegisterFileSet` validates duplicate registrations transactionally;
+it does not register V2 global types. Use `NewRegistry` explicitly for Any and
+Edition 2026 custom enum JSON metadata, including nested imported options.

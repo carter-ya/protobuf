@@ -23,7 +23,7 @@ func TestGoFeaturePolicy(t *testing.T) {
 			t.Fatal(err)
 		}
 		err := validateGoFeatures(features)
-		if (api <= 1) != (err == nil) {
+		if (api <= 2) != (err == nil) {
 			t.Fatalf("api %d: %v", api, err)
 		}
 	}
