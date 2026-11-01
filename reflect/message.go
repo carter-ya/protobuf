@@ -207,7 +207,7 @@ func (m *message) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 		return protoreflect.ValueOfList(&list{fd: fd, slot: s})
 	}
 	if fd.Message() != nil {
-		if !m.Has(fd) {
+		if !m.Has(fd) || s.get().IsNil() {
 			s.set(reflect.New(f.typ.Elem()))
 		}
 		return m.Get(fd)

@@ -271,3 +271,27 @@ func TestOfficialReflectionContract(t *testing.T) {
 	}
 	t.Run("Cold", func(t *testing.T) { prototest.Message{}.Test(t, p.ProtoReflect().Type()) })
 }
+
+func TestSelectedNilMessageOneof(t *testing.T) {
+	native := &pb.Node{Choice: &pb.Node_Selected{}}
+	m := view(t, native)
+	selected := field(m, "selected")
+	if !m.Has(selected) || m.Get(selected).Message().IsValid() {
+		t.Fatal("native selected nil state not represented")
+	}
+	mutable := m.Mutable(selected).Message()
+	if !mutable.IsValid() {
+		t.Fatal("Mutable returned an invalid selected message")
+	}
+	mutable.Set(field(m, "count"), protoreflect.ValueOfInt32(7))
+	if native.GetSelected() == nil || native.GetSelected().Count != 7 {
+		t.Fatal("Mutable did not populate native oneof payload")
+	}
+	native.Choice = &pb.Node_Selected{}
+	if err := (v2.UnmarshalOptions{Merge: true}).Unmarshal([]byte{0x5a, 2, 8, 9}, m.Interface()); err != nil {
+		t.Fatal(err)
+	}
+	if native.GetSelected() == nil || native.GetSelected().Count != 9 {
+		t.Fatal("merge decode did not allocate selected payload")
+	}
+}
