@@ -25,3 +25,19 @@ func TestAllocatedOpaqueNames(t *testing.T) {
 		}
 	}
 }
+
+func TestOpaqueSetDefaults(t *testing.T) {
+	n := pb.Defaults_builder{Child: new(pb.Defaults), Children: []*pb.Defaults{new(pb.Defaults), nil}, Nodes: map[string]*pb.Defaults{"x": new(pb.Defaults), "nil": nil}}.Build()
+	if n.HasValue() {
+		t.Fatal("unexpected initial presence")
+	}
+	gogo.SetDefaults(n)
+	for _, m := range []*pb.Defaults{n, n.GetChild(), n.GetChildren()[0], n.GetNodes()["x"]} {
+		if !m.HasValue() || m.GetValue() != 7 || !m.HasLabel() || m.GetLabel() != "fallback" || !m.HasData() || string(m.GetData()) != "\x01\xff" || !m.HasState() || int32(m.GetState()) != 1 {
+			t.Fatal("default/presence traversal", m)
+		}
+	}
+	if n.GetChild().GetChild() != nil || n.GetChildren()[1] != nil || n.GetNodes()["nil"] != nil {
+		t.Fatal("defaults created absent child")
+	}
+}

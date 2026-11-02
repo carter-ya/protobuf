@@ -1,6 +1,9 @@
 package consumer
 
 import (
+	"bytes"
+	"github.com/gogo/protobuf/jsonpb"
+	jsonstd "github.com/gogo/protobuf/jsonpb/standard"
 	"reflect"
 	"testing"
 
@@ -15,7 +18,7 @@ import (
 )
 
 func TestOpaqueContract(t *testing.T) {
-	n := pb.Node_builder{Count: 7, Name: "native", Present: gogo.Int32(0),
+	n := pb.Node_builder{Count: 7, Name: "native", Present: gogo.Int32(0), Title: gogo.String("selected"), PresentData: []byte{},
 		Child: pb.Node_builder{Name: "child"}.Build(), Values: []int32{1, 2},
 		Nodes: map[string]*pb.Node{"x": pb.Node_builder{Name: "mapped"}.Build()},
 	}.Build()
@@ -43,7 +46,7 @@ func TestOpaqueContract(t *testing.T) {
 	if m.Get(fd).Int() != 13 {
 		t.Fatal("setter is detached")
 	}
-	for _, format := range []string{"gogo-binary", "v2-binary", "json", "text", "legacy-text"} {
+	for _, format := range []string{"gogo-binary", "v2-binary", "json", "text", "legacy-text", "jsonpb", "jsonpb-standard"} {
 		t.Run(format, func(t *testing.T) {
 			target := new(pb.Node)
 			var data []byte
@@ -68,6 +71,18 @@ func TestOpaqueContract(t *testing.T) {
 				data, err = prototext.Marshal(n)
 				if err == nil {
 					err = prototext.Unmarshal(data, target)
+				}
+			case "jsonpb":
+				var b bytes.Buffer
+				err = (&jsonpb.Marshaler{}).Marshal(&b, n)
+				if err == nil {
+					err = jsonpb.Unmarshal(&b, target)
+				}
+			case "jsonpb-standard":
+				var b bytes.Buffer
+				err = (&jsonstd.Marshaler{}).Marshal(&b, n)
+				if err == nil {
+					err = jsonstd.Unmarshal(&b, target)
 				}
 			case "legacy-text":
 				err = gogo.UnmarshalText(gogo.MarshalTextString(n), target)

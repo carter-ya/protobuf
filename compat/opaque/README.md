@@ -9,13 +9,14 @@ maintained generators across proto3, proto2 and Editions 2023/2024/2026 in defau
 purego and race modes. The proto2 cases include closed enums, registered
 extensions, required fields and groups. A second schema checks getter/field and
 nested-type/oneof-wrapper name collisions. Reports contain 75 profile runs plus
-15 name-collision runs.
+15 name/default runs. Defaults cover scalar/string/escaped bytes/enum presence
+and recursive child/list/map traversal.
 
 Pass `--official-generator PATH` to compare the OPAQUE accessors, getters,
 builders, cases and ProtoReflect signatures with the pinned official generator.
 External direct-field access must fail compilation. Behavioral checks include
 official prototest, live reflection, nil/zero presence, builders and aliasing,
-native identity, legacy/V2 binary interoperability and binary/JSON/text round
+native identity, legacy/V2 binary interoperability, both legacy and standard JSONPB, and binary/JSON/text round
 trips. The selected profile retains the existing representation restrictions.
 
 Existing generator defaults remain unchanged. OPAQUE is explicitly selected

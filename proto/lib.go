@@ -633,7 +633,7 @@ func setDefaults(v reflect.Value, recur, zeros bool) {
 	}
 
 	for _, sf := range dm.scalars {
-		f := v.Field(sf.index)
+		f := generatedField(v, sf.index)
 		if !f.IsNil() {
 			// field already set
 			continue
@@ -721,7 +721,7 @@ func setDefaults(v reflect.Value, recur, zeros bool) {
 	}
 
 	for _, ni := range dm.nested {
-		f := v.Field(ni)
+		f := generatedField(v, ni)
 		// f is *T or T or []*T or []T
 		switch f.Kind() {
 		case reflect.Struct:
@@ -793,6 +793,16 @@ func buildDefaultMessage(t reflect.Type) (dm defaultMessage) {
 		case nested:
 			dm.nested = append(dm.nested, fi)
 		case sf != nil:
+			// New private generated bindings use descriptor C escapes for byte
+			// defaults. Preserve the historical exported-layout convention.
+			if prop.HasDefault && ft.Kind() == reflect.Slice && ft.Elem().Kind() == reflect.Uint8 && t.Field(fi).PkgPath != "" {
+				decoded, err := unquoteC(prop.Default, '"')
+				if err != nil {
+					log.Printf("proto: invalid private bytes default: %v", err)
+					continue
+				}
+				sf.value = []byte(decoded)
+			}
 			sf.index = fi
 			dm.scalars = append(dm.scalars, *sf)
 		}

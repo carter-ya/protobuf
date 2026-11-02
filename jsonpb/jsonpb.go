@@ -56,6 +56,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/gogo/protobuf/internal/storage"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 )
@@ -242,12 +243,12 @@ func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typ
 			// "Wrappers use the same representation in JSON
 			//  as the wrapped primitive type, ..."
 			sprop := proto.GetProperties(s.Type())
-			return m.marshalValue(out, sprop.Prop[0], s.Field(0), indent)
+			return m.marshalValue(out, sprop.Prop[0], storage.Field(s, 0), indent)
 		case "Any":
 			// Any is a bit more involved.
 			return m.marshalAny(out, v, indent)
 		case "Duration":
-			s, ns := s.Field(0).Int(), s.Field(1).Int()
+			s, ns := storage.Field(s, 0).Int(), storage.Field(s, 1).Int()
 			if s < -maxSecondsInDuration || s > maxSecondsInDuration {
 				return fmt.Errorf("seconds out of range %v", s)
 			}
@@ -277,11 +278,11 @@ func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typ
 		case "Struct", "ListValue":
 			// Let marshalValue handle the `Struct.fields` map or the `ListValue.values` slice.
 			// TODO: pass the correct Properties if needed.
-			return m.marshalValue(out, &proto.Properties{}, s.Field(0), indent)
+			return m.marshalValue(out, &proto.Properties{}, storage.Field(s, 0), indent)
 		case "Timestamp":
 			// "RFC 3339, where generated output will always be Z-normalized
 			//  and uses 0, 3, 6 or 9 fractional digits."
-			s, ns := s.Field(0).Int(), s.Field(1).Int()
+			s, ns := storage.Field(s, 0).Int(), storage.Field(s, 1).Int()
 			if ns < 0 || ns >= secondInNanos {
 				return fmt.Errorf("ns out of range [0, %v)", secondInNanos)
 			}
@@ -297,13 +298,13 @@ func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typ
 			return out.err
 		case "Value":
 			// Value has a single oneof.
-			kind := s.Field(0)
+			kind := storage.Field(s, 0)
 			if kind.IsNil() {
 				// "absence of any variant indicates an error"
 				return errors.New("nil Value")
 			}
 			// oneof -> *T -> T -> T.F
-			x := kind.Elem().Elem().Field(0)
+			x := storage.Field(kind.Elem().Elem(), 0)
 			if m.standard && x.Kind() == reflect.Float64 && (math.IsNaN(x.Float()) || math.IsInf(x.Float(), 0)) {
 				return fmt.Errorf("non-finite google.protobuf.Value")
 			}
@@ -327,7 +328,7 @@ func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typ
 	}
 
 	for i := 0; i < s.NumField(); i++ {
-		value := s.Field(i)
+		value := storage.Field(s, i)
 		valueField := s.Type().Field(i)
 		if strings.HasPrefix(valueField.Name, "XXX_") {
 			continue
@@ -391,7 +392,7 @@ func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typ
 		if valueField.Tag.Get("protobuf_oneof") != "" {
 			// value is an interface containing &T{real_value}.
 			sv := value.Elem().Elem() // interface -> *T -> T
-			value = sv.Field(0)
+			value = storage.Field(sv, 0)
 			valueField = sv.Type().Field(0)
 		}
 		prop := jsonProperties(valueField, m.OrigName)
@@ -479,8 +480,8 @@ func (m *jsonEncoder) marshalAny(out *errWriter, any proto.Message, indent strin
 	//  Otherwise, the value will be converted into a JSON object,
 	//  and the "@type" field will be inserted to indicate the actual data type."
 	v := reflect.ValueOf(any).Elem()
-	turl := v.Field(0).String()
-	val := v.Field(1).Bytes()
+	turl := storage.Field(v, 0).String()
+	val := storage.Field(v, 1).Bytes()
 	if m.standard && turl == "" && len(val) == 0 {
 		out.write("{}")
 		return out.err
@@ -952,7 +953,7 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		switch w.XXX_WellKnownType() {
 		case "DoubleValue", "FloatValue", "Int64Value", "UInt64Value",
 			"Int32Value", "UInt32Value", "BoolValue", "StringValue", "BytesValue":
-			return u.unmarshalValue(target.Field(0), inputValue, prop)
+			return u.unmarshalValue(storage.Field(target, 0), inputValue, prop)
 		case "Any":
 			// Use json.RawMessage pointer type instead of value to support pre-1.8 version.
 			// 1.8 changed RawMessage.MarshalJSON from pointer type to value type, see
@@ -977,7 +978,7 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			if u.standard && (!strings.Contains(turl, "/") || strings.HasSuffix(turl, "/")) {
 				return fmt.Errorf("invalid Any type URL")
 			}
-			target.Field(0).SetString(turl)
+			storage.Field(target, 0).SetString(turl)
 
 			var m proto.Message
 			var err error
@@ -1022,7 +1023,7 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			if err != nil {
 				return fmt.Errorf("can't marshal proto %T into Any.Value: %v", m, err)
 			}
-			target.Field(1).SetBytes(b)
+			storage.Field(target, 1).SetBytes(b)
 
 			return nil
 		case "Duration":
@@ -1036,8 +1037,8 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				if err != nil {
 					return err
 				}
-				target.Field(0).SetInt(seconds)
-				target.Field(1).SetInt(nanos)
+				storage.Field(target, 0).SetInt(seconds)
+				storage.Field(target, 1).SetInt(nanos)
 				return nil
 			}
 			d, err := time.ParseDuration(unq)
@@ -1048,8 +1049,8 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			ns := d.Nanoseconds()
 			s := ns / 1e9
 			ns %= 1e9
-			target.Field(0).SetInt(s)
-			target.Field(1).SetInt(ns)
+			storage.Field(target, 0).SetInt(s)
+			storage.Field(target, 1).SetInt(ns)
 			return nil
 		case "Timestamp":
 			unq, err := unquote(string(inputValue))
@@ -1062,8 +1063,8 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				if err != nil {
 					return err
 				}
-				target.Field(0).SetInt(timestamp.Seconds)
-				target.Field(1).SetInt(int64(timestamp.Nanos))
+				storage.Field(target, 0).SetInt(timestamp.Seconds)
+				storage.Field(target, 1).SetInt(int64(timestamp.Nanos))
 				return nil
 			}
 			t, err := time.Parse(time.RFC3339Nano, unq)
@@ -1071,21 +1072,21 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return fmt.Errorf("bad Timestamp: %v", err)
 			}
 
-			target.Field(0).SetInt(t.Unix())
-			target.Field(1).SetInt(int64(t.Nanosecond()))
+			storage.Field(target, 0).SetInt(t.Unix())
+			storage.Field(target, 1).SetInt(int64(t.Nanosecond()))
 			return nil
 		case "Struct":
 			var m map[string]json.RawMessage
 			if err := json.Unmarshal(inputValue, &m); err != nil {
 				return fmt.Errorf("bad StructValue: %v", err)
 			}
-			target.Field(0).Set(reflect.ValueOf(map[string]*types.Value{}))
+			storage.Field(target, 0).Set(reflect.ValueOf(map[string]*types.Value{}))
 			for k, jv := range m {
 				pv := &types.Value{}
 				if err := u.unmarshalValue(reflect.ValueOf(pv).Elem(), jv, prop); err != nil {
 					return fmt.Errorf("bad value in StructValue for key %q: %v", k, err)
 				}
-				target.Field(0).SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(pv))
+				storage.Field(target, 0).SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(pv))
 			}
 			return nil
 		case "ListValue":
@@ -1094,9 +1095,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return fmt.Errorf("bad ListValue: %v", err)
 			}
 
-			target.Field(0).Set(reflect.ValueOf(make([]*types.Value, len(s))))
+			storage.Field(target, 0).Set(reflect.ValueOf(make([]*types.Value, len(s))))
 			for i, sv := range s {
-				if err := u.unmarshalValue(target.Field(0).Index(i), sv, prop); err != nil {
+				if err := u.unmarshalValue(storage.Field(target, 0).Index(i), sv, prop); err != nil {
 					return err
 				}
 			}
@@ -1104,20 +1105,20 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		case "Value":
 			ivStr := string(inputValue)
 			if ivStr == "null" {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_NullValue{}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_NullValue{}))
 			} else if v, err := strconv.ParseFloat(ivStr, 0); err == nil {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_NumberValue{NumberValue: v}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_NumberValue{NumberValue: v}))
 			} else if v, err := unquote(ivStr); err == nil {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_StringValue{StringValue: v}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_StringValue{StringValue: v}))
 			} else if v, err := strconv.ParseBool(ivStr); err == nil {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_BoolValue{BoolValue: v}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_BoolValue{BoolValue: v}))
 			} else if err := json.Unmarshal(inputValue, &[]json.RawMessage{}); err == nil {
 				lv := &types.ListValue{}
-				target.Field(0).Set(reflect.ValueOf(&types.Value_ListValue{ListValue: lv}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_ListValue{ListValue: lv}))
 				return u.unmarshalValue(reflect.ValueOf(lv).Elem(), inputValue, prop)
 			} else if err := json.Unmarshal(inputValue, &map[string]json.RawMessage{}); err == nil {
 				sv := &types.Struct{}
-				target.Field(0).Set(reflect.ValueOf(&types.Value_StructValue{StructValue: sv}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_StructValue{StructValue: sv}))
 				return u.unmarshalValue(reflect.ValueOf(sv).Elem(), inputValue, prop)
 			} else {
 				return fmt.Errorf("unrecognized type for Value %q", ivStr)
@@ -1247,9 +1248,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				continue
 			}
 
-			if err := u.unmarshalValue(target.Field(i), valueForField, sprops.Prop[i]); err != nil {
+			if err := u.unmarshalValue(storage.Field(target, i), valueForField, sprops.Prop[i]); err != nil {
 				if err == errIgnoredEnumName {
-					target.Field(i).Set(reflect.Zero(target.Field(i).Type()))
+					storage.Field(target, i).Set(reflect.Zero(storage.Field(target, i).Type()))
 					continue
 				}
 				return err
@@ -1273,9 +1274,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				}
 				nv := reflect.New(oop.Type.Elem())
 				if !u.standard {
-					target.Field(oop.Field).Set(nv)
+					storage.Field(target, oop.Field).Set(nv)
 				}
-				if err := u.unmarshalValue(nv.Elem().Field(0), raw, oop.Prop); err != nil {
+				if err := u.unmarshalValue(storage.Field(nv.Elem(), 0), raw, oop.Prop); err != nil {
 					if err == errIgnoredEnumName {
 						continue
 					}
@@ -1286,7 +1287,7 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 						return fmt.Errorf("multiple values for oneof")
 					}
 					seen[oop.Field] = true
-					target.Field(oop.Field).Set(nv)
+					storage.Field(target, oop.Field).Set(nv)
 				}
 			}
 		}
@@ -1611,7 +1612,7 @@ func checkRequiredFields(pb proto.Message) error {
 	}
 
 	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
+		field := storage.Field(v, i)
 		sfield := v.Type().Field(i)
 
 		if sfield.PkgPath != "" {
@@ -1637,7 +1638,7 @@ func checkRequiredFields(pb proto.Message) error {
 			if v.Kind() != reflect.Struct || v.NumField() < 1 {
 				continue
 			}
-			field = v.Field(0)
+			field = storage.Field(v, 0)
 			sfield = v.Type().Field(0)
 		}
 

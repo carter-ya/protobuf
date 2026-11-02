@@ -38,7 +38,7 @@ def main():
         names = out / (backend + '-names')
         (names / 'pb').mkdir(parents=True)
         run(['protoc', '-I' + str(HERE), '--plugin=protoc-gen-test=' + str(driver),
-             '--test_out=paths=source_relative,default_api_level=API_OPAQUE:' + str(names / 'pb'), 'names.proto'])
+             '--test_out=paths=source_relative,default_api_level=API_OPAQUE:' + str(names / 'pb'), 'names.proto', 'defaults.proto'])
         shutil.copyfile(HERE / 'names_test.go.txt', names / 'names_test.go')
         module(names, 'v1.36.13-0.20261007182434-0c373ff94f29')
         for variant, flags in [('default', []), ('purego', ['-tags=purego']), ('race', ['-race'])]:
