@@ -80,3 +80,20 @@ func main(){}
 		}
 	}
 }
+
+func TestFormatterCanReflowComments(t *testing.T) {
+	input := []byte("package example\n// Record contains values.\n// Types that can be stored:\n//\t*Number\n//\t*Text\ntype Record struct { Value int32 }\n")
+	output, err := format.Source(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := Compute(input, output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for old, updated := range m {
+		if string(input[old.Pos:old.End]) != string(output[updated.Pos:updated.End]) {
+			t.Fatal("code token moved off its annotation")
+		}
+	}
+}

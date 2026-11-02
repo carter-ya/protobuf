@@ -1,0 +1,43 @@
+package consumer
+
+import (
+	pb "example.com/native/pb"
+	"github.com/gogo/protobuf/jsonpb"
+	jsonstd "github.com/gogo/protobuf/jsonpb/standard"
+	gogo "github.com/gogo/protobuf/proto"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func TestOpaqueJSONRequiredFields(t *testing.T) {
+	for _, codec := range []struct {
+		name      string
+		marshal   func(gogo.Message) (string, error)
+		unmarshal func(string, gogo.Message) error
+	}{
+		{"legacy", (&jsonpb.Marshaler{}).MarshalToString, jsonpb.UnmarshalString},
+		{"standard", (&jsonstd.Marshaler{}).MarshalToString, jsonstd.UnmarshalString},
+	} {
+		for _, item := range []struct {
+			name, input string
+			message     gogo.Message
+		}{
+			{"scalar", `{}`, new(pb.Required)},
+			{"child", `{"child":{}}`, pb.Closed_builder{Child: new(pb.Required)}.Build()},
+			{"list", `{"children":[{}]}`, pb.Closed_builder{Children: []*pb.Required{new(pb.Required)}}.Build()},
+			{"map", `{"nodes":{"x":{}}}`, pb.Closed_builder{Nodes: map[string]*pb.Required{"x": new(pb.Required)}}.Build()},
+			{"group", `{"legacy":{}}`, pb.GroupContainer_builder{Legacy: new(pb.GroupContainer_Legacy)}.Build()},
+		} {
+			t.Run(codec.name+"/"+item.name, func(t *testing.T) {
+				if _, err := codec.marshal(item.message); err == nil || !strings.Contains(err.Error(), "required") {
+					t.Fatalf("marshal accepted missing required field: %v", err)
+				}
+				target := reflect.New(reflect.TypeOf(item.message).Elem()).Interface().(gogo.Message)
+				if err := codec.unmarshal(item.input, target); err == nil || !strings.Contains(err.Error(), "required") {
+					t.Fatalf("unmarshal accepted missing required field: %v", err)
+				}
+			})
+		}
+	}
+}

@@ -224,16 +224,11 @@ func isAny(sv reflect.Value) bool {
 // It returns (true, error) when sv was written in expanded format or an error
 // was encountered.
 func (tm *TextMarshaler) writeProto3Any(w *textWriter, sv reflect.Value) (bool, error) {
-	turl := sv.FieldByName("TypeUrl")
-	val := sv.FieldByName("Value")
-	if !turl.IsValid() || !val.IsValid() {
-		return true, errors.New("proto: invalid google.protobuf.Any message")
-	}
-
-	b, ok := val.Interface().([]byte)
+	turl, val, ok := anyStorageFields(sv)
 	if !ok {
 		return true, errors.New("proto: invalid google.protobuf.Any message")
 	}
+	b := val.Bytes()
 
 	parts := strings.Split(turl.String(), "/")
 	if w.standard && (len(parts) < 2 || !validStandardTextName(turl.String())) {
@@ -309,7 +304,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 		}
 	}
 	for i := 0; i < sv.NumField(); i++ {
-		fv := sv.Field(i)
+		fv := generatedField(sv, i)
 		props := sprops.Prop[i]
 		name := st.Field(i).Name
 

@@ -107,7 +107,7 @@ func (m *message) slot(f *fieldInfo) slot {
 		if !m.IsValid() {
 			return reflect.Zero(f.typ)
 		}
-		v := m.value.Elem().Field(f.index)
+		v := m.nativeField(f.index)
 		if f.wrapper != nil {
 			if v.IsNil() || v.Elem().Type() != f.wrapper || v.Elem().IsNil() {
 				return reflect.Zero(f.typ)
@@ -117,7 +117,7 @@ func (m *message) slot(f *fieldInfo) slot {
 		return v
 	}, set: func(v reflect.Value) {
 		m.requireMutable()
-		target := m.value.Elem().Field(f.index)
+		target := m.nativeField(f.index)
 		if f.wrapper != nil {
 			w := reflect.New(f.wrapper.Elem())
 			w.Elem().Field(0).Set(v)
@@ -141,7 +141,7 @@ func (m *message) Has(fd protoreflect.FieldDescriptor) bool {
 		return false
 	}
 	if f.wrapper != nil {
-		v := m.value.Elem().Field(f.index)
+		v := m.nativeField(f.index)
 		return !v.IsNil() && v.Elem().Type() == f.wrapper && !v.Elem().IsNil()
 	}
 	v := m.slot(f).get()
@@ -212,7 +212,7 @@ func (m *message) Clear(fd protoreflect.FieldDescriptor) {
 	m.requireMutable()
 	if f.wrapper != nil {
 		if m.Has(fd) {
-			m.value.Elem().Field(f.index).SetZero()
+			m.nativeField(f.index).SetZero()
 		}
 		return
 	}
@@ -278,7 +278,7 @@ func (m *message) GetUnknown() protoreflect.RawFields {
 	if !m.IsValid() {
 		return nil
 	}
-	raw := m.value.Elem().Field(m.info.unknown).Bytes()
+	raw := m.nativeField(m.info.unknown).Bytes()
 	if m.info.desc.ExtensionRanges().Len() == 0 {
 		return raw
 	}
@@ -323,7 +323,7 @@ func (m *message) SetUnknown(b protoreflect.RawFields) {
 			panic(err)
 		}
 	}
-	m.value.Elem().Field(m.info.unknown).SetBytes(regular)
+	m.nativeField(m.info.unknown).SetBytes(regular)
 }
 func (m *message) ProtoMethods() *protoiface.Methods { return &nativeMethods }
 

@@ -12,6 +12,8 @@ import subprocess
 import urllib.request
 import urllib.parse
 
+from matrix import FLAVORS, PROFILE, variants
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BACKENDS = ['gogo', 'gogofast', 'gogofaster', 'gogoslick', 'gogotypes']
 
@@ -74,12 +76,14 @@ def main():
     cache = out / 'modules'
     cache.mkdir()
     manifest = json.loads((ROOT / 'release/manifest.json').read_text())
+    if manifest.get('qualification_profile') != PROFILE:
+        raise ValueError('unsupported consumer qualification profile')
     report = {'status': 'running', 'time': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'revision': args.revision, 'repository': args.repository,
               'published_version_mode': args.published, 'cold_module_cache': True,
               'profile': 'legacy' if args.legacy_only else 'legacy-and-native',
               'manifest_sha256': hashlib.sha256((ROOT / 'release/manifest.json').read_bytes()).hexdigest(),
-              'checks': [], 'modules': {}, 'consumer_runs': []}
+              'qualification_profile': PROFILE, 'checks': [], 'modules': {}, 'consumer_runs': []}
     env = dict(os.environ, GOENV='off', GOWORK='off', GOTOOLCHAIN='local', GOFLAGS='',
                GOMODCACHE=str(cache), GOCACHE=str(out / 'build-cache'), GOPATH=str(out / 'gopath'),
                GOBIN=str(out / 'bin'), GOPROXY='https://proxy.golang.org,direct', GOSUMDB='sum.golang.org',
@@ -182,7 +186,7 @@ def main():
                 raise ValueError('generator identity is not the downloaded fork')
         graph = objects(run('tools-modules', ['go', 'list', '-mod=mod', '-m', '-json', 'all'], tools).stdout)
         validate_graph(graph, manifest, versions, cache, args.repository, False)
-        flavors = ['legacy'] if args.legacy_only else ['legacy', 'open', 'hybrid', 'edition2026']
+        flavors = ['legacy'] if args.legacy_only else FLAVORS
         stable_source = None
         for backend in backends:
             for flavor in flavors:
@@ -190,14 +194,16 @@ def main():
                 dest = out / 'consumers' / (backend + '-' + flavor)
                 modfile(dest, modern)
                 (dest / 'pb').mkdir()
-                schema = 'hybrid' if flavor == 'open' else flavor
+                schema = 'hybrid' if flavor in ['open', 'opaque'] else flavor
                 shutil.copyfile(ROOT / 'release/consumer' / (schema + '.proto'), dest / 'sample.proto')
-                params = 'paths=source_relative' + (',default_api_level=API_HYBRID' if flavor == 'hybrid' else ',proto_reflect=true' if flavor == 'open' else '')
+                params = 'paths=source_relative' + (',default_api_level=API_HYBRID' if flavor == 'hybrid' else ',default_api_level=API_OPAQUE' if flavor == 'opaque' else ',proto_reflect=true' if flavor == 'open' else '')
                 run(backend + '-' + flavor + '-generate', ['protoc', '-I' + str(dest), '-I' + str(root_dir),
                     '-I' + str(root_dir / 'protobuf'), '--plugin=protoc-gen-test=' + str(out / 'bin' / ('protoc-gen-' + backend)),
                     '--test_out=' + params + ':' + str(dest / 'pb'), 'sample.proto'])
                 shutil.copyfile(ROOT / 'release/consumer' / (flavor + '_test.go.txt'), dest / 'consumer_test.go')
-                for variant, flags in [('default', []), ('purego', ['-tags=purego'])] + ([] if args.legacy_only else [('race', ['-race'])]):
+                if flavor == 'hybrid':
+                    (dest / 'privacy_test.go').write_text('//go:build protoopaque\n// +build protoopaque\n\n' + (ROOT / 'release/consumer/privacy_test.go.txt').read_text())
+                for variant, flags in variants(args.legacy_only, flavor):
                     run(backend + '-' + flavor + '-' + variant, ['go', 'test', '-mod=mod', '-count=1'] + flags + ['./...'], dest)
                     report['consumer_runs'].append({'backend': backend, 'profile': flavor, 'variant': variant})
                 graph = objects(run(backend + '-' + flavor + '-modules', ['go', 'list', '-mod=mod', '-m', '-json', 'all'], dest).stdout)

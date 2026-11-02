@@ -68,7 +68,12 @@ retaining the OPEN field API. Use `default_api_level=API_HYBRID` to also generat
 setters, presence/clear methods, oneof case queries and builders. The same flags
 work with all five maintained generators. Editions can select
 `features.(pb.go).api_level = API_HYBRID` at file or message scope; explicit OPEN
-and nested overrides are honored. OPAQUE is rejected.
+and nested overrides are honored. `default_api_level=API_OPAQUE` or source
+`API_OPAQUE` emits private protobuf fields with accessors/builders. A HYBRID file
+also emits a `_protoopaque.pb.go` alternate selected with `-tags=protoopaque`.
+`apilevelMfile.proto=API_OPEN|API_HYBRID|API_OPAQUE` sets a file default; explicit
+source features take precedence. Historical default OPEN generation remains
+unchanged, including the default API for Editions.
 
 Selected generated types implement both gogo and V2 Message directly. V2
 `Interface`, `New`, `Clone` and `Wrap` preserve the actual generated Go type.
@@ -77,7 +82,7 @@ pointer/slice/map aliasing and setters preserve official nil/presence semantics.
 New API name collisions are diagnosed rather than renaming existing Go fields.
 
 The default generator output and the root module's Go requirement are unchanged.
-Opting in adds this module and V2 dependencies, a version-17 runtime guard, closed
+Opting in adds this module and V2 dependencies, the version-18 optional-runtime contract, closed
 native enum semantics and final required-field validation. Convenience backends
 such as gogofaster normally choose lossy value storage and disable unknowns;
 the selected profile instead defaults to native pointer/unknown storage. Review
@@ -90,9 +95,16 @@ metadata. `RegisterFileSet` validates duplicate registrations transactionally;
 it does not register V2 global types. Use `NewRegistry` explicitly for Any and
 Edition 2026 custom enum JSON metadata, including nested imported options.
 
-The qualified HYBRID form retains exported fields. The official `protoopaque`
-alternate build and OPAQUE layout are deferred together; this implementation
-does not provide an opaque alternate file for that build tag.
+The qualified HYBRID form retains exported fields. Its opaque alternate and
+explicit OPAQUE use the same live native identity/storage contract, including
+legacy JSONPB, SetDefaults, required validation and expanded Any text. OPAQUE
+numeric-scalar builder inputs are copied; string-pointer and message/slice/map
+ownership follows the official API. Storage retains native pointers and eager
+decoding; no reduced-memory or lazy-decoding performance claim is made.
+
+These development capabilities require root version 18 and are not present in
+the published RC1 pair. The next proposed pair is root `v1.4.0-rc.2` and
+`reflect/v0.1.0-rc.2`; no RC2 publication is implied by these source files.
 
 When consuming this maintained fork, replace both modules at the same qualified
 revision. The nested module's local `replace` directive is not inherited by
@@ -106,7 +118,7 @@ replace github.com/gogo/protobuf/reflect => ../protobuf/reflect
 
 For remote builds, pin the corresponding root and `/reflect` replacements to
 the same reviewed commit in `github.com/carter-ya/protobuf`; do not invent a
-nested-module release tag. Generate with the same revision. The version-17
+nested-module release tag. Generate with the same revision. The version-18
 compile guard detects an older root runtime. Custom generator wrappers that
 normalize descriptors should use `command.ReadWithSources` and
 `command.GenerateWithSources` so shared option metadata remains source-stable.
@@ -114,12 +126,12 @@ normalize descriptors should use `command.ReadWithSources` and
 
 ## Release pairing
 
-The proposed initial module release is `reflect/v0.1.0-rc.1`, paired with root
-`v1.4.0-rc.1` at the exact same commit. This preparation does not publish either tag.
-The minimum root requirement is explicit in go.mod; an application must replace
-both canonical module paths with their corresponding remote fork versions.
-The local replace is for repository development and is ignored by dependent
-applications. Follow [the remote installation guide](../release/INSTALL.md).
+The published module release `reflect/v0.1.0-rc.1` is paired with root
+`v1.4.0-rc.1` at commit `533267c4c68359c533a07ece14e6cb2320a22b8b`; that pair
+provides OPEN reflection/HYBRID and excludes OPAQUE. The next candidate in
+release/manifest.json uses the RC2 pair above. Applications replace both module
+paths at the exact qualified candidate commit until new tags are approved and
+published. Follow [the remote installation guide](../release/INSTALL.md).
 
 This RC retains the exact development runtime revision in go.mod for Edition
 2026 option/JSON semantics. The parent runtime has no V2 dependency. See the

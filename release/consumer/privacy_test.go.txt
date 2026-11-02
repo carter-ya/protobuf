@@ -1,0 +1,17 @@
+package consumer
+
+import (
+	pb "example.com/release-consumer/pb"
+	"reflect"
+	"testing"
+)
+
+func TestOpaquePrivacy(t *testing.T) {
+	typ := reflect.TypeOf(pb.Record{})
+	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i)
+		if (f.Tag.Get("protobuf") != "" || f.Tag.Get("protobuf_oneof") != "") && f.PkgPath == "" {
+			t.Fatal("exported OPAQUE field", f.Name)
+		}
+	}
+}

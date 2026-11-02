@@ -14,9 +14,11 @@ python3 release/remote.py /tmp/release-go127 --revision FULL_PUBLIC_COMMIT --pro
 python3 release/remote.py /tmp/release-go115 --revision FULL_PUBLIC_COMMIT --legacy-only
 ```
 
-The complete modern profile performs 60 tests: five remotely installed generators
-through legacy, native OPEN-reflection, HYBRID and Edition 2026 consumers in
-default/purego/race modes. Go 1.15 performs ten legacy default/purego tests.
+The complete modern profile performs 105 tests: five remotely installed generators
+through legacy, native OPEN-reflection, HYBRID, explicit OPAQUE and Edition
+2026 consumers in default/purego/race modes, plus `protoopaque` variants of
+HYBRID and Edition 2026. The report profile `native-opaque-v1` and full case
+inventory are mandatory; the old 60-case RC1 reports cannot qualify RC2. Go 1.15 performs ten legacy default/purego tests.
 Legacy fixtures preserve backend defaults; they do not silently select the
 modern pointer layout to make old compatibility pass.
 
@@ -76,3 +78,8 @@ The workflow also supports a manual `published` input and automatically selects
 published mode for tag pushes. A passing commit-based report is not evidence
 that the proposed tags exist or that the post-tag version check succeeded.
 Prepare and post-tag reports are not interchangeable in the publication plan.
+
+The repository's default branch may not yet contain this maintenance workflow,
+which can limit the GitHub UI's manual-dispatch entry. Tag pushes run the saved
+workflow; maintainers can also run the published-mode CLI directly. Do not
+change the default branch or weaken the gate to work around that UI limitation.

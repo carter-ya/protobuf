@@ -1,0 +1,16 @@
+syntax = "proto2";
+package names;
+option go_package = "example.com/native/pb";
+message Defaults {
+  enum State {
+    ZERO = 0;
+    ONE = 1;
+  }
+  optional int32 value = 1 [default = 7];
+  optional string label = 2 [default = "fallback"];
+  optional bytes data = 3 [default = "\001\377"];
+  optional State state = 4 [default = ONE];
+  optional Defaults child = 5;
+  repeated Defaults children = 6;
+  map<string, Defaults> nodes = 7;
+}

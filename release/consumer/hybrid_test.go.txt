@@ -17,10 +17,10 @@ func TestHybridConsumer(t *testing.T) {
 	n := pb.Record_builder{Count: gogo.Int32(0), Text: gogo.String("")}.Build()
 	n.SetName("")
 	n.SetData(nil)
-	if !n.HasCount() || !n.HasName() || !n.HasText() || n.Data == nil {
+	if !n.HasCount() || !n.HasName() || !n.HasText() || n.GetData() == nil {
 		t.Fatal("presence/builder")
 	}
-	n.SetNodes(map[string]*pb.Record{"x": {Name: gogo.String("child")}})
+	n.SetNodes(map[string]*pb.Record{"x": pb.Record_builder{Name: gogo.String("child")}.Build()})
 	wrapped, err := live.Wrap(n)
 	if err != nil || wrapped != n {
 		t.Fatal("native identity", err)

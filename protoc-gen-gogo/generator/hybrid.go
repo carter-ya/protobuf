@@ -35,19 +35,20 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 	api := g.AddImport(GoImportPath("google.golang.org/protobuf/reflect/protoreflect"))
 	g.P("func (m *", mc.goName, ") ProtoReflect() ", api, ".Message { return ", runtime, ".MessageOf(m) }")
 	g.P("func (*", mc.goName, ") XXX_GogoReflect() {}")
-	if !g.Hybrid(mc.message) {
+	if !g.Hybrid(mc.message) && !g.Opaque(mc.message) {
 		return
 	}
 	for _, field := range fields {
 		switch f := field.(type) {
 		case *simpleField:
-			claim("Set" + f.goName)
+			name := g.publicFieldName(mc.message, f.goName)
+			claim("Set" + name)
 			t := f.goType
 			pointer := strings.HasPrefix(t, "*") && !f.protoField.IsMessage() && !g.IsGroup(f.protoField)
 			if pointer {
 				t = t[1:]
 			}
-			g.P("func (m *", mc.goName, ") Set", f.goName, "(v ", t, ") {")
+			g.P("func (m *", mc.goName, ") Set", name, "(v ", t, ") {")
 			if pointer {
 				g.P("m.", f.goName, " = &v")
 			} else {
@@ -58,26 +59,27 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 			}
 			g.P("}")
 			if g.FieldHasPresence(mc.message.File(), f.protoField) {
-				claim("Has" + f.goName)
-				claim("Clear" + f.goName)
-				g.P("func (m *", mc.goName, ") Has", f.goName, "() bool { return m != nil && m.", f.goName, " != nil }")
-				g.P("func (m *", mc.goName, ") Clear", f.goName, "() { m.", f.goName, " = nil }")
+				claim("Has" + g.publicFieldName(mc.message, f.goName))
+				claim("Clear" + g.publicFieldName(mc.message, f.goName))
+				g.P("func (m *", mc.goName, ") Has", g.publicFieldName(mc.message, f.goName), "() bool { return m != nil && m.", f.goName, " != nil }")
+				g.P("func (m *", mc.goName, ") Clear", g.publicFieldName(mc.message, f.goName), "() { m.", f.goName, " = nil }")
 			}
 		case *oneofField:
-			claim("Has" + f.goName)
-			claim("Clear" + f.goName)
-			claim("Which" + f.goName)
-			g.P("func (m *", mc.goName, ") Has", f.goName, "() bool { return m != nil && m.", f.goName, " != nil }")
-			g.P("func (m *", mc.goName, ") Clear", f.goName, "() { m.", f.goName, " = nil }")
-			caseType := "case_" + mc.goName + "_" + f.goName
-			unset := mc.goName + "_" + f.goName + "_not_set_case"
+			name := g.publicFieldName(mc.message, f.goName)
+			claim("Has" + g.publicFieldName(mc.message, f.goName))
+			claim("Clear" + g.publicFieldName(mc.message, f.goName))
+			claim("Which" + g.publicFieldName(mc.message, f.goName))
+			g.P("func (m *", mc.goName, ") Has", g.publicFieldName(mc.message, f.goName), "() bool { return m != nil && m.", f.goName, " != nil }")
+			g.P("func (m *", mc.goName, ") Clear", g.publicFieldName(mc.message, f.goName), "() { m.", f.goName, " = nil }")
+			caseType := "case_" + mc.goName + "_" + g.publicFieldName(mc.message, f.goName)
+			unset := mc.goName + "_" + g.publicFieldName(mc.message, f.goName) + "_not_set_case"
 			g.P("type ", caseType, " ", api, ".FieldNumber")
 			g.P("const ", unset, " ", caseType, " = 0")
 			for _, s := range f.subFields {
 				g.P("const ", mc.goName, "_", s.goName, "_case ", caseType, " = ", s.fieldNumber)
 			}
 			g.P("func (x ", caseType, ") String() string { if x == 0 { return \"not set\" }; fd := (*", mc.goName, ")(nil).ProtoReflect().Descriptor().Fields().ByNumber(", api, ".FieldNumber(x)); if fd != nil { return string(fd.Name()) }; return fmt.Sprintf(\"%d\",x) }")
-			g.P("func (m *", mc.goName, ") Which", f.goName, "() ", caseType, " { if m == nil { return ", unset, " }; switch m.", f.goName, ".(type) {")
+			g.P("func (m *", mc.goName, ") Which", name, "() ", caseType, " { if m == nil { return ", unset, " }; switch m.", f.goName, ".(type) {")
 			for _, s := range f.subFields {
 				g.P("case *", s.oneofTypeName, ": return ", mc.goName, "_", s.goName, "_case")
 			}
@@ -103,7 +105,7 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 	for _, field := range fields {
 		switch f := field.(type) {
 		case *simpleField:
-			g.P(f.goName, " ", f.goType)
+			g.P(g.publicFieldName(mc.message, f.goName), " ", f.goType)
 		case *oneofField:
 			for _, s := range f.subFields {
 				typ := s.goType
@@ -119,7 +121,12 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 	for _, field := range fields {
 		switch f := field.(type) {
 		case *simpleField:
-			g.P("m.", f.goName, " = b.", f.goName)
+			name := g.publicFieldName(mc.message, f.goName)
+			if g.Opaque(mc.message) && strings.HasPrefix(f.goType, "*") && !f.protoField.IsMessage() && !g.IsGroup(f.protoField) && !f.protoField.IsString() && !f.protoField.IsBytes() {
+				g.P("if b.", name, " != nil { v := *b.", name, "; m.", f.goName, " = &v }")
+			} else {
+				g.P("m.", f.goName, " = b.", name)
+			}
 		case *oneofField:
 			for _, s := range f.subFields {
 				value := "b." + s.goName

@@ -149,14 +149,17 @@ func (c *common) proto3() bool { return fileIsProto3(c.file.FileDescriptorProto)
 type Descriptor struct {
 	common
 	*descriptor.DescriptorProto
-	parent   *Descriptor            // The containing message, if any.
-	nested   []*Descriptor          // Inner messages, if any.
-	enums    []*EnumDescriptor      // Inner enums, if any.
-	ext      []*ExtensionDescriptor // Extensions, if any.
-	typename []string               // Cached typename vector.
-	index    int                    // The index into the container, whether the file or another message.
-	path     string                 // The SourceCodeInfo path as comma-separated integers.
-	group    bool
+	parent        *Descriptor            // The containing message, if any.
+	nested        []*Descriptor          // Inner messages, if any.
+	enums         []*EnumDescriptor      // Inner enums, if any.
+	ext           []*ExtensionDescriptor // Extensions, if any.
+	typename      []string               // Cached typename vector.
+	index         int                    // The index into the container, whether the file or another message.
+	path          string                 // The SourceCodeInfo path as comma-separated integers.
+	group         bool
+	opaqueFields  map[*descriptor.FieldDescriptorProto]string
+	opaqueMembers map[*descriptor.FieldDescriptorProto]string
+	opaqueOneofs  map[*descriptor.FieldDescriptorProto]string
 }
 
 // TypeName returns the elements of the dotted type name.
@@ -453,6 +456,9 @@ type Generator struct {
 	// ReflectionSources holds immutable descriptors captured before backend
 	// normalization. It affects supplemental metadata only, not legacy output.
 	ReflectionSources map[string]*descriptor.FileDescriptorProto
+
+	// OpaqueAlternate switches resolved HYBRID messages to their build-tag variant.
+	OpaqueAlternate bool
 
 	outputImportPath GoImportPath                   // Package we're generating code for.
 	allFiles         []*FileDescriptor              // All files in the tree
@@ -791,9 +797,11 @@ func (g *Generator) WrapTypes() {
 	if err := PrepareReflectionRequest(g.Request); err != nil {
 		g.Fail(err.Error())
 	}
-	if g.Param["proto_reflect"] == "true" || g.Param["default_api_level"] == "API_HYBRID" {
-		g.Param["enforce_closed_enums"] = "true"
-		g.Param["merge_required_fields"] = "true"
+	normalized, _ := reflectionParameters(g.Request.GetParameter())
+	for _, policy := range []string{"enforce_closed_enums", "merge_required_fields"} {
+		if normalized[policy] == "true" {
+			g.Param[policy] = "true"
+		}
 	}
 
 	g.allFiles = make([]*FileDescriptor, 0, len(g.Request.ProtoFile))
@@ -1303,6 +1311,12 @@ func (g *Generator) generate(file *FileDescriptor) {
 		for _, m := range file.Messages() {
 			if g.ReflectMessage(m) {
 				codeVersion = 17
+				break
+			}
+		}
+		for _, m := range file.Messages() {
+			if g.Opaque(m) {
+				codeVersion = 18
 				break
 			}
 		}
@@ -2612,9 +2626,16 @@ func (g *Generator) generateGet(mc *msgCtx, protoField *descriptor.FieldDescript
 	} else {
 		uname := uname
 		tname := oneoftname
-		g.P("if x, ok := m.Get", uname, "().(*", tname, "); ok {")
+		if g.Opaque(mc.message) {
+			g.P("if m != nil { if x, ok := m.", uname, ".(*", tname, "); ok && x != nil {")
+		} else {
+			g.P("if x, ok := m.Get", uname, "().(*", tname, "); ok {")
+		}
 		g.P("return x.", fname)
 		g.P("}")
+		if g.Opaque(mc.message) {
+			g.P("}")
+		}
 	}
 	g.P("return ", def)
 	g.Out()
@@ -2734,6 +2755,9 @@ func (g *Generator) generateOneofDecls(mc *msgCtx, topLevelFields []topLevelFiel
 	}
 	g.P()
 	for _, of := range ofields {
+		if g.Opaque(mc.message) {
+			continue
+		}
 		fname := of.goName
 		g.P("func (m *", mc.goName, ") Get", fname, "() ", of.goType, " {")
 		g.P("if m != nil { return m.", fname, " }")
@@ -3151,6 +3175,25 @@ func (g *Generator) generateMessage(message *Descriptor) {
 		}
 	}
 
+	if g.Opaque(message) {
+		message.opaqueFields = make(map[*descriptor.FieldDescriptorProto]string)
+		message.opaqueMembers = make(map[*descriptor.FieldDescriptorProto]string)
+		message.opaqueOneofs = make(map[*descriptor.FieldDescriptorProto]string)
+		for _, f := range topLevelFields {
+			switch f := f.(type) {
+			case *simpleField:
+				f.goName = opaqueFieldName(f.goName)
+				message.opaqueFields[f.protoField] = f.goName
+			case *oneofField:
+				f.goName = opaqueFieldName(f.goName)
+				for _, sub := range f.subFields {
+					message.opaqueFields[sub.protoField] = f.goName
+					message.opaqueMembers[sub.protoField] = sub.goName
+					message.opaqueOneofs[sub.protoField] = sub.oneofTypeName
+				}
+			}
+		}
+	}
 	mc := &msgCtx{
 		goName:  goTypeName,
 		message: message,
@@ -3173,6 +3216,7 @@ func (g *Generator) generateMessage(message *Descriptor) {
 	g.generateOneofFuncs(mc, topLevelFields)
 	g.P()
 	g.generateReflectionMethods(mc, topLevelFields)
+	g.generatePrivateFieldAccessor(mc, topLevelFields)
 	g.P()
 
 	var oneofTypes []string

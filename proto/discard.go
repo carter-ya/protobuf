@@ -267,7 +267,7 @@ func discardLegacy(m Message) {
 		if strings.HasPrefix(f.Name, "XXX_") {
 			continue
 		}
-		vf := v.Field(i)
+		vf := generatedField(v, i)
 		tf := f.Type
 
 		// Unwrap tf to get its most basic type.

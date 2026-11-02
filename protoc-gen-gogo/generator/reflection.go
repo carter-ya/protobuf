@@ -34,8 +34,16 @@ func reflectionParameters(parameter string) (map[string]string, error) {
 	if v, ok := params["proto_reflect"]; ok && v != "true" && v != "false" {
 		return nil, fmt.Errorf("proto_reflect must be true or false")
 	}
-	if v, ok := params["default_api_level"]; ok && v != "API_OPEN" && v != "API_HYBRID" {
-		return nil, fmt.Errorf("default_api_level supports API_OPEN or API_HYBRID; OPAQUE is not implemented")
+	for key, v := range params {
+		if key != "default_api_level" && !strings.HasPrefix(key, "apilevelM") {
+			continue
+		}
+		if key == "apilevelM" {
+			return nil, fmt.Errorf("apilevelM must name a proto file")
+		}
+		if v != "API_OPEN" && v != "API_HYBRID" && v != "API_OPAQUE" {
+			return nil, fmt.Errorf("%s supports API_OPEN, API_HYBRID or API_OPAQUE", key)
+		}
 	}
 	return params, nil
 }
@@ -48,7 +56,7 @@ func PrepareReflectionRequest(req *p.CodeGeneratorRequest) error {
 	if err != nil {
 		return err
 	}
-	cli := params["proto_reflect"] == "true" || params["default_api_level"] == "API_HYBRID"
+	cli := params["proto_reflect"] == "true" || (params["default_api_level"] == "API_HYBRID" || params["default_api_level"] == "API_OPAQUE")
 	targets := make(map[string]bool)
 	for _, n := range req.FileToGenerate {
 		targets[n] = true
@@ -57,6 +65,7 @@ func PrepareReflectionRequest(req *p.CodeGeneratorRequest) error {
 		if !targets[file.GetName()] {
 			continue
 		}
+		fileDefault := defaultAPI(params, file.GetName())
 		fileAPI, err := apiFeature(file.GetOptions().GetFeatures(), 0)
 		if err != nil {
 			return err
@@ -68,8 +77,9 @@ func PrepareReflectionRequest(req *p.CodeGeneratorRequest) error {
 				if err != nil {
 					return err
 				}
-				hybrid := api == 2 || (api == 0 && params["default_api_level"] == "API_HYBRID")
+				hybrid := api == 2 || api == 3 || (api == 0 && (fileDefault == 2 || fileDefault == 3))
 				selected := params["proto_reflect"] == "true" || hybrid
+				cli = cli || selected
 				if selected && !m.GetOptions().GetMapEntry() {
 					if m.Options == nil {
 						m.Options = &d.MessageOptions{}
@@ -111,18 +121,36 @@ func PrepareReflectionRequest(req *p.CodeGeneratorRequest) error {
 	}
 	return nil
 }
-func (g *Generator) Hybrid(message *Descriptor) bool {
+func defaultAPI(params map[string]string, filename string) int32 {
+	value := params["default_api_level"]
+	if selected, ok := params["apilevelM"+filename]; ok {
+		value = selected
+	}
+	switch value {
+	case "API_HYBRID":
+		return 2
+	case "API_OPAQUE":
+		return 3
+	}
+	return 1
+}
+func (g *Generator) apiLevel(message *Descriptor) int32 {
 	level := int32(0)
 	if message.File().edition != nil {
 		level = message.File().edition.apiLevels[message.DescriptorProto]
 	}
-	if level != 0 {
-		return level == 2
+	if level == 0 {
+		level = defaultAPI(g.Param, message.File().GetName())
 	}
-	return g.Param["default_api_level"] == "API_HYBRID"
+	if g.OpaqueAlternate && level == 2 {
+		return 3
+	}
+	return level
 }
+func (g *Generator) Hybrid(message *Descriptor) bool { return g.apiLevel(message) == 2 }
+func (g *Generator) Opaque(message *Descriptor) bool { return g.apiLevel(message) == 3 }
 func (g *Generator) ReflectMessage(message *Descriptor) bool {
-	return !message.GetOptions().GetMapEntry() && (g.Param["proto_reflect"] == "true" || g.Hybrid(message))
+	return !message.GetOptions().GetMapEntry() && (g.Param["proto_reflect"] == "true" || g.Hybrid(message) || g.Opaque(message))
 }
 func (g *Generator) validateReflection(file *FileDescriptor) {
 	for _, m := range file.Messages() {
@@ -145,8 +173,12 @@ func (g *Generator) validateReflection(file *FileDescriptor) {
 		if len(m.ExtensionRange) > 0 && !gogoproto.HasExtensionsMap(file.FileDescriptorProto, m.DescriptorProto) {
 			fail("requires map-backed extensions")
 		}
-		if g.Hybrid(m) && !gogoproto.HasGoGetters(file.FileDescriptorProto, m.DescriptorProto) {
-			fail("HYBRID requires getters")
+		if (g.Hybrid(m) || g.Opaque(m)) && !gogoproto.HasGoGetters(file.FileDescriptorProto, m.DescriptorProto) {
+			if g.Opaque(m) {
+				fail("OPAQUE requires getters")
+			} else {
+				fail("HYBRID requires getters")
+			}
 		}
 		for _, f := range m.Field {
 			if gogoproto.IsCustomType(f) || gogoproto.IsStdType(f) || gogoproto.IsEmbed(f) {

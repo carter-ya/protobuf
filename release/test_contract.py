@@ -32,7 +32,7 @@ class ReleaseContract(unittest.TestCase):
                 contract.validate(bad, self.root_mod, self.reflect_mod, self.sums)
 
     def test_rejects_unpaired_minimum_and_root_dependency(self):
-        bad = self.reflect_mod.replace('github.com/gogo/protobuf v1.4.0-rc.1',
+        bad = self.reflect_mod.replace('github.com/gogo/protobuf ' + self.manifest['root']['version'],
                                       'github.com/gogo/protobuf v1.3.2')
         with self.assertRaises(ValueError):
             contract.validate(self.manifest, self.root_mod, bad, self.sums)

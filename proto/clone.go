@@ -105,7 +105,7 @@ func mergeStruct(out, in reflect.Value) {
 		if strings.HasPrefix(f.Name, "XXX_") {
 			continue
 		}
-		mergeAny(out.Field(i), in.Field(i), false, sprop.Prop[i])
+		mergeAny(generatedField(out, i), generatedField(in, i), false, sprop.Prop[i])
 	}
 
 	if emIn, ok := in.Addr().Interface().(extensionsBytes); ok {

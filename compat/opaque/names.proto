@@ -1,0 +1,13 @@
+syntax = "proto3";
+package names;
+option go_package = "example.com/native/pb";
+message Names {
+  string value = 1;
+  int32 get_value = 2;
+  oneof pick {
+    int32 number = 3;
+    bytes raw = 4;
+  }
+  message Number {}
+  Number child = 5;
+}

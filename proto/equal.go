@@ -101,7 +101,7 @@ func equalStruct(v1, v2 reflect.Value) bool {
 		if strings.HasPrefix(f.Name, "XXX_") {
 			continue
 		}
-		f1, f2 := v1.Field(i), v2.Field(i)
+		f1, f2 := generatedField(v1, i), generatedField(v2, i)
 		if f.Type.Kind() == reflect.Ptr {
 			if n1, n2 := f1.IsNil(), f2.IsNil(); n1 && n2 {
 				// both unset

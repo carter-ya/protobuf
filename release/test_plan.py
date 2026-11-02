@@ -21,18 +21,19 @@ class PublicationPlanGuards(unittest.TestCase):
         # In-memory unit fixtures only, never release evidence.
         for minor in [15, 23, 27]:
             legacy = minor == 15
-            flavors = ['legacy'] if legacy else ['legacy', 'open', 'hybrid', 'edition2026']
+            flavors = ['legacy'] if legacy else ['legacy', 'open', 'hybrid', 'opaque', 'edition2026']
             variants = ['default', 'purego'] if legacy else ['default', 'purego', 'race']
             checks = ['go-version', 'compiler-version', 'download-root', 'install-generators']
             if not legacy:
                 checks += ['download-reflect', 'download-runtime-pin', 'stable-override', 'stable-metadata-control']
             report = {'status': 'passed', 'revision': self.revision, 'public_commit': self.revision,
                       'repository': self.manifest['repository'], 'manifest_sha256': self.digest,
-                      'cold_module_cache': True, 'published_version_mode': False,
+                      'qualification_profile': 'native-opaque-v1', 'cold_module_cache': True, 'published_version_mode': False,
                       'go': 'go version go1.' + str(minor) + '.0 linux/amd64',
                       'profile': 'legacy' if legacy else 'legacy-and-native',
+                      'compiler': 'libprotoc ' + self.manifest['compiler'],
                       'consumer_runs': [{'backend': b, 'profile': f, 'variant': v}
-                                        for b in plan.BACKENDS for f in flavors for v in variants],
+                                        for b in plan.BACKENDS for f in flavors for v in variants + ([] if legacy or f not in ['hybrid','edition2026'] else ['protoopaque','protoopaque-purego','protoopaque-race'])],
                       'checks': [{'name': n, 'returncode': int(n == 'stable-metadata-control'),
                                   'expected_failure': n == 'stable-metadata-control'} for n in checks],
                       'modules': {name: {'Path': self.manifest['repository'] + ('/reflect' if name == 'reflect' else ''),
@@ -51,7 +52,7 @@ class PublicationPlanGuards(unittest.TestCase):
 
     def test_rejects_unqualified_publication_evidence(self):
         plan.qualify(self.reports, self.manifest, self.digest, self.revision)
-        for kind in ['revision', 'failed', 'manifest', 'matrix', 'duplicate', 'checksum', 'missing-control', 'missing-command', 'mode', 'control-crash', 'missing-go115']:
+        for kind in ['revision', 'failed', 'manifest', 'matrix', 'duplicate', 'checksum', 'missing-control', 'missing-command', 'mode', 'control-crash', 'missing-opaque', 'wrong-compiler', 'missing-alternate', 'missing-go115']:
             bad = copy.deepcopy(self.reports)
             if kind == 'revision':
                 bad[1]['revision'] = 'f' * 40
@@ -73,6 +74,12 @@ class PublicationPlanGuards(unittest.TestCase):
                 bad[1]['published_version_mode'] = True
             elif kind == 'control-crash':
                 next(c for c in bad[1]['checks'] if c['name'] == 'stable-metadata-control')['returncode'] = 137
+            elif kind == 'wrong-compiler':
+                bad[1]['compiler'] = 'libprotoc 21.8'
+            elif kind == 'missing-opaque':
+                bad[1]['consumer_runs'] = [r for r in bad[1]['consumer_runs'] if r['profile'] != 'opaque']
+            elif kind == 'missing-alternate':
+                bad[1]['consumer_runs'] = [r for r in bad[1]['consumer_runs'] if not r['variant'].startswith('protoopaque')]
             else:
                 bad.pop(0)
             with self.subTest(kind=kind), self.assertRaises(ValueError):

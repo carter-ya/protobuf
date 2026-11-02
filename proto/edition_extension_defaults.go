@@ -70,9 +70,9 @@ func validateEditionMessageGraph(message Message, required bool) error {
 					continue
 				}
 				if required && property.Required {
-					switch value.Field(i).Kind() {
+					switch generatedField(value, i).Kind() {
 					case reflect.Ptr, reflect.Slice, reflect.Interface:
-						if isNil(value.Field(i)) {
+						if isNil(generatedField(value, i)) {
 							return &RequiredNotSetError{value.Type().String() + "." + property.OrigName}
 						}
 					default:
@@ -82,7 +82,7 @@ func validateEditionMessageGraph(message Message, required bool) error {
 				if property.CustomType != "" || property.CastType != "" || property.StdTime || property.StdDuration || property.WktPointer {
 					continue
 				}
-				if err := visit(value.Field(i), false); err != nil {
+				if err := visit(generatedField(value, i), false); err != nil {
 					return err
 				}
 			}
