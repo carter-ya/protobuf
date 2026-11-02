@@ -678,13 +678,13 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 			}
 		}
 		if ok {
-			dst = sv.Field(fi)
+			dst = generatedField(sv, fi)
 		} else if oop != nil {
 			// It is a oneof.
 			props = oop.Prop
 			nv := reflect.New(oop.Type.Elem())
 			dst = nv.Elem().Field(0)
-			field := sv.Field(oop.Field)
+			field := generatedField(sv, oop.Field)
 			if !field.IsNil() {
 				return p.errorf("field '%s' would overwrite already parsed oneof '%s'", name, sv.Type().Field(oop.Field).Name)
 			}

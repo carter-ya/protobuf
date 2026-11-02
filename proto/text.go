@@ -309,7 +309,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 		}
 	}
 	for i := 0; i < sv.NumField(); i++ {
-		fv := sv.Field(i)
+		fv := generatedField(sv, i)
 		props := sprops.Prop[i]
 		name := st.Field(i).Name
 

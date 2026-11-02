@@ -2,8 +2,11 @@ package gogoreflect
 
 import (
 	"fmt"
+	gogo "github.com/gogo/protobuf/proto"
 	"reflect"
 )
+
+const _ = gogo.GoGoProtoPackageIsVersion18
 
 // fieldAccessor is implemented by generated messages with private storage. It
 // returns a pointer to the actual Go field, never a copy or a detached view.
