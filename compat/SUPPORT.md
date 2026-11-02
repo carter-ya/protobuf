@@ -135,6 +135,7 @@ module release versions; keep the generated guard and use the matching runtime.
 | Version15 | Explicit legacy closed-enum policy and late extension registration |
 | Version16 | Explicit optimization strategies and compact table wrappers |
 | Version17 | Native modern reflection and extension snapshot/materialization helpers |
+| Version18 | Private native field access, OPAQUE, and the optional reflection runtime contract |
 
 Version13 also applies to a newly generated enclosing Editions file that reaches
 extensible children but declares no ranges itself. Its fast decoder uses the
@@ -185,8 +186,18 @@ The live profile requires unknown storage, independent presence and supported
 native pointer/message layouts; incompatible custom/std/embedded mappings,
 flattened messages, byte-backed extensions and MessageSet are diagnosed. Selected
 convenience backends default to qualified pointer/unknown storage, so review
-regenerated field types. OPAQUE and the `protoopaque` alternate build remain
-unsupported. Unknown or future Editions are rejected.
+regenerated field types. Explicit OPAQUE and HYBRID `protoopaque` alternate builds
+are qualified in the development candidate, including per-file API defaults,
+source overrides, private-field accessors, builder ownership, legacy JSONPB,
+required/default handling and expanded Any text. The optional module requires
+root version 18. Published RC1 excludes OPAQUE; the next RC2 pair is not yet
+published. Storage remains native pointers with eager decoding; memory/lazy
+optimizations are not claimed. Unknown or future Editions are rejected.
+
+Legacy MessageSet remains supported. Its modern reflection extension is deferred
+because the pinned downstream source inventory found no declaration requiring
+it; this is limited evidence, not a claim about all projects or versions. See
+[the demand assessment](downstream/projects/messageset-demand.json).
 
 The separate native proto3 all-types differential exercises 1,930 cases against
 the pinned official Go control. It has zero additional native failures/skips,

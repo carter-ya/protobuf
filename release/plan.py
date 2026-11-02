@@ -6,11 +6,15 @@ import json
 import pathlib
 import re
 
+from matrix import expected, PROFILE
+
 HERE = pathlib.Path(__file__).resolve().parent
 BACKENDS = {'gogo', 'gogofast', 'gogofaster', 'gogoslick', 'gogotypes'}
 
 
 def qualify(reports, manifest, manifest_hash, revision):
+    if manifest.get('qualification_profile') != PROFILE:
+        raise ValueError('unsupported candidate qualification profile')
     observed = set()
     modes = {r['published_version_mode'] for r in reports}
     if len(modes) != 1:
@@ -21,17 +25,19 @@ def qualify(reports, manifest, manifest_hash, revision):
             raise ValueError('reports must pass at the selected immutable public revision')
         if report['repository'] != manifest['repository'] or report['manifest_sha256'] != manifest_hash or not report['cold_module_cache']:
             raise ValueError('repository, contract or cold-cache provenance differs')
+        if report.get('compiler') != 'libprotoc ' + manifest['compiler']:
+            raise ValueError('unqualified compiler in remote evidence')
         minor = int(re.search(r'go1\.(\d+)', report['go']).group(1))
         if report['profile'] not in ['legacy', 'legacy-and-native']:
             raise ValueError('unknown consumer profile')
         legacy = report['profile'] == 'legacy'
         if minor not in [15, 23, 27] or minor == 15 and not legacy:
             raise ValueError('unsupported release qualification toolchain/profile')
-        flavors = {'legacy'} if legacy else {'legacy', 'open', 'hybrid', 'edition2026'}
-        variants = {'default', 'purego'} if legacy else {'default', 'purego', 'race'}
-        expected = {(b, f, v) for b in BACKENDS for f in flavors for v in variants}
+        if report.get('qualification_profile') != PROFILE:
+            raise ValueError('OPAQUE report profile missing')
+        required_matrix = expected(legacy)
         runs = [(r['backend'], r['profile'], r['variant']) for r in report['consumer_runs']]
-        if len(runs) != len(expected) or set(runs) != expected:
+        if len(runs) != len(required_matrix) or set(runs) != required_matrix:
             raise ValueError('remote consumer matrix incomplete or duplicated')
         required_checks = {'go-version', 'compiler-version', 'download-root', 'install-generators'}
         if not legacy:

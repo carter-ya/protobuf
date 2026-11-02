@@ -1,6 +1,11 @@
 # Maintenance release contract
 
-This change prepares a candidate; it does not publish it. `manifest.json` is the machine-readable
+The next candidate adds OPAQUE and HYBRID `protoopaque` builds.
+The published [root RC1](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0-rc.1) and
+[reflect RC1](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.1)
+remain at commit `533267c4c68359c533a07ece14e6cb2320a22b8b` and do not include OPAQUE.
+
+This change prepares RC2; it does not publish it. `manifest.json` is the machine-readable
 source of truth for proposed versions, minimum toolchains, compiler and the
 optional official-runtime pin. Preparing this contract does not create tags,
 GitHub Releases or artifacts. The manifest records the RC channel and manual
@@ -9,8 +14,8 @@ GitHub Releases, not a permanently embedded unpublished flag.
 
 | Component | Import/module path | Proposed tag | Minimum Go |
 | --- | --- | --- | --- |
-| Legacy runtime and all five generators | github.com/gogo/protobuf | v1.4.0-rc.1 | 1.15 |
-| Optional live reflection | github.com/gogo/protobuf/reflect | reflect/v0.1.0-rc.1 | 1.23 |
+| Legacy runtime and all five generators | github.com/gogo/protobuf | v1.4.0-rc.2 | 1.15 |
+| Optional live reflection | github.com/gogo/protobuf/reflect | reflect/v0.1.0-rc.2 | 1.23 |
 
 The root minor version reflects additive, opt-in APIs while retaining old
 imports and unselected layouts. The new reflection module starts at 0.1: its
@@ -78,7 +83,13 @@ Primary references: [official Go module rules](https://go.dev/ref/mod),
    until versioned installation and intended downstream usage have passed.
 5. Publish only the qualified capabilities and their minimum Go/compiler/runtime
    requirements. Do not describe the project as covering every official Go API
-   or every gogo custom representation. OPAQUE and MessageSet remain deferred.
+   or every gogo custom representation. OPAQUE provides private protobuf fields
+   and the qualified public accessors/builders; numeric scalar builder inputs
+   are copied, while string-pointer and message/slice/map ownership follow the
+   official contract. Native pointer storage and eager decoding remain in use;
+   no memory-saving or lazy-decoding performance claim is made. Legacy
+   MessageSet remains supported; modern live reflection rejects it. See the
+   [demand assessment](../compat/downstream/projects/messageset-demand.json).
 
 The contract and remote gate belong in the ordinary PR/Stack workflow. A passing
 commit-based gate establishes remote packaging readiness; it is not evidence

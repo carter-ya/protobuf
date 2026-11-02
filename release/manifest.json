@@ -5,16 +5,16 @@
   "trunk": "baseline/v1.3.2",
   "root": {
     "module": "github.com/gogo/protobuf",
-    "version": "v1.4.0-rc.1",
-    "tag": "v1.4.0-rc.1",
+    "version": "v1.4.0-rc.2",
+    "tag": "v1.4.0-rc.2",
     "go": "1.15"
   },
   "reflect": {
     "module": "github.com/gogo/protobuf/reflect",
-    "version": "v0.1.0-rc.1",
-    "tag": "reflect/v0.1.0-rc.1",
+    "version": "v0.1.0-rc.2",
+    "tag": "reflect/v0.1.0-rc.2",
     "go": "1.23",
-    "minimum_root": "v1.4.0-rc.1"
+    "minimum_root": "v1.4.0-rc.2"
   },
   "compiler": "36.2",
   "official_runtime": {
@@ -30,5 +30,11 @@
       "diagnostic": "edition EDITION_2026 not yet supported by the Go Protobuf runtime"
     }
   },
-  "publication": "manual"
+  "publication": "manual",
+  "qualification_profile": "native-opaque-v1",
+  "published_pair": {
+    "root": "v1.4.0-rc.1",
+    "reflect": "reflect/v0.1.0-rc.1",
+    "revision": "533267c4c68359c533a07ece14e6cb2320a22b8b"
+  }
 }

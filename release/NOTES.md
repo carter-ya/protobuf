@@ -1,4 +1,7 @@
-# Proposed v1.4.0-rc.1 and reflect/v0.1.0-rc.1
+RC1 was published separately and remains immutable. These are draft RC2 notes;
+RC2 tags and Releases are not created by this implementation.
+
+# Proposed v1.4.0-rc.2 and reflect/v0.1.0-rc.2
 
 This document is a prepared RC announcement. This preparation does not publish
 tags or GitHub Releases; consult remote tags and Releases for publication status.
@@ -11,10 +14,10 @@ Use the fork replacements in [INSTALL.md](INSTALL.md).
 - Preserve old default generated APIs/imports and Go 1.15 runtime support.
 - Support proto3 optional and qualified Editions 2023, 2024 and 2026 core
   behavior across gogo, gogofast, gogofaster, gogoslick and gogotypes.
-- Offer explicit native ProtoReflect and HYBRID generation. HYBRID adds setters,
+- Offer explicit native ProtoReflect, HYBRID and OPAQUE generation. HYBRID adds setters,
   presence/clear methods, oneof cases and builders while retaining exported
-  fields. New API name collisions receive diagnostics rather than renaming
-  existing fields. Runtime version-17 guards detect an older runtime.
+  fields. New API name collisions receive diagnostics; generated private codec
+  names track the allocated public accessor/builder names. OPAQUE and the optional module require the version-18 runtime guard.
 - Keep historical JSON/text entrypoints; standard behavior is selected explicitly.
   Legacy proto2 closed-enum regeneration and final required-field merge behavior
   also have explicit policies; frozen bindings retain their historical contracts.
@@ -33,8 +36,11 @@ Use the fork replacements in [INSTALL.md](INSTALL.md).
 Opting in may change convenience-generator defaults to pointer/unknown storage.
 Review the regenerated diff. Explicit custom/std/embedded mappings, flattened
 message values, missing unknown storage, byte-backed extensions and MessageSet
-are rejected for the live profile. OPAQUE and the `protoopaque` alternate build
-are not implemented. Default old generation remains available.
+are rejected for the live profile. OPAQUE and the HYBRID `protoopaque` alternate build are qualified in this
+development candidate. Proto fields are private; accessors, presence, builders,
+legacy/V2 binary, JSONPB/standard JSONPB, expanded Any text and native reflection
+are covered. The physical layout retains native pointers and eager decoding.
+Legacy MessageSet remains available; only the live profile rejects it. Default old generation remains available.
 
 ## Qualification and known differences
 
@@ -50,7 +56,7 @@ native failure or skip. See `compat/native-conformance/official-failures.json`.
 These cases are retained as individual limitations, not reported as passing
 conformance. The legacy/standard runtime suites have separate inventories.
 
-The candidate still requires the release-specific cold-cache remote-consumer
-report. The versioned post-tag gate and actual release publication are separate
+The candidate requires its own current-head cold-cache remote-consumer
+report, including explicit OPAQUE and both HYBRID build modes. The versioned post-tag gate and actual release publication are separate
 steps. Do not convert code-review/CI success into a claim that a package has
 already been published or that all Protobuf features are implemented.
