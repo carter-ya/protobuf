@@ -73,6 +73,9 @@ func (g *Generator) TypeNameByObject(typeName string) Object {
 }
 
 func (g *Generator) OneOfTypeName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+	if name := message.opaqueOneofs[field]; g.Opaque(message) && name != "" {
+		return name
+	}
 	typeName := message.TypeName()
 	ccTypeName := CamelCaseSlice(typeName)
 	fieldName := g.GetOneOfFieldName(message, field)
@@ -167,7 +170,7 @@ func (this *importedPackage) Location() string {
 	return this.importPrefix + this.pkg
 }
 
-func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+func (g *Generator) legacyFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
 	goTyp, _ := g.GoType(message, field)
 	fieldname := CamelCase(*field.Name)
 	if gogoproto.IsCustomName(field) {
@@ -193,7 +196,7 @@ func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDes
 	return fieldname
 }
 
-func (g *Generator) GetOneOfFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+func (g *Generator) legacyOneofFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
 	goTyp, _ := g.GoType(message, field)
 	fieldname := CamelCase(*field.Name)
 	if gogoproto.IsCustomName(field) {
@@ -471,4 +474,33 @@ func (g *Generator) useTypes() string {
 
 func (d *FileDescriptor) GoPackageName() string {
 	return string(d.packageName)
+}
+
+func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+	if name := message.opaqueFields[field]; g.Opaque(message) && name != "" {
+		return name
+	}
+	name := g.legacyFieldName(message, field)
+	if g.Opaque(message) {
+		return opaqueFieldName(name)
+	}
+	return name
+}
+func (g *Generator) GetOneOfFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+	if g.Opaque(message) {
+		if field.IsRealOneof() {
+			if name := message.opaqueMembers[field]; name != "" {
+				return name
+			}
+		} else {
+			if name := message.opaqueFields[field]; name != "" {
+				return name
+			}
+		}
+	}
+	name := g.legacyOneofFieldName(message, field)
+	if g.Opaque(message) && !field.IsRealOneof() {
+		return opaqueFieldName(name)
+	}
+	return name
 }

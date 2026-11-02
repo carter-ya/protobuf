@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-func surface(path string) map[string]string {
+func surface(path string, includeGet bool) map[string]string {
 	fs := token.NewFileSet()
 	f, e := parser.ParseFile(fs, path, nil, 0)
 	if e != nil {
@@ -39,7 +39,7 @@ func surface(path string) map[string]string {
 			if !(r == "*Node" || r == "*Cold" || r == "Node_builder" || r == "Cold_builder" || strings.HasPrefix(r, "case_Node_")) {
 				continue
 			}
-			if !(strings.HasPrefix(name, "Set") || strings.HasPrefix(name, "Has") || strings.HasPrefix(name, "Clear") || strings.HasPrefix(name, "Which") || name == "ProtoReflect" || name == "Build" || name == "String" && strings.HasPrefix(r, "case_")) {
+			if !(includeGet && strings.HasPrefix(name, "Get") || strings.HasPrefix(name, "Set") || strings.HasPrefix(name, "Has") || strings.HasPrefix(name, "Clear") || strings.HasPrefix(name, "Which") || name == "ProtoReflect" || name == "Build" || name == "String" && strings.HasPrefix(r, "case_")) {
 				continue
 			}
 			for _, list := range []*ast.FieldList{x.Type.Params, x.Type.Results} {
@@ -71,15 +71,20 @@ func surface(path string) map[string]string {
 	return out
 }
 func main() {
-	if len(os.Args) != 3 {
-		panic("expected official.go generated.go")
+	if len(os.Args) != 3 && !(len(os.Args) == 4 && os.Args[3] == "--opaque") {
+		panic("expected official.go generated.go [--opaque]")
 	}
-	a, b := surface(os.Args[1]), surface(os.Args[2])
+	opaque := len(os.Args) == 4
+	a, b := surface(os.Args[1], opaque), surface(os.Args[2], opaque)
 	if !reflect.DeepEqual(a, b) {
 		aa, _ := json.MarshalIndent(a, "", "  ")
 		bb, _ := json.MarshalIndent(b, "", "  ")
 		fmt.Printf("official:\n%s\ngogo:\n%s\n", aa, bb)
 		os.Exit(1)
 	}
-	fmt.Println("Official HYBRID API signatures match:", len(a))
+	label := "HYBRID"
+	if opaque {
+		label = "OPAQUE"
+	}
+	fmt.Println("Official", label, "API signatures match:", len(a))
 }

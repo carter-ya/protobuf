@@ -1,0 +1,127 @@
+package consumer
+
+import (
+	"reflect"
+	"testing"
+
+	pb "example.com/native/pb"
+	gogo "github.com/gogo/protobuf/proto"
+	live "github.com/gogo/protobuf/reflect"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/prototext"
+	v2 "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/testing/prototest"
+)
+
+func TestOpaqueContract(t *testing.T) {
+	n := pb.Node_builder{Count: 7, Name: "native", Present: gogo.Int32(0),
+		Child: pb.Node_builder{Name: "child"}.Build(), Values: []int32{1, 2},
+		Nodes: map[string]*pb.Node{"x": pb.Node_builder{Name: "mapped"}.Build()},
+	}.Build()
+	typ := reflect.TypeOf(n).Elem()
+	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i)
+		if (f.Tag.Get("protobuf") != "" || f.Tag.Get("protobuf_oneof") != "") && f.PkgPath == "" {
+			t.Fatalf("OPAQUE exposed field %s", f.Name)
+		}
+	}
+	if _, ok := reflect.TypeOf(n).MethodByName("GetChoice"); ok {
+		t.Fatal("OPAQUE exposes a oneof interface getter")
+	}
+	wrapped, err := live.Wrap(n)
+	if err != nil || wrapped != n {
+		t.Fatal("native identity", err)
+	}
+	m := n.ProtoReflect()
+	fd := m.Descriptor().Fields().ByName("count")
+	m.Set(fd, protoreflect.ValueOfInt32(11))
+	if n.GetCount() != 11 {
+		t.Fatal("reflection is detached")
+	}
+	n.SetCount(13)
+	if m.Get(fd).Int() != 13 {
+		t.Fatal("setter is detached")
+	}
+	for _, format := range []string{"gogo-binary", "v2-binary", "json", "text", "legacy-text"} {
+		t.Run(format, func(t *testing.T) {
+			target := new(pb.Node)
+			var data []byte
+			var err error
+			switch format {
+			case "gogo-binary":
+				data, err = gogo.Marshal(n)
+				if err == nil {
+					err = v2.Unmarshal(data, target)
+				}
+			case "v2-binary":
+				data, err = v2.Marshal(n)
+				if err == nil {
+					err = gogo.Unmarshal(data, target)
+				}
+			case "json":
+				data, err = protojson.Marshal(n)
+				if err == nil {
+					err = protojson.Unmarshal(data, target)
+				}
+			case "text":
+				data, err = prototext.Marshal(n)
+				if err == nil {
+					err = prototext.Unmarshal(data, target)
+				}
+			case "legacy-text":
+				err = gogo.UnmarshalText(gogo.MarshalTextString(n), target)
+			}
+			if err != nil || !gogo.Equal(n, target) || !v2.Equal(n, target) {
+				t.Fatal(format, err, target)
+			}
+		})
+	}
+	for _, clone := range []gogo.Message{gogo.Clone(n), v2.Clone(n).(gogo.Message)} {
+		if reflect.TypeOf(clone) != reflect.TypeOf(n) || !gogo.Equal(n, clone) {
+			t.Fatal("clone identity/value")
+		}
+	}
+	n.SetPresent(0)
+	n.SetPresentText("")
+	n.SetPresentData(nil)
+	n.SetData(nil)
+	n.SetBlob(nil)
+	if !n.HasPresent() || !n.HasPresentText() || !n.HasPresentData() || !n.HasBlob() || n.GetData() == nil || n.GetBlob() == nil {
+		t.Fatal("nil/zero presence")
+	}
+	n.SetNumber(0)
+	if !n.HasNumber() || n.WhichChoice() != pb.Node_Number_case || n.WhichChoice().String() != "number" {
+		t.Fatal("oneof case")
+	}
+	n.ClearSelected()
+	if !n.HasNumber() {
+		t.Fatal("cleared unrelated choice")
+	}
+	n.SetSelected(nil)
+	if n.HasChoice() {
+		t.Fatal("nil message setter")
+	}
+	text := ""
+	n = pb.Node_builder{Title: &text}.Build()
+	if !n.HasTitle() || n.GetTitle() != "" {
+		t.Fatal("builder string presence")
+	}
+	values, scores := []int32{1}, map[string]int32{"x": 2}
+	child := pb.Node_builder{Name: "child"}.Build()
+	n = pb.Node_builder{Values: values, Scores: scores, Number: gogo.Int32(0), Selected: child}.Build()
+	values[0], scores["x"] = 3, 4
+	if n.GetValues()[0] != 3 || n.GetScores()["x"] != 4 || n.GetSelected() != child {
+		t.Fatal("builder aliasing/precedence")
+	}
+	n.ClearChoice()
+	if n.HasChoice() {
+		t.Fatal("clear choice")
+	}
+	var zero *pb.Node
+	if zero.HasPresent() || zero.HasChoice() || zero.WhichChoice() != pb.Node_Choice_not_set_case || zero.GetCount() != 0 {
+		t.Fatal("nil receiver")
+	}
+	prototest.Message{}.Test(t, m.Type())
+	prototest.Message{}.Test(t, new(pb.Cold).ProtoReflect().Type())
+}

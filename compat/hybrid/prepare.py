@@ -30,7 +30,7 @@ def diagnostics(out, driver):
     dest.mkdir()
     cases = [
         ('bad-bool', 'proto_reflect=yes', '', '', 'proto_reflect must be'),
-        ('opaque', 'default_api_level=API_OPAQUE', '', '', 'OPAQUE is not implemented'),
+        ('bad-api', 'default_api_level=API_FUTURE', '', '', 'default_api_level supports'),
         ('closed-policy', 'proto_reflect=true,enforce_closed_enums=false', '', '', 'conflicts with native reflection'),
         ('merge-policy', 'proto_reflect=true,merge_required_fields=false', '', '', 'conflicts with native reflection'),
         ('unknown', 'proto_reflect=true', 'option (gogoproto.goproto_unrecognized) = false;', '', 'requires unknown-field storage'),
