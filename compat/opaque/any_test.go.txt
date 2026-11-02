@@ -1,0 +1,52 @@
+package consumer
+
+import (
+	"bytes"
+	pb "example.com/native/pb"
+	gogo "github.com/gogo/protobuf/proto"
+	textstd "github.com/gogo/protobuf/textpb/standard"
+	"strings"
+	"testing"
+)
+
+func TestOpaqueExpandedAny(t *testing.T) {
+	for _, codec := range []struct {
+		name      string
+		marshal   func(gogo.Message) (string, error)
+		unmarshal func(string, gogo.Message) error
+	}{
+		{"legacy", func(m gogo.Message) (string, error) {
+			var out bytes.Buffer
+			err := (&gogo.TextMarshaler{ExpandAny: true}).Marshal(&out, m)
+			return out.String(), err
+		}, gogo.UnmarshalText},
+		{"standard", (&textstd.Marshaler{ExpandAny: true}).MarshalToString, textstd.UnmarshalString},
+	} {
+		t.Run(codec.name, func(t *testing.T) {
+			n := pb.Any_builder{TypeUrl: "type.googleapis.com/names.Names", Value: []byte{10, 1, 'x'}}.Build()
+			text, err := codec.marshal(n)
+			if err != nil || !strings.Contains(text, "[type.googleapis.com/names.Names]") {
+				t.Fatalf("expand Any: %q %v", text, err)
+			}
+			copy := new(pb.Any)
+			if err = codec.unmarshal(text, copy); err != nil || !gogo.Equal(n, copy) {
+				t.Fatal("expanded Any roundtrip", err)
+			}
+			if err = codec.unmarshal("[type.googleapis.com/names.Names] {value:\"x\"}", copy); err != nil {
+				t.Fatal("expanded Any input", err)
+			}
+		})
+	}
+}
+
+func TestOpaqueExpandedAnyInput(t *testing.T) {
+	for _, unmarshal := range []func(string, gogo.Message) error{gogo.UnmarshalText, textstd.UnmarshalString} {
+		n := new(pb.Any)
+		if err := unmarshal("[type.googleapis.com/names.Names] {value:\"x\"}", n); err != nil {
+			t.Fatal(err)
+		}
+		if n.GetTypeUrl() != "type.googleapis.com/names.Names" || string(n.GetValue()) != string([]byte{10, 1, 'x'}) {
+			t.Fatal("expanded input lost native storage")
+		}
+	}
+}

@@ -16,13 +16,17 @@ GOGO_EDITION_PROTOC="$(command -v protoc)" go test ./compat/editions/...
 # replacing the legacy standard-proto fixtures used by old projects.
 protoc -I . --plugin=protoc-gen-test="$tmp/gogo" --test_out=paths=source_relative:"$tmp" compat/editions/edition2024/sample.proto
 go run ./compat/compare-generated -- compat/editions/edition2024/sample.pb.go "$tmp/compat/editions/edition2024/sample.pb.go"
-for api in API_OPAQUE; do
- sed "s/API_OPEN/$api/" compat/editions/edition2024/sample.proto > "$tmp/unsupported.proto"
- if protoc -I "$tmp" -I . --plugin=protoc-gen-test="$tmp/gogo" --test_out="$tmp" unsupported.proto > "$tmp/error" 2>&1; then
-  echo "unsupported $api accepted" >&2; exit 1
- fi
- grep -q 'api_level.*unsupported' "$tmp/error"
-done
+# OPAQUE is now a supported opt-in API; its runtime behavior is qualified in
+# the Go 1.23+ OPAQUE matrix, while this gate also runs on legacy Go 1.15.
+sed 's/API_OPEN/API_OPAQUE/' compat/editions/edition2024/sample.proto > "$tmp/opaque.proto"
+protoc -I "$tmp" -I . --plugin=protoc-gen-test="$tmp/gogo" --test_out=paths=source_relative:"$tmp" opaque.proto
+grep -q 'xxx_hidden_Value' "$tmp/opaque.pb.go"
+grep -q 'GoGoProtoPackageIsVersion18' "$tmp/opaque.pb.go"
+grep -q 'ProtoReflect()' "$tmp/opaque.pb.go"
+if protoc -I . --plugin=protoc-gen-test="$tmp/gogo" --test_out=default_api_level=API_UNKNOWN:"$tmp" compat/editions/edition2024/sample.proto > "$tmp/error" 2>&1; then
+ echo 'unknown API level accepted' >&2; exit 1
+fi
+grep -q 'default_api_level supports' "$tmp/error"
 protoc -I . --plugin=protoc-gen-test="$tmp/gogo" --test_out=paths=source_relative:"$tmp" compat/editions/edition2026/sample.proto
 go run ./compat/compare-generated -- compat/editions/edition2026/sample.pb.go "$tmp/compat/editions/edition2026/sample.pb.go"
 protoc -I . --include_imports --descriptor_set_out="$tmp/2026.pb" compat/editions/edition2026/sample.proto

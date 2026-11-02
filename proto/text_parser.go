@@ -584,8 +584,12 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 				if fieldSet["value"] {
 					return p.errorf(anyRepeatedlyUnpacked, "value")
 				}
-				sv.FieldByName("TypeUrl").SetString(extName)
-				sv.FieldByName("Value").SetBytes(b)
+				typeURL, value, ok := anyStorageFields(sv)
+				if !ok {
+					return p.errorf("invalid google.protobuf.Any message")
+				}
+				typeURL.SetString(extName)
+				value.SetBytes(b)
 				fieldSet["type_url"] = true
 				fieldSet["value"] = true
 				continue
