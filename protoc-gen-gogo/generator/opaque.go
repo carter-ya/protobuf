@@ -29,3 +29,17 @@ func (g *Generator) generatePrivateFieldAccessor(mc *msgCtx, fields []topLevelFi
 	}
 	g.P("default: return nil } }")
 }
+
+// HybridOutputFiles identifies outputs that require mutually exclusive builds.
+func (g *Generator) HybridOutputFiles() []string {
+	var names []string
+	for _, file := range g.genFiles {
+		for _, m := range file.Messages() {
+			if !m.GetOptions().GetMapEntry() && g.Hybrid(m) {
+				names = append(names, file.goFileName(g.pathType))
+				break
+			}
+		}
+	}
+	return names
+}

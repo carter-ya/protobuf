@@ -72,6 +72,41 @@ jobs:
           path: ${{ runner.temp }}/opaque-generation/qualification.json
           if-no-files-found: error
 
+  opaque-alternates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: reflect/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify HYBRID alternate builds, imports and generated tests
+        run: |
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/opaque/alternate.py "$RUNNER_TEMP/opaque-alternates" --official-generator "$RUNNER_TEMP/protoc-gen-go"
+          python3 compat/opaque/mixed.py "$RUNNER_TEMP/opaque-mixed"
+          python3 compat/opaque/generated_tests.py "$RUNNER_TEMP/opaque-generated-tests"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: opaque-alternates-${{ matrix.go }}
+          path: |
+            ${{ runner.temp }}/opaque-alternates/qualification.json
+            ${{ runner.temp }}/opaque-mixed/qualification.json
+            ${{ runner.temp }}/opaque-generated-tests/qualification.json
+          if-no-files-found: error
+
   live-reflection:
     runs-on: ubuntu-latest
     strategy:

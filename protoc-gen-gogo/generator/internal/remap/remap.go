@@ -101,7 +101,9 @@ func tokenize(src []byte) []tokinfo {
 	for {
 		pos, next, lit := s.Scan()
 		switch next {
-		case token.SEMICOLON:
+		case token.SEMICOLON, token.COMMENT:
+			// The formatter may insert semicolons or split/reflow doc comments.
+			// Generated annotations refer to code tokens, not comments.
 			continue
 		}
 		info = append(info, tokinfo{

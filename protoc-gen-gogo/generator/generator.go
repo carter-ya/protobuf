@@ -457,6 +457,9 @@ type Generator struct {
 	// normalization. It affects supplemental metadata only, not legacy output.
 	ReflectionSources map[string]*descriptor.FileDescriptorProto
 
+	// OpaqueAlternate switches resolved HYBRID messages to their build-tag variant.
+	OpaqueAlternate bool
+
 	outputImportPath GoImportPath                   // Package we're generating code for.
 	allFiles         []*FileDescriptor              // All files in the tree
 	allFilesByName   map[string]*FileDescriptor     // All files by filename.
@@ -794,9 +797,11 @@ func (g *Generator) WrapTypes() {
 	if err := PrepareReflectionRequest(g.Request); err != nil {
 		g.Fail(err.Error())
 	}
-	if g.Param["proto_reflect"] == "true" || (g.Param["default_api_level"] == "API_HYBRID" || g.Param["default_api_level"] == "API_OPAQUE") {
-		g.Param["enforce_closed_enums"] = "true"
-		g.Param["merge_required_fields"] = "true"
+	normalized, _ := reflectionParameters(g.Request.GetParameter())
+	for _, policy := range []string{"enforce_closed_enums", "merge_required_fields"} {
+		if normalized[policy] == "true" {
+			g.Param[policy] = "true"
+		}
 	}
 
 	g.allFiles = make([]*FileDescriptor, 0, len(g.Request.ProtoFile))
