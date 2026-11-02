@@ -1,0 +1,13 @@
+syntax = "proto2";
+package releaselegacy;
+option go_package = "example.com/release-consumer/pb";
+message Legacy {
+  optional int32 count = 1;
+  optional string name = 2 [default = "old"];
+  repeated int64 values = 3;
+  map<string, string> labels = 4;
+  oneof choice {
+    string text = 5;
+    Legacy child = 6;
+  }
+}

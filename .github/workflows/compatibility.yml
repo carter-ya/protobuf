@@ -1,6 +1,16 @@
 name: Legacy compatibility
 on: [push, pull_request]
 jobs:
+  release-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python3 release/check.py
+      - run: python3 release/test_contract.py
+
   native-hybrid:
     runs-on: ubuntu-latest
     strategy:

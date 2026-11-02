@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "state": "release-candidate",
+  "repository": "github.com/carter-ya/protobuf",
+  "trunk": "baseline/v1.3.2",
+  "root": {
+    "module": "github.com/gogo/protobuf",
+    "version": "v1.4.0-rc.1",
+    "tag": "v1.4.0-rc.1",
+    "go": "1.15"
+  },
+  "reflect": {
+    "module": "github.com/gogo/protobuf/reflect",
+    "version": "v0.1.0-rc.1",
+    "tag": "reflect/v0.1.0-rc.1",
+    "go": "1.23",
+    "minimum_root": "v1.4.0-rc.1"
+  },
+  "compiler": "36.2",
+  "official_runtime": {
+    "module": "google.golang.org/protobuf",
+    "version": "v1.36.13-0.20261007182434-0c373ff94f29",
+    "commit_prefix": "0c373ff94f29",
+    "sum": "h1:Db62vhun1XhVGqirFuk8Le0HVcu3X6yQneFbrNE06Ig=",
+    "go_mod_sum": "h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=",
+    "stable_reference": "v1.36.12",
+    "policy": "pinned-development-runtime-for-rc",
+    "stable_reference_gap": {
+      "kind": "edition-2026-runtime-support",
+      "diagnostic": "edition EDITION_2026 not yet supported by the Go Protobuf runtime"
+    }
+  },
+  "publication": "manual"
+}

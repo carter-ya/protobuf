@@ -1,0 +1,43 @@
+package consumer
+
+import (
+	"bytes"
+	pb "example.com/release-consumer/pb"
+	live "github.com/gogo/protobuf/reflect"
+	"google.golang.org/protobuf/encoding/protojson"
+	v2 "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/prototest"
+	"testing"
+)
+
+func TestEdition2026Consumer(t *testing.T) {
+	n := new(pb.Event)
+	n.SetName("")
+	n.SetState(pb.State(1))
+	if !n.HasName() {
+		t.Fatal("explicit string presence")
+	}
+	r, err := live.NewRegistry(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := (protojson.MarshalOptions{Resolver: r}).Marshal(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(data, []byte(`"ready"`)) {
+		t.Fatal("snapshot-required-json-name", string(data))
+	}
+	out := new(pb.Event)
+	if err = (protojson.UnmarshalOptions{Resolver: r}).Unmarshal(data, out); err != nil || !v2.Equal(n, out) {
+		t.Fatal("Edition JSON interop", err)
+	}
+	wire, err := v2.Marshal(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = v2.Unmarshal(wire, out); err != nil || !v2.Equal(n, out) {
+		t.Fatal("Edition binary", err)
+	}
+	prototest.Message{}.Test(t, n.ProtoReflect().Type())
+}

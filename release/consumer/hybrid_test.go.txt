@@ -1,0 +1,66 @@
+package consumer
+
+import (
+	"bytes"
+	pb "example.com/release-consumer/pb"
+	gogo "github.com/gogo/protobuf/proto"
+	live "github.com/gogo/protobuf/reflect"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/prototext"
+	v2 "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/testing/prototest"
+	"testing"
+)
+
+func TestHybridConsumer(t *testing.T) {
+	n := pb.Record_builder{Count: gogo.Int32(0), Text: gogo.String("")}.Build()
+	n.SetName("")
+	n.SetData(nil)
+	if !n.HasCount() || !n.HasName() || !n.HasText() || n.Data == nil {
+		t.Fatal("presence/builder")
+	}
+	n.SetNodes(map[string]*pb.Record{"x": {Name: gogo.String("child")}})
+	wrapped, err := live.Wrap(n)
+	if err != nil || wrapped != n {
+		t.Fatal("native identity", err)
+	}
+	fd := n.ProtoReflect().Descriptor().Fields().ByName("count")
+	n.ProtoReflect().Set(fd, protoreflect.ValueOfInt32(17))
+	if n.GetCount() != 17 {
+		t.Fatal("live reflection")
+	}
+	wire, err := v2.Marshal(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := new(pb.Record)
+	if err = gogo.Unmarshal(wire, old); err != nil || !gogo.Equal(n, old) {
+		t.Fatal("binary interop", err)
+	}
+	n.ProtoReflect().SetUnknown([]byte{0xa0, 6, 1})
+	clone := v2.Clone(n)
+	if _, ok := clone.(*pb.Record); !ok || !bytes.Equal(clone.ProtoReflect().GetUnknown(), n.ProtoReflect().GetUnknown()) {
+		t.Fatal("native clone/unknown")
+	}
+	for _, kind := range []string{"json", "text"} {
+		out := new(pb.Record)
+		var data []byte
+		switch kind {
+		case "json":
+			data, err = protojson.Marshal(n)
+			if err == nil {
+				err = protojson.Unmarshal(data, out)
+			}
+		case "text":
+			data, err = prototext.Marshal(n)
+			if err == nil {
+				err = prototext.Unmarshal(data, out)
+			}
+		}
+		if err != nil || out.GetCount() != 17 || out.GetNodes()["x"].GetName() != "child" {
+			t.Fatal(kind, err)
+		}
+	}
+	prototest.Message{}.Test(t, n.ProtoReflect().Type())
+}
