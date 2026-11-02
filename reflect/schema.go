@@ -277,7 +277,9 @@ func model(t reflect.Type) (*messageType, error) {
 				return nil, fmt.Errorf("gogoreflect: missing Go field %s", fd.FullName())
 			}
 			if st.Field(fi.index).PkgPath != "" {
-				return nil, fmt.Errorf("gogoreflect: unexported field %s", fd.FullName())
+				if _, err := nativeField(reflect.New(st), fi.index); err != nil {
+					return nil, fmt.Errorf("gogoreflect: %s: %w", fd.FullName(), err)
+				}
 			}
 			typ := fi.typ
 			target := fd
