@@ -71,6 +71,7 @@ def main():
                 if flavor == 'proto2':
                     test = (ROOT / 'compat/hybrid/closed_test.go.txt').read_text().replace('n.Status!=nil', 'n.HasStatus()').replace('n.Child.GetValue()', 'n.GetChild().GetValue()')
                     (dest / 'closed_test.go').write_text(test)
+                    shutil.copyfile(HERE / 'required_test.go.txt', dest / 'required_test.go')
             module(dest, 'v1.36.13-0.20261007182434-0c373ff94f29')
             if flavor == 'proto3':
                 if oracle:

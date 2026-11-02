@@ -1612,15 +1612,16 @@ func checkRequiredFields(pb proto.Message) error {
 	}
 
 	for i := 0; i < v.NumField(); i++ {
-		field := storage.Field(v, i)
 		sfield := v.Type().Field(i)
-
-		if sfield.PkgPath != "" {
-			// blank PkgPath means the field is exported; skip if not exported
+		if strings.HasPrefix(sfield.Name, "XXX_") {
 			continue
 		}
-
-		if strings.HasPrefix(sfield.Name, "XXX_") {
+		if sfield.PkgPath != "" && sfield.Tag.Get("protobuf") == "" && sfield.Tag.Get("protobuf_oneof") == "" {
+			// Unrelated private implementation fields are not protobuf storage.
+			continue
+		}
+		field := storage.Field(v, i)
+		if !field.CanInterface() {
 			continue
 		}
 

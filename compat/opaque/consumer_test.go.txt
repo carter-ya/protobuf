@@ -140,3 +140,12 @@ func TestOpaqueContract(t *testing.T) {
 	prototest.Message{}.Test(t, m.Type())
 	prototest.Message{}.Test(t, new(pb.Cold).ProtoReflect().Type())
 }
+
+func TestOpaqueBuilderScalarOwnership(t *testing.T) {
+	scalar, text := int32(7), "before"
+	n := pb.Node_builder{Present: &scalar, PresentText: &text}.Build()
+	scalar, text = 9, "after"
+	if n.GetPresent() != 7 || n.GetPresentText() != "after" {
+		t.Fatal("builder differs from official scalar/string ownership", n)
+	}
+}

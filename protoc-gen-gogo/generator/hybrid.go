@@ -121,7 +121,12 @@ func (g *Generator) generateReflectionMethods(mc *msgCtx, fields []topLevelField
 	for _, field := range fields {
 		switch f := field.(type) {
 		case *simpleField:
-			g.P("m.", f.goName, " = b.", g.publicFieldName(mc.message, f.goName))
+			name := g.publicFieldName(mc.message, f.goName)
+			if g.Opaque(mc.message) && strings.HasPrefix(f.goType, "*") && !f.protoField.IsMessage() && !g.IsGroup(f.protoField) && !f.protoField.IsString() && !f.protoField.IsBytes() {
+				g.P("if b.", name, " != nil { v := *b.", name, "; m.", f.goName, " = &v }")
+			} else {
+				g.P("m.", f.goName, " = b.", name)
+			}
 		case *oneofField:
 			for _, s := range f.subFields {
 				value := "b." + s.goName
