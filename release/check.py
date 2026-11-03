@@ -5,6 +5,9 @@ import json
 import pathlib
 import re
 
+from selection import go_mod_sum, published_revisions, root_stable, version_key
+from support import validate as validate_support
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
@@ -23,7 +26,7 @@ def require_version(text, module):
 
 
 def validate(manifest, root_mod, reflect_mod, sums):
-    if manifest['schema'] != 1 or manifest['state'] != 'release-candidate' or manifest['publication'] != 'manual':
+    if manifest['schema'] != 1 or manifest['state'] not in ['release-candidate', 'root-stable-modern-rc'] or manifest['publication'] != 'manual':
         raise ValueError('unknown release contract state')
     if manifest.get('qualification_profile') != 'native-opaque-v1':
         raise ValueError('OPAQUE qualification profile missing')
@@ -36,13 +39,16 @@ def validate(manifest, root_mod, reflect_mod, sums):
         raise ValueError('legacy Go compatibility changed')
     if directive(reflect_mod, 'go') != modern['go'] or modern['go'] != '1.23':
         raise ValueError('modern Go compatibility changed')
-    if not re.fullmatch(r'v1\.\d+\.\d+-rc\.\d+', root['version']):
+    root_pattern = r'v1\.\d+\.\d+' if root_stable(manifest) else r'v1\.\d+\.\d+-rc\.\d+'
+    if not re.fullmatch(root_pattern, root['version']):
         raise ValueError('root candidate version is invalid')
     if not re.fullmatch(r'v0\.\d+\.\d+-rc\.\d+', modern['version']):
         raise ValueError('reflect candidate version is invalid')
     if root['tag'] != root['version'] or modern['tag'] != 'reflect/' + modern['version']:
         raise ValueError('submodule tag/version pairing changed')
-    if modern['minimum_root'] != root['version'] or require_version(reflect_mod, root['module']) != root['version']:
+    if require_version(reflect_mod, root['module']) != modern['minimum_root'] or version_key(root['version']) < version_key(modern['minimum_root']):
+        raise ValueError('root does not satisfy the optional module minimum')
+    if not root_stable(manifest) and modern['minimum_root'] != root['version']:
         raise ValueError('minimum root must match paired candidate')
     if runtime['stable_reference_gap'] != {'kind': 'edition-2026-runtime-support', 'diagnostic': 'edition EDITION_2026 not yet supported by the Go Protobuf runtime'}:
         raise ValueError('stable reference capability gap needs explicit review')
@@ -61,6 +67,7 @@ def validate(manifest, root_mod, reflect_mod, sums):
     if 'google.golang.org/protobuf' in root_mod:
         raise ValueError('legacy root acquired a V2 dependency')
     published = manifest['published_pair']
+    published_revisions(published)
     if not re.fullmatch('[0-9a-f]{40}', published['revision']):
         raise ValueError('published source must be an immutable full revision')
     if not re.fullmatch(r'v1\.\d+\.\d+(?:-rc\.\d+)?', published['root']) or not re.fullmatch(r'reflect/v0\.\d+\.\d+(?:-rc\.\d+)?', published['reflect']):
@@ -81,16 +88,22 @@ def validate(manifest, root_mod, reflect_mod, sums):
                 valid = False
             if not valid:
                 raise ValueError('invalid published module checksum: ' + field)
+    if root_stable(manifest):
+        if modern['tag'] != published['reflect'] or modern['version'] != published['modules']['reflect']['Version']:
+            raise ValueError('independent root promotion must reuse the published modern RC')
+        if go_mod_sum(reflect_mod.encode()) != published['modules']['reflect']['GoModSum']:
+            raise ValueError('reused modern module metadata changed')
 
 
 def main():
     manifest = json.loads((ROOT / 'release/manifest.json').read_text())
     validate(manifest, (ROOT / 'go.mod').read_text(), (ROOT / 'reflect/go.mod').read_text(),
              (ROOT / 'reflect/go.sum').read_text())
-    for name in ['INSTALL.md', 'NOTES.md', 'README.md']:
+    validate_support(json.loads((ROOT / 'release/support-policy.json').read_text()), manifest)
+    for name in ['INSTALL.md', 'NOTES.md', 'README.md'] + (['STABLE-NOTES.md'] if root_stable(manifest) else []):
         if not (ROOT / 'release' / name).is_file():
             raise ValueError('missing release deliverable: ' + name)
-    print('Paired RC versions, minimum toolchains/root, dependency policy and checksums match.')
+    print('Component versions, minimum toolchains/root, support policy and checksums match.')
 
 
 if __name__ == '__main__':

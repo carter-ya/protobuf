@@ -29,7 +29,10 @@ paths and manifest identity, installed generator build identities, and every
 consumer's selected module graph. Canonical module requirements use remote fork
 replacements; all dependency sources must come from the new module cache.
 Main consumer/generated files are allowed outside it. Local-path replacements,
-mixed component revisions, mismatched versions and runtime overrides fail.
+component revisions that differ from the explicitly selected per-component
+origins, mismatched versions and runtime overrides fail. In
+`root-stable-modern-rc` mode the root comes from the candidate commit and reflect
+comes from the immutable published RC2 version, checksum and tag origin.
 No repository go.sum/cache is copied into the consumers. GOWORK and user Go
 settings are disabled; consumer Go/git subprocesses have tokens/SSH access
 removed. An optional GITHUB_TOKEN is used only by the metadata API lookup.
@@ -46,7 +49,7 @@ module proxies may not fetch. Artifacts retain reports/logs, module graphs,
 go.mod/go.sum and generator build information; module/build caches are not
 uploaded. Other full compatibility/conformance gates remain required.
 
-## Prepare the paired publication plan
+## Prepare the component publication plan
 
 After the final commit's complete CI and code review succeed, download its
 three reports and create a reviewable plan:
@@ -56,21 +59,25 @@ python3 release/plan.py --revision FULL_QUALIFIED_COMMIT \
   --report /tmp/go115/qualification.json \
   --report /tmp/go123/qualification.json \
   --report /tmp/go127/qualification.json \
-  --output /tmp/paired-release-plan.json
+  --output /tmp/component-release-plan.json
 ```
 
 The plan rejects missing/duplicate consumer cases, mixed revisions/contracts,
 changed checksums and missing toolchain/control evidence. It prints no tag or
 Release API requests; the JSON contains proposed annotated-tag and atomic-push
-commands for explicit maintainer review. The selected commit must be contained
-in the maintenance branch, and existing tags must never be overwritten.
+commands for explicit maintainer review. The selected root commit must be contained
+in the maintenance branch, and existing tags must never be overwritten. The
+independent-root plan contains only the new root tag and separately records
+the reused reflect RC2 tag, revision and checksums. `STABLE-NOTES.md` is its
+proposed tag message; `NOTES.md` remains the published RC2 history.
 
 ## Verify the published versions
 
-Only after both paired tags have actually been published, add `--published` to
+Only after the proposed tags have actually been published, add `--published` to
 the same consumer commands. This changes module queries from commit-based
 pseudo-versions to manifest versions and separately verifies the prefixed
-`reflect/` tag. Every tag must resolve to the selected full commit. Missing tags
+`reflect/` tag. Every tag must resolve to its selected component commit. Root stable promotion
+reuses the existing reflect tag at its original commit. Missing tags
 fail without creating them. Go 1.15 uses the independent tag metadata check when
 its module download output does not expose Origin.Hash.
 
@@ -94,3 +101,32 @@ controls, supported regeneration, default/purego/race and bidirectional wire
 exchange. Its fork modules, generators and includes come from the published
 remote versions, while the qualification harness is reviewed independently.
 The source-checkout real-project CI remains a separate gate for later code.
+
+
+## Candidate root with published reflect RC2
+
+S04's additional gate tests the proposed stable root before creating its tag:
+
+```sh
+python3 compat/downstream/projects/run.py /tmp/root-stable-projects \
+  --candidate-root FULL_PUBLIC_COMMIT
+```
+
+Use Go 1.27, Python 3.12 and protoc 36.2. Optional `--candidate-repository github.com/OWNER/protobuf` selects a public fork for the root only; the reused
+reflect component stays at its recorded publisher. This mode is mutually
+exclusive with `--published`. The canonical root requirement is `v1.4.0`,
+replaced remotely with the candidate's immutable pseudo-version; reflect uses
+the actual `v0.1.0-rc.2` replacement. This does not claim that `v1.4.0` exists.
+
+`.github/workflows/root-stable-readiness.yml` runs all four pinned projects at
+the actual PR head with empty caches. The scope remains original/fork controls,
+frozen and supported regenerated packages, default/purego/race and bidirectional
+wire exchange. Reports record the root candidate revision, frozen reflect tag
+origin, exact downloaded module identities, generator build identity and all
+module graphs. A stale root, moved reflect tag, changed checksum or unqualified
+local dependency fails. These are real selected-package tests, not a claim that
+the entire upstream products have passed.
+
+The ordinary source-checkout and published-RC2 matrices also remain required.
+After actual root publication, verify the stable tag with `release/remote.py --published`, then update the published record and rerun the real-project
+`--published` matrix for the new immutable pair before announcing it.

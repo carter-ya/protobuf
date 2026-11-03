@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Produce a reviewable paired tag plan from completed remote reports; never publish."""
+"""Produce a reviewable component tag plan from completed remote reports; never publish."""
 import argparse
 import hashlib
 import json
@@ -7,6 +7,7 @@ import pathlib
 import re
 
 from matrix import expected, PROFILE
+from selection import check_frozen_identity, component_path, component_revisions, frozen_component, publish_components
 
 HERE = pathlib.Path(__file__).resolve().parent
 BACKENDS = {'gogo', 'gogofast', 'gogofaster', 'gogoslick', 'gogotypes'}
@@ -20,6 +21,7 @@ def qualify(reports, manifest, manifest_hash, revision):
     if len(modes) != 1:
         raise ValueError('commit-based and published-version reports must not be mixed')
     module_ids = {}
+    origins = component_revisions(manifest, revision)
     for report in reports:
         if report['status'] != 'passed' or report['revision'] != revision or report['public_commit'] != revision:
             raise ValueError('reports must pass at the selected immutable public revision')
@@ -35,6 +37,12 @@ def qualify(reports, manifest, manifest_hash, revision):
             raise ValueError('unsupported release qualification toolchain/profile')
         if report.get('qualification_profile') != PROFILE:
             raise ValueError('OPAQUE report profile missing')
+        components = ['root'] if legacy else ['root', 'reflect']
+        if report.get('component_revisions') != {name: origins[name] for name in components} or set(report['modules']) != set(components):
+            raise ValueError('component origin evidence is missing or mixed')
+        for name in components:
+            if (report['published_version_mode'] or frozen_component(manifest, name)) and report.get('published_tag_commits', {}).get(name) != origins[name]:
+                raise ValueError('published component tag origin was not verified')
         required_matrix = expected(legacy)
         runs = [(r['backend'], r['profile'], r['variant']) for r in report['consumer_runs']]
         if len(runs) != len(required_matrix) or set(runs) != required_matrix:
@@ -52,11 +60,14 @@ def qualify(reports, manifest, manifest_hash, revision):
             if not gap.get('expected_diagnostic_reproduced') or gap.get('capability_gap') != manifest['official_runtime']['stable_reference_gap']['kind'] or gap.get('version') != manifest['official_runtime']['stable_reference']:
                 raise ValueError('stable dependency decision lacks its exact control')
         for name, data in report['modules'].items():
-            expected_path = manifest['repository'] + ('/reflect' if name == 'reflect' else '')
+            expected_path = component_path(manifest, name, manifest['repository'])
             if name not in ['root', 'reflect'] or data['Path'] != expected_path:
                 raise ValueError('downloaded module path differs')
-            if data.get('Origin') and data['Origin'].get('Hash') != revision:
+            if report['published_version_mode'] and data['Version'] != manifest[name]['version']:
+                raise ValueError('published evidence did not install the manifest version')
+            if (not legacy or data.get('Origin')) and data.get('Origin', {}).get('Hash') != origins[name]:
                 raise ValueError('downloaded module origin differs')
+            check_frozen_identity(manifest, name, data)
             identity = tuple(data[k] for k in ['Path', 'Version', 'Sum', 'GoModSum'])
             if name in module_ids and module_ids[name] != identity:
                 raise ValueError('module versions/checksums differ across toolchains')
@@ -67,6 +78,27 @@ def qualify(reports, manifest, manifest_hash, revision):
     if not {'root', 'reflect'} <= module_ids.keys():
         raise ValueError('paired modules were not both downloaded')
     return module_ids
+
+
+def publication_plan(manifest, revision, reports, modules, report_paths):
+    publishing = publish_components(manifest)
+    tags = [manifest[name]['tag'] for name in publishing]
+    published = all(r['published_version_mode'] for r in reports)
+    plan = {'state': 'published-versions-verified' if published else 'prepared-not-published', 'revision': revision,
+            'repository': manifest['repository'], 'tags': tags,
+            'component_revisions': component_revisions(manifest, revision),
+            'reused_components': {name: {'tag': manifest[name]['tag'], 'revision': component_revisions(manifest, revision)[name],
+                'module': manifest['published_pair']['modules'][name]} for name in ['root', 'reflect'] if name not in publishing},
+            'remote_module_identities': modules, 'reports': report_paths,
+            'required_before_execution': ['exact-head clean review and all applicable CI successful',
+                                          'selected revision is contained in baseline/v1.3.2',
+                                          'proposed remote tags absent or already identical; reused tags unchanged; never overwrite'],
+            'commands_for_maintainer_review_only': [] if published else [
+                'git tag -a ' + tag + ' ' + revision + ' -F release/' + ('STABLE-NOTES.md' if publishing == ['root'] else 'NOTES.md') for tag in tags] +
+                ['git push --atomic origin ' + ' '.join('refs/tags/' + tag for tag in tags)],
+            'required_after_tag_push': 'rerun release/remote.py --published for the selected revision and verify each component tag origin before announcing the release',
+            'publication_performed': False}
+    return plan
 
 
 def main():
@@ -81,22 +113,9 @@ def main():
     manifest = json.loads(raw)
     reports = [json.loads(p.read_text()) for p in args.report]
     modules = qualify(reports, manifest, hashlib.sha256(raw).hexdigest(), args.revision)
-    root_tag, reflect_tag = manifest['root']['tag'], manifest['reflect']['tag']
-    published = all(r['published_version_mode'] for r in reports)
-    plan = {'state': 'published-versions-verified' if published else 'prepared-not-published', 'revision': args.revision,
-            'repository': manifest['repository'], 'tags': [root_tag, reflect_tag],
-            'remote_module_identities': modules, 'reports': [str(p.resolve()) for p in args.report],
-            'required_before_execution': ['exact-head clean review and all applicable CI successful',
-                                          'selected revision is contained in baseline/v1.3.2',
-                                          'both proposed remote tags absent or already identical; never overwrite'],
-            'commands_for_maintainer_review_only': [] if published else [
-                'git tag -a ' + root_tag + ' ' + args.revision + ' -F release/NOTES.md',
-                'git tag -a ' + reflect_tag + ' ' + args.revision + ' -F release/NOTES.md',
-                'git push --atomic origin refs/tags/' + root_tag + ' refs/tags/' + reflect_tag],
-            'required_after_tag_push': 'rerun release/remote.py --published for the selected revision and verify both tag origins before announcing the RC',
-            'publication_performed': False}
+    plan = publication_plan(manifest, args.revision, reports, modules, [str(p.resolve()) for p in args.report])
     args.output.write_text(json.dumps(plan, indent=2) + '\n')
-    print('Paired tag plan prepared; no tags or Releases were created.')
+    print('Component publication plan prepared; no tags or Releases were created.')
 
 
 if __name__ == '__main__':

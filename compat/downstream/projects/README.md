@@ -146,3 +146,18 @@ uploads actual reports for each project without module/build caches. These
 results cover the named versions/packages and supported regeneration paths;
 they do not claim whole-product deployment testing or transparent OPAQUE
 migration of upstream custom/value-storage schemas.
+
+
+### Stable-root candidate qualification
+
+`run.py DEST --candidate-root FULL_PUBLIC_COMMIT` runs the same full project
+matrix using the proposed root stable contract and the immutable published
+reflect RC2. It downloads the root by commit and reflect by its recorded tag,
+checks each source independently and verifies all fork dependency sources in
+fresh module graphs. The canonical root requirement can be stable before its
+tag exists because the replacement is the exact candidate pseudo-version.
+Optional `--candidate-repository github.com/OWNER/protobuf` changes the root
+publisher only. This mode and `--published` are mutually exclusive. See
+[the release gate](../../../release/REMOTE.md#candidate-root-with-published-reflect-rc2)
+for reports and publication sequencing. Source-checkout and published-RC2 CI
+remain separate required checks.

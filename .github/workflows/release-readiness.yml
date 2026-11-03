@@ -42,6 +42,8 @@ jobs:
           python3 release/test_contract.py
           python3 release/test_remote.py
           python3 release/test_plan.py
+          python3 release/test_support.py
+          python3 release/test_selection.py
       - name: Install pinned compiler
         run: |
           curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"

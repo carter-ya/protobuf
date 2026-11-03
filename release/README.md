@@ -9,7 +9,8 @@ RC1 remains at `533267c4c68359c533a07ece14e6cb2320a22b8b` and excludes OPAQUE.
 
 `manifest.json` separates the current qualification contract from the immutable
 `published_pair`, which records the latest verified tags, source revision and
-remote module checksums. Current maintenance commits are not additional
+remote module checksums. The current S04 contract proposes root `v1.4.0` while
+reusing the existing reflect RC2; `v1.4.0` is not yet published. Current maintenance commits are not additional
 published versions. Future publication remains manual; remote tags and GitHub
 Releases establish publication status. Editing this file never publishes or
 retags a version.
@@ -21,15 +22,22 @@ retags a version.
 
 The root minor version reflects additive, opt-in APIs while retaining old
 imports and unselected layouts. The new reflection module starts at 0.1: its
-supported storage profile and public APIs must be stated explicitly. Both tags
-must identify the same reviewed commit from `baseline/v1.3.2`. Do not retag an
+supported storage profile and public APIs must be stated explicitly. The published RC2 tags share a commit. An independent root promotion instead
+records each component revision and qualifies that exact remote combination;
+the new root must be contained in `baseline/v1.3.2`. Do not retag an
 existing version. Upstream v1.3.2 remains an immutable comparison baseline.
 
 See [installation](INSTALL.md) for actual remote-consumer commands,
 [the cold-cache gate and publication plan](REMOTE.md), and
-[release notes](NOTES.md) for capabilities and migration boundaries.
+[published RC2 notes](NOTES.md) for capabilities and migration boundaries, and
+[proposed root stable notes](STABLE-NOTES.md) for the next publication.
 
 ## Official runtime decision
+
+The [root/optional-module support decision](SUPPORT.md) records the independent
+root-stable route while preserving the Go1.23 modern RC line. Its machine policy
+is checked in CI; a future upstream Go1.26 requirement does not silently change
+this line's compatibility floor.
 
 The optional reflection module retains
 `google.golang.org/protobuf v1.36.13-0.20261007182434-0c373ff94f29` for this RC.
@@ -76,13 +84,18 @@ Primary references: [official Go module rules](https://go.dev/ref/mod),
    five generators through canonical imports, regenerate external schemas and
    exercise legacy and native V2 consumers. Retain module graphs, zip sums,
    build identities and logs. A local-path replacement cannot qualify this gate.
-3. Prepare the two release notes and a paired tag plan. Actual publication is
+3. Prepare component release notes and a tag plan. In `root-stable-modern-rc`
+   mode the plan creates only `v1.4.0`; reflect RC2 is reused at its recorded
+   source and checksums. Qualify the candidate root with that published reflect
+   in the four-project [remote downstream matrix](REMOTE.md). Actual publication is
    a separate action after this work is reviewed; do not create placeholder tags
    just to make an installation example pass.
-4. After publishing both tags at the selected commit, rerun the same gate in
-   published-version mode. Verify each tag resolves to that commit, and both
-   module versions are downloadable with their checksums. Keep the RC label
-   until versioned installation and intended downstream usage have passed.
+4. After publishing the proposed tags, rerun the same gate in published-version
+   mode. Verify each tag resolves to its selected component revision, and both
+   module versions are downloadable with their checksums. The optional module
+   retains its RC label. Then update `published_pair` with the verified root and
+   reflect identities and per-component revisions; its legacy `revision` alias
+   must equal the root revision. That record update never moves existing tags.
 5. Publish only the qualified capabilities and their minimum Go/compiler/runtime
    requirements. Do not describe the project as covering every official Go API
    or every gogo custom representation. OPAQUE provides private protobuf fields

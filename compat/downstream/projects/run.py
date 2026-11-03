@@ -26,23 +26,29 @@ def main():
     parser.add_argument('output', type=pathlib.Path)
     parser.add_argument('--profile', action='append')
     parser.add_argument('--frozen-only', action='store_true')
-    parser.add_argument('--published', action='store_true', help='test the recorded published pair from remote modules in a cold cache')
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument('--published', action='store_true', help='test the recorded published pair from remote modules in a cold cache')
+    selection.add_argument('--candidate-root', help='qualify this exact public stable-root candidate with the frozen published reflect module')
+    parser.add_argument('--candidate-repository', help='public root repository for candidate commits; frozen modules keep their recorded publisher')
     args = parser.parse_args()
+    if args.candidate_repository and not args.candidate_root:
+        parser.error('--candidate-repository requires --candidate-root')
+    remote_pair = bool(args.published or args.candidate_root)
     dest = args.output.resolve()
-    if args.published and dest.is_relative_to(ROOT):
+    if remote_pair and dest.is_relative_to(ROOT):
         parser.error('published qualification requires an external output directory')
     dest.mkdir(parents=True)
     pins = json.loads((HERE / 'pins.json').read_text())
     chosen = [p for p in pins if not args.profile or p['name'] in args.profile]
     if not chosen or (args.profile and set(args.profile) - {p['name'] for p in pins}):
         parser.error('unknown project profile')
-    env = environment(dest) if args.published else dict(os.environ, GOWORK='off', GOTOOLCHAIN='local')
+    env = environment(dest) if remote_pair else dict(os.environ, GOWORK='off', GOTOOLCHAIN='local')
     report = {'status': 'running', 'time': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'source_revision': output(['git', 'rev-parse', 'HEAD']),
               'working_tree': output(['git', 'status', '--porcelain']),
               'go': output(['go', 'version'], env=env), 'protoc': output(['protoc', '--version'], env=env),
-              'mode': 'published-pair' if args.published else 'source-checkout',
-              'cold_module_cache': args.published,
+              'mode': 'candidate-root-published-reflect' if args.candidate_root else 'published-pair' if args.published else 'source-checkout',
+              'cold_module_cache': remote_pair,
               'harness_sha256': hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),
               'published_helper_sha256': hashlib.sha256((HERE / 'published.py').read_bytes()).hexdigest(),
               'templates_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(HERE.glob('*.go.txt'))},
@@ -71,7 +77,7 @@ def main():
 
     save()
     try:
-        published = PublishedPair(dest, run, report) if args.published else None
+        published = PublishedPair(dest, run, report, args.candidate_root, args.candidate_repository) if remote_pair else None
         if published and report['protoc'] != 'libprotoc ' + published.manifest['compiler']:
             raise ValueError('published downstream matrix requires its pinned compiler')
         includes = published.root if published else ROOT
