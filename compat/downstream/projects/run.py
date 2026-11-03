@@ -11,12 +11,14 @@ import shutil
 import subprocess
 import tarfile
 
+from published import PublishedPair, environment
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 HERE = pathlib.Path(__file__).resolve().parent
 
 
-def output(command, cwd=ROOT):
-    return subprocess.check_output([str(x) for x in command], cwd=cwd, text=True).strip()
+def output(command, cwd=ROOT, env=None):
+    return subprocess.check_output([str(x) for x in command], cwd=cwd, env=env, text=True).strip()
 
 
 def main():
@@ -24,19 +26,25 @@ def main():
     parser.add_argument('output', type=pathlib.Path)
     parser.add_argument('--profile', action='append')
     parser.add_argument('--frozen-only', action='store_true')
+    parser.add_argument('--published', action='store_true', help='test the recorded published pair from remote modules in a cold cache')
     args = parser.parse_args()
     dest = args.output.resolve()
+    if args.published and dest.is_relative_to(ROOT):
+        parser.error('published qualification requires an external output directory')
     dest.mkdir(parents=True)
     pins = json.loads((HERE / 'pins.json').read_text())
     chosen = [p for p in pins if not args.profile or p['name'] in args.profile]
     if not chosen or (args.profile and set(args.profile) - {p['name'] for p in pins}):
         parser.error('unknown project profile')
-    env = dict(os.environ, GOWORK='off', GOTOOLCHAIN='local')
+    env = environment(dest) if args.published else dict(os.environ, GOWORK='off', GOTOOLCHAIN='local')
     report = {'status': 'running', 'time': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'source_revision': output(['git', 'rev-parse', 'HEAD']),
               'working_tree': output(['git', 'status', '--porcelain']),
-              'go': output(['go', 'version']), 'protoc': output(['protoc', '--version']),
+              'go': output(['go', 'version'], env=env), 'protoc': output(['protoc', '--version'], env=env),
+              'mode': 'published-pair' if args.published else 'source-checkout',
+              'cold_module_cache': args.published,
               'harness_sha256': hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),
+              'published_helper_sha256': hashlib.sha256((HERE / 'published.py').read_bytes()).hexdigest(),
               'templates_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(HERE.glob('*.go.txt'))},
               'pins_sha256': hashlib.sha256((HERE / 'pins.json').read_bytes()).hexdigest(),
               'original_revision': output(['git', 'rev-parse', 'v1.3.2']), 'checks': [], 'projects': []}
@@ -44,19 +52,29 @@ def main():
     def save():
         (dest / 'qualification.json').write_text(json.dumps(report, indent=2) + '\n')
 
-    def run(name, command, cwd=ROOT, extra=None):
+    def run(name, command, cwd=ROOT, extra=None, capture=False):
         log = dest / (name + '.log')
-        with log.open('w') as stream:
-            result = subprocess.run([str(x) for x in command], cwd=cwd, env=dict(env, **(extra or {})),
-                                    stdout=stream, stderr=subprocess.STDOUT)
-        report['checks'].append({'name': name, 'passed': result.returncode == 0, 'log': log.name})
+        options = {'cwd': cwd, 'env': dict(env, **(extra or {})), 'text': True}
+        if capture:
+            result = subprocess.run([str(x) for x in command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, **options)
+            log.write_text(result.stdout + result.stderr)
+        else:
+            with log.open('w') as stream:
+                result = subprocess.run([str(x) for x in command], stdout=stream, stderr=subprocess.STDOUT, **options)
+        report['checks'].append({'name': name, 'command': [str(x) for x in command], 'cwd': str(cwd),
+                                 'passed': result.returncode == 0, 'log': log.name})
         save()
         if result.returncode:
             raise RuntimeError(name + ' failed; inspect ' + str(log))
         print(name, 'passed', flush=True)
+        return result
 
     save()
     try:
+        published = PublishedPair(dest, run, report) if args.published else None
+        if published and report['protoc'] != 'libprotoc ' + published.manifest['compiler']:
+            raise ValueError('published downstream matrix requires its pinned compiler')
+        includes = published.root if published else ROOT
         original = dest / 'original-gogo'
         original.mkdir()
         archive = subprocess.check_output(['git', 'archive', 'v1.3.2'], cwd=ROOT)
@@ -70,8 +88,10 @@ def main():
         for profile in chosen:
             name = profile['name']
             modules = []
-            for pin in profile['modules']:
-                data = json.loads(output(['go', 'mod', 'download', '-json', pin['Path'] + '@' + pin['Version']]))
+            for index, pin in enumerate(profile['modules']):
+                command = ['go', 'mod', 'download', '-json', pin['Path'] + '@' + pin['Version']]
+                raw = run(name + '-download-project-' + str(index), command, capture=True).stdout if published else output(command, env=env)
+                data = json.loads(raw)
                 for field in ['Path', 'Version', 'Sum', 'GoModSum']:
                     if data.get(field) != pin[field]:
                         raise RuntimeError('module checksum or version changed: ' + pin['Path'])
@@ -88,7 +108,7 @@ def main():
             def semantics(record):
                 return {name: {k: v for k, v in value.items() if k != "wire"} for name, value in record.items()}
             for mode in generation:
-                for runtime, implementation in [('original', original), ('fork', ROOT)]:
+                for runtime, implementation in [('original', original), ('fork', includes)]:
                     label = name + '-' + mode + '-' + runtime
                     consumer = dest / label
                     consumer.mkdir()
@@ -96,9 +116,12 @@ def main():
                     (consumer / 'project_test.go').write_text((HERE / (name + '_test.go.txt')).read_text())
                     if name != 'kubernetes':
                         (consumer / 'json_test.go').write_text((HERE / 'protojson_test.go.txt').read_text())
-                    mod = 'module example.com/gogo-project-compat\n\ngo 1.26.0\n\nrequire (\n github.com/gogo/protobuf v1.3.2\n'
+                    root_version = published.versions['root'] if published and runtime == 'fork' else 'v1.3.2'
+                    mod = 'module example.com/gogo-project-compat\n\ngo 1.26.0\n\nrequire (\n github.com/gogo/protobuf ' + root_version + '\n'
                     mod += ''.join(' ' + m['Path'] + ' ' + m['Version'] + '\n' for m in modules) + ')\n'
-                    mod += 'replace github.com/gogo/protobuf => ' + str(implementation) + '\n'
+                    replacement = published.replacement('root') if published and runtime == 'fork' else str(implementation)
+                    mod += 'replace github.com/gogo/protobuf => ' + replacement + '\n'
+                    local_project = {}
                     if mode == 'regenerated':
                         source = dest / (label + '-source')
                         shutil.copytree(modules[0]['Dir'], source)
@@ -108,43 +131,56 @@ def main():
                         spec = profile['regenerate']
                         key = (runtime, spec['backend'])
                         if key not in drivers:
-                            driver = dest / (runtime + '-' + spec['backend'])
-                            run(runtime + '-build-' + spec['backend'], ['go', 'build', '-o', driver, './protoc-gen-' + spec['backend']], implementation)
+                            if published and runtime == 'fork':
+                                driver = published.generator(spec['backend'], report)
+                            else:
+                                driver = dest / (runtime + '-' + spec['backend'])
+                                run(runtime + '-build-' + spec['backend'], ['go', 'build', '-o', driver, './protoc-gen-' + spec['backend']], implementation)
                             drivers[key] = driver
                         include = dest / 'include/github.com/gogo'
                         include.mkdir(parents=True, exist_ok=True)
                         alias = include / 'protobuf'
                         if not alias.exists():
-                            alias.symlink_to(ROOT, target_is_directory=True)
+                            alias.symlink_to(includes, target_is_directory=True)
                         directory = source / spec['directory']
                         params = ['paths=source_relative'] + spec['options']
                         groups = {}
                         for file in spec['files']:
                             groups.setdefault(str(pathlib.Path(file).parent), []).append(file)
                         for index, group in enumerate(groups.values()):
-                            run(label + '-generate-' + str(index), ['protoc', '-I' + str(directory), '-I' + str(source), '-I' + str(ROOT),
-                                '-I' + str(ROOT / 'protobuf'), '-I' + str(dest / 'include'),
+                            run(label + '-generate-' + str(index), ['protoc', '-I' + str(directory), '-I' + str(source), '-I' + str(includes),
+                                '-I' + str(includes / 'protobuf'), '-I' + str(dest / 'include'),
                                 '--plugin=protoc-gen-test=' + str(drivers[key]), '--test_out=' + ','.join(params) + ':' + str(directory)] + group)
                         outputs = [directory / pathlib.Path(p).with_suffix('.pb.go') for p in spec['files']]
                         generated_outputs[runtime] = outputs
                         if runtime == 'fork':
                             for index, (before, after) in enumerate(zip(generated_outputs['original'], outputs)):
-                                run(label + '-compare-' + str(index), ['go', 'run', './compat/compare-generated', '--', before, after])
+                                if published:
+                                    run(label + '-compare-' + str(index), ['go', 'run', '-mod=mod', 'github.com/gogo/protobuf/compat/compare-generated', '--', before, after], published.tools)
+                                else:
+                                    run(label + '-compare-' + str(index), ['go', 'run', './compat/compare-generated', '--', before, after])
                         mod += 'replace ' + modules[0]['Path'] + ' => ' + str(source) + '\n'
+                        local_project[modules[0]['Path']] = source
                     if runtime == 'fork':
-                        mod += 'require (\n github.com/gogo/protobuf/reflect v0.0.0\n google.golang.org/protobuf v1.36.13-0.20261007182434-0c373ff94f29\n)\n'
-                        mod += 'replace github.com/gogo/protobuf/reflect => ' + str(ROOT / 'reflect') + '\n'
+                        reflect_version = published.versions['reflect'] if published else 'v0.0.0'
+                        runtime_version = published.runtime if published else 'v1.36.13-0.20261007182434-0c373ff94f29'
+                        mod += 'require (\n github.com/gogo/protobuf/reflect ' + reflect_version + '\n google.golang.org/protobuf ' + runtime_version + '\n)\n'
+                        mod += 'replace github.com/gogo/protobuf/reflect => ' + (published.replacement('reflect') if published else str(ROOT / 'reflect')) + '\n'
                         (consumer / 'reflection_test.go').write_text((HERE / 'reflection_test.go.txt').read_text())
                         if name == 'prometheus':
                             (consumer / 'reflection_prometheus_test.go').write_text((HERE / 'reflection_prometheus_test.go.txt').read_text())
                     (consumer / 'go.mod').write_text(mod)
-                    shutil.copyfile(ROOT / 'go.sum', consumer / 'go.sum')
+                    if not published:
+                        shutil.copyfile(ROOT / 'go.sum', consumer / 'go.sum')
                     records = []
                     consumers[(mode, runtime)] = consumer
                     for variant, flags in [('default', []), ('purego', ['-tags=purego']), ('race', ['-race'])]:
                         path = consumer / (variant + '.json')
                         run(label + '-' + variant, ['go', 'test', '-mod=mod', '-count=1', '-timeout=5m'] + flags + ['./...'] + profile['packages'],
                             consumer, dict({'PROJECT_COMPAT_REPORT': str(path), 'PROJECT_COMPAT_RUNTIME': runtime, 'PROJECT_COMPAT_VARIANT': variant}, **({'PROJECT_COMPAT_PEER_REPORT': str(consumers[(mode, 'original')] / 'default.json')} if runtime == 'fork' else {})))
+                        if published:
+                            published.graph(label + '-graph-' + variant, consumer, report,
+                                            original=original if runtime == 'original' else None, local_project=local_project)
                         records.append(json.loads(path.read_text()))
                     if any(semantics(record) != semantics(records[0]) for record in records[1:]):
                         raise RuntimeError('default/purego/race message semantics differ: ' + label)
@@ -154,6 +190,7 @@ def main():
                     raise RuntimeError('original/fork message size or JSON differ: ' + name + '-' + mode)
                 for variant, flags in [('default', []), ('purego', ['-tags=purego']), ('race', ['-race'])]:
                     run(name + '-' + mode + '-original-read-fork-' + variant, ['go', 'test', '-mod=mod', '-count=1', '-run=^TestRealProjectMessages$'] + flags + ['./...'], consumers[(mode, 'original')], {'PROJECT_COMPAT_PEER_REPORT': str(consumers[(mode, 'fork')] / 'default.json')})
+        save()
         report['status'] = 'passed'
     except Exception:
         report['status'] = 'failed'

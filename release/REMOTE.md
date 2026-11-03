@@ -83,3 +83,14 @@ The repository's default branch may not yet contain this maintenance workflow,
 which can limit the GitHub UI's manual-dispatch entry. Tag pushes run the saved
 workflow; maintainers can also run the published-mode CLI directly. Do not
 change the default branch or weaken the gate to work around that UI limitation.
+
+## Real downstream use of published tags
+
+The synthetic cold-cache consumer matrix above verifies release packaging and
+the native API profiles. The separate [published real-project gate](../compat/downstream/projects/README.md#published-pair-qualification)
+tests the recorded immutable release pair against pinned Prometheus,
+Kubernetes, BuildKit and CockroachDB errors packages. It covers original/fork
+controls, supported regeneration, default/purego/race and bidirectional wire
+exchange. Its fork modules, generators and includes come from the published
+remote versions, while the qualification harness is reviewed independently.
+The source-checkout real-project CI remains a separate gate for later code.
