@@ -74,7 +74,15 @@ before opting in; custom/std/embedded/value mappings and modern MessageSet
 remain excluded. Legacy MessageSet and default old APIs remain available.
 
 After adding generated imports, run `go mod tidy` and the application's tests.
-Keep go.sum. For development after RC2, replace both fork modules with the same
+Keep go.sum. For paired development after RC2, replace both fork modules with the same
 reviewed full commit SHA and install its matching generators; that checkout is
 not a new published version. Future tags require separate approval and their
 own published-mode cold-cache verification. Existing tags must not move.
+
+
+The S04 contract separately prepares root `v1.4.0` with the existing reflect
+RC2. That root tag is not published by the preparation work. Use the current
+published commands above until versioned installation is verified. Candidate
+maintainers use [the cross-revision remote gate](REMOTE.md#candidate-root-with-published-reflect-rc2),
+which selects root by full public commit and keeps reflect at its published
+version; it never moves the RC2 tag or changes its minimum-root declaration.

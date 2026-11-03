@@ -12,6 +12,7 @@ jobs:
       - run: python3 release/test_contract.py
       - run: python3 release/support.py
       - run: python3 release/test_support.py
+      - run: python3 release/test_selection.py
 
   native-hybrid:
     runs-on: ubuntu-latest

@@ -76,6 +76,17 @@ class PublishedProvenance(unittest.TestCase):
         with self.assertRaises(ValueError):
             published.check_graph(graph + [self.graph[2], self.graph[3]], self.manifest, self.versions, self.cache)
 
+    def test_cross_revision_candidate_keeps_the_published_reflect_source(self):
+        versions = dict(self.versions, root='v1.4.0-rc.2.0.20261103070000-0123456789ab')
+        graph = copy.deepcopy(self.graph)
+        graph[1]['Version'] = self.record['root']['version']
+        graph[1]['Replace']['Version'] = versions['root']
+        graph[1]['Replace']['Path'] = 'github.com/example/protobuf'
+        published.check_graph(graph, self.record, versions, self.cache, repository='github.com/example/protobuf')
+        graph[2]['Replace']['Path'] = 'github.com/example/protobuf/reflect'
+        with self.assertRaises(ValueError):
+            published.check_graph(graph, self.record, versions, self.cache, repository='github.com/example/protobuf')
+
     def test_fresh_environment_ignores_ambient_replacements_and_credentials(self):
         from unittest.mock import patch
         with patch.dict('os.environ', {'GOFLAGS': '-modfile=/tmp/injected.mod', 'GOWORK': '/tmp/work',

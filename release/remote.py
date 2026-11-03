@@ -13,6 +13,7 @@ import urllib.request
 import urllib.parse
 
 from matrix import FLAVORS, PROFILE, variants
+from selection import check_frozen_identity, component_path, component_revisions, frozen_component
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BACKENDS = ['gogo', 'gogofast', 'gogofaster', 'gogoslick', 'gogotypes']
@@ -35,7 +36,7 @@ def validate_graph(graph, manifest, versions, cache, repository, modern):
         if by_name[name].get('Version') != manifest[component]['version']:
             raise ValueError('canonical module version differs from candidate pair')
         replacement = by_name[name].get('Replace', {})
-        target = repository + ('/reflect' if component == 'reflect' else '')
+        target = component_path(manifest, component, repository)
         if replacement.get('Path') != target or replacement.get('Version') != versions[component]:
             raise ValueError('remote module replacement drift: ' + name)
         if not pathlib.Path(replacement['Dir']).resolve().is_relative_to(cache):
@@ -76,6 +77,7 @@ def main():
     cache = out / 'modules'
     cache.mkdir()
     manifest = json.loads((ROOT / 'release/manifest.json').read_text())
+    origins = component_revisions(manifest, args.revision)
     if manifest.get('qualification_profile') != PROFILE:
         raise ValueError('unsupported consumer qualification profile')
     report = {'status': 'running', 'time': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -84,6 +86,8 @@ def main():
               'profile': 'legacy' if args.legacy_only else 'legacy-and-native',
               'manifest_sha256': hashlib.sha256((ROOT / 'release/manifest.json').read_bytes()).hexdigest(),
               'qualification_profile': PROFILE, 'checks': [], 'modules': {}, 'consumer_runs': []}
+    components = ['root'] if args.legacy_only else ['root', 'reflect']
+    report['component_revisions'] = {name: origins[name] for name in components}
     env = dict(os.environ, GOENV='off', GOWORK='off', GOTOOLCHAIN='local', GOFLAGS='',
                GOMODCACHE=str(cache), GOCACHE=str(out / 'build-cache'), GOPATH=str(out / 'gopath'),
                GOBIN=str(out / 'bin'), GOPROXY='https://proxy.golang.org,direct', GOSUMDB='sum.golang.org',
@@ -118,8 +122,8 @@ def main():
             text += ' ' + manifest[component]['module'] + ' ' + manifest[component]['version'] + '\n'
         text += ')\n'
         for component in components:
-            text += 'replace ' + manifest[component]['module'] + ' => ' + args.repository
-            text += ('/reflect' if component == 'reflect' else '') + ' ' + versions[component] + '\n'
+            text += 'replace ' + manifest[component]['module'] + ' => ' + component_path(manifest, component, args.repository)
+            text += ' ' + versions[component] + '\n'
         (dest / 'go.mod').write_text(text)
 
     save()
@@ -131,8 +135,8 @@ def main():
         go_minor = int(re.search(r'go1\.(\d+)', report['go']).group(1))
         if go_minor < (15 if args.legacy_only else 23):
             raise ValueError('toolchain below profile minimum')
-        def public_commit(ref):
-            url = ('https://api.github.com/repos/' + args.repository.removeprefix('github.com/')
+        def public_commit(ref, repository=args.repository):
+            url = ('https://api.github.com/repos/' + repository.removeprefix('github.com/')
                    + '/commits/' + urllib.parse.quote(ref, safe=''))
             request = urllib.request.Request(url, headers={'User-Agent': 'protobuf-release-preflight'})
             # Optional CI authentication is used only for metadata lookup. All
@@ -146,14 +150,14 @@ def main():
         report['public_commit'] = public_commit(args.revision)
         if report['public_commit'] != args.revision:
             raise ValueError('public revision lookup mismatch')
-        components = ['root'] if args.legacy_only else ['root', 'reflect']
         for component in components:
-            path = args.repository + ('/reflect' if component == 'reflect' else '')
-            query = manifest[component]['version'] if args.published else args.revision
-            if args.published:
-                tag_commit = public_commit(manifest[component]['tag'])
-                if tag_commit != args.revision:
-                    raise ValueError('published module tags do not share the selected commit')
+            path = component_path(manifest, component, args.repository)
+            reused = frozen_component(manifest, component)
+            query = manifest[component]['version'] if args.published or reused else origins[component]
+            if args.published or reused:
+                tag_commit = public_commit(manifest[component]['tag'], manifest['repository'] if reused else args.repository)
+                if tag_commit != origins[component]:
+                    raise ValueError('published module tag differs from its selected component origin')
                 report.setdefault('published_tag_commits', {})[component] = tag_commit
             data = json.loads(run('download-' + component, ['go', 'mod', 'download', '-json', path + '@' + query]).stdout)
             if not pathlib.Path(data['Dir']).resolve().is_relative_to(cache):
@@ -162,12 +166,13 @@ def main():
                 raise ValueError('remote module checksum unavailable')
             origin = data.get('Origin', {})
             if origin.get('Hash'):
-                if origin['Hash'] != args.revision:
+                if origin['Hash'] != origins[component]:
                     raise ValueError('module resolved to a different revision')
-            elif not args.published and not data['Version'].endswith('-' + args.revision[:12]):
+            elif not args.published and not reused and not data['Version'].endswith('-' + origins[component][:12]):
                 raise ValueError('old-toolchain pseudo-version does not identify revision')
-            if data['Path'] != path or args.published and data['Version'] != query:
+            if data['Path'] != path or (args.published or reused) and data['Version'] != query:
                 raise ValueError('downloaded module identity mismatch')
+            check_frozen_identity(manifest, component, data)
             declaration = re.search(r'^module\s+(\S+)', pathlib.Path(data['GoMod']).read_text(), re.M)
             if not declaration or declaration.group(1) != manifest[component]['module']:
                 raise ValueError('downloaded canonical module declaration differs')

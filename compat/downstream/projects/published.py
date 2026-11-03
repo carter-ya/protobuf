@@ -10,6 +10,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'release'))
 from remote import objects, validate_graph as validate_release_graph
+from selection import component_revisions, published_revisions, root_stable
 
 
 def environment(destination):
@@ -35,7 +36,7 @@ def check_download(data, identity, cache, revision=None):
         raise ValueError('published module origin differs')
 
 
-def check_graph(graph, manifest, versions, cache, original=None, local_project=None):
+def check_graph(graph, manifest, versions, cache, original=None, local_project=None, repository=None):
     """Allow only the named original control and regenerated project copies locally."""
     allowed = dict(local_project or {})
     if original is not None:
@@ -55,7 +56,7 @@ def check_graph(graph, manifest, versions, cache, original=None, local_project=N
     if seen != set(allowed):
         raise ValueError('declared local control/project missing from module graph')
     if original is None:
-        validate_release_graph(filtered, manifest, versions, cache, manifest['repository'], True)
+        validate_release_graph(filtered, manifest, versions, cache, repository or manifest['repository'], True)
     else:
         if any(m['Path'] == 'github.com/gogo/protobuf/reflect' for m in filtered):
             raise ValueError('original control acquired the maintained reflection module')
@@ -69,29 +70,46 @@ def check_graph(graph, manifest, versions, cache, original=None, local_project=N
 
 
 class PublishedPair:
-    def __init__(self, destination, run, report):
+    def __init__(self, destination, run, report, candidate_root=None, candidate_repository=None):
         self.destination, self.run = destination, run
         self.cache = destination / 'modules'
         self.cache.mkdir()
         record = json.loads((ROOT / 'release/manifest.json').read_text())
         self.pair = record['published_pair']
         self.repository = record['repository']
+        self.root_repository = candidate_repository or self.repository
+        if not re.fullmatch(r'github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', self.root_repository):
+            raise ValueError('candidate repository must be a public GitHub owner/repo')
+        if candidate_root and not root_stable(record):
+            raise ValueError('candidate-root mode requires the independent stable-root contract')
         self.versions = {name: data['Version'] for name, data in self.pair['modules'].items()}
+        origins = published_revisions(self.pair)
+        if candidate_root:
+            origins = component_revisions(record, candidate_root)
+            self.versions['root'] = record['root']['version']
         modules, commits = {}, {}
         for name in ['root', 'reflect']:
-            tag = self.pair[name]
-            url = 'https://api.github.com/repos/' + self.repository.removeprefix('github.com/') + '/commits/' + urllib.parse.quote(tag, safe='')
+            candidate = bool(candidate_root and name == 'root')
+            ref = candidate_root if candidate else self.pair[name]
+            repository = self.root_repository if candidate else self.repository
+            url = 'https://api.github.com/repos/' + repository.removeprefix('github.com/') + '/commits/' + urllib.parse.quote(ref, safe='')
             request = urllib.request.Request(url, headers={'User-Agent': 'protobuf-published-downstream'})
             if os.environ.get('GITHUB_TOKEN'):
                 request.add_header('Authorization', 'Bearer ' + os.environ['GITHUB_TOKEN'])
             with urllib.request.urlopen(request, timeout=60) as response:
                 commits[name] = json.load(response)['sha']
-            if commits[name] != self.pair['revision']:
-                raise ValueError('published tags do not share the pinned full revision')
-            identity = self.pair['modules'][name]
-            result = run('published-download-' + name, ['go', 'mod', 'download', '-json', identity['Path'] + '@' + identity['Version']], capture=True)
+            if commits[name] != origins[name]:
+                raise ValueError('component public origin differs from the pinned revision')
+            path = self.root_repository if candidate else self.pair['modules'][name]['Path']
+            query = candidate_root if candidate else self.pair['modules'][name]['Version']
+            result = run('published-download-' + name, ['go', 'mod', 'download', '-json', path + '@' + query], capture=True)
             data = json.loads(result.stdout)
-            check_download(data, identity, self.cache, self.pair['revision'])
+            identity = self.pair['modules'][name]
+            if candidate:
+                if data['Path'] != path or not data.get('Sum') or not data.get('GoModSum'):
+                    raise ValueError('candidate module identity or checksums missing')
+                identity = {k: data[k] for k in ['Path', 'Version', 'Sum', 'GoModSum']}
+            check_download(data, identity, self.cache, origins[name])
             canonical = 'github.com/gogo/protobuf' + ('/reflect' if name == 'reflect' else '')
             declaration = re.search(r'^module\s+(\S+)', pathlib.Path(data['GoMod']).read_text(), re.M)
             if not declaration or declaration.group(1) != canonical:
@@ -99,10 +117,13 @@ class PublishedPair:
             modules[name] = data
         self.root = pathlib.Path(modules['root']['Dir'])
         self.manifest = json.loads((self.root / 'release/manifest.json').read_text())
+        if candidate_root and self.manifest != record:
+            raise ValueError('candidate source contract differs from reviewed harness contract')
         if self.manifest['repository'] != self.repository:
             raise ValueError('published source repository differs')
         for name in ['root', 'reflect']:
-            if self.manifest[name]['tag'] != self.pair[name] or self.manifest[name]['version'] != self.versions[name]:
+            tag = record['root']['tag'] if candidate_root and name == 'root' else self.pair[name]
+            if self.manifest[name]['tag'] != tag or self.manifest[name]['version'] != self.versions[name]:
                 raise ValueError('published source release contract differs from its tag')
         runtime = self.manifest['official_runtime']
         self.runtime = runtime['version']
@@ -110,32 +131,42 @@ class PublishedPair:
         data = json.loads(result.stdout)
         check_download(data, {'Path': runtime['module'], 'Version': self.runtime, 'Sum': runtime['sum'], 'GoModSum': runtime['go_mod_sum']}, self.cache)
         report['published_pair'] = self.pair
-        report['tested_revision'] = self.pair['revision']
-        report['published_tag_commits'] = commits
-        report['published_modules'] = {k: {f: v.get(f) for f in ['Path', 'Version', 'Sum', 'GoModSum', 'Dir', 'Origin']} for k, v in modules.items()}
+        report['tested_revision'] = origins['root']
+        report['tested_revisions'] = origins
+        report['public_component_commits'] = commits
+        report['published_tag_commits'] = {name: value for name, value in commits.items() if not candidate_root or name != 'root'}
+        report['selected_modules'] = {k: {f: v.get(f) for f in ['Path', 'Version', 'Sum', 'GoModSum', 'Dir', 'Origin']} for k, v in modules.items()}
+        if not candidate_root:
+            report['published_modules'] = report['selected_modules']
+        else:
+            report['candidate_root'] = candidate_root
+            report['candidate_repository'] = self.root_repository
+            report['canonical_versions'] = self.versions
         report['published_runtime'] = {f: data.get(f) for f in ['Path', 'Version', 'Sum', 'GoModSum', 'Dir']}
         self.tools = destination / 'tools'
+        self.modules = modules
+        self.downloaded_versions = {name: data['Version'] for name, data in modules.items()}
         self.tools.mkdir()
         (self.tools / 'go.mod').write_text('module example.com/published-gogo-tools\n\ngo 1.26.0\n\nrequire github.com/gogo/protobuf ' + self.versions['root'] + '\nreplace github.com/gogo/protobuf => ' + self.replacement('root') + '\n')
 
     def replacement(self, component):
-        return self.pair['modules'][component]['Path'] + ' ' + self.versions[component]
+        return self.modules[component]['Path'] + ' ' + self.downloaded_versions[component]
 
     def graph(self, name, consumer, report, original=None, local_project=None, modern=True):
         result = self.run(name, ['go', 'list', '-mod=mod', '-m', '-json', 'all'], consumer, capture=True)
         graph = objects(result.stdout)
         if not modern:
-            validate_release_graph(graph, self.manifest, self.versions, self.cache, self.repository, False)
+            validate_release_graph(graph, self.manifest, self.downloaded_versions, self.cache, self.root_repository, False)
         else:
-            check_graph(graph, self.manifest, self.versions, self.cache, original, local_project)
+            check_graph(graph, self.manifest, self.downloaded_versions, self.cache, original, local_project, self.root_repository)
         report.setdefault('module_graphs', []).append({'name': name, 'graph': graph})
 
     def generator(self, backend, report):
         self.run('published-install-' + backend, ['go', 'install', '-mod=mod', 'github.com/gogo/protobuf/protoc-gen-' + backend], self.tools)
         driver = self.destination / 'bin' / ('protoc-gen-' + backend)
         result = self.run('published-build-info-' + backend, ['go', 'version', '-m', driver], capture=True)
-        data = self.pair['modules']['root']
-        expected = r'\t(?:mod|dep)\tgithub\.com/gogo/protobuf\t' + re.escape(data['Version']) + r'\s*\n\t=>\t' + re.escape(data['Path']) + r'\t' + re.escape(data['Version']) + r'\t' + re.escape(data['Sum'])
+        data = self.modules['root']
+        expected = r'\t(?:mod|dep)\tgithub\.com/gogo/protobuf\t' + re.escape(self.versions['root']) + r'\s*\n\t=>\t' + re.escape(data['Path']) + r'\t' + re.escape(data['Version']) + r'\t' + re.escape(data['Sum'])
         if not re.search(expected, result.stdout):
             raise ValueError('generator binary does not identify the qualified published root')
         self.graph('published-tools-graph-' + backend, self.tools, report, modern=False)

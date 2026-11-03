@@ -1,0 +1,56 @@
+name: Root stable downstream readiness
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate-projects:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [prometheus, kubernetes, buildkit, cockroach]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check component provenance guards
+        run: |
+          python3 release/check.py
+          python3 compat/downstream/projects/test_published.py
+      - name: Install pinned protoc
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify candidate root and frozen reflect RC2 against the pinned real project
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_REPOSITORY: github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}
+        run: python3 compat/downstream/projects/run.py "$RUNNER_TEMP/candidate-downstream" --candidate-root "$(git rev-parse HEAD)" --candidate-repository "$CANDIDATE_REPOSITORY" --profile ${{ matrix.project }}
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: candidate-downstream-${{ matrix.project }}
+          path: |
+            ${{ runner.temp }}/candidate-downstream/qualification.json
+            ${{ runner.temp }}/candidate-downstream/*.log
+            ${{ runner.temp }}/candidate-downstream/tools/go.mod
+            ${{ runner.temp }}/candidate-downstream/tools/go.sum
+            ${{ runner.temp }}/candidate-downstream/*/go.mod
+            ${{ runner.temp }}/candidate-downstream/*/go.sum
+            ${{ runner.temp }}/candidate-downstream/*/default.json
+            ${{ runner.temp }}/candidate-downstream/*/purego.json
+            ${{ runner.temp }}/candidate-downstream/*/race.json
+          if-no-files-found: error

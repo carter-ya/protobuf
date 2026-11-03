@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "state": "release-candidate",
+  "state": "root-stable-modern-rc",
   "repository": "github.com/carter-ya/protobuf",
   "trunk": "baseline/v1.3.2",
   "root": {
     "module": "github.com/gogo/protobuf",
-    "version": "v1.4.0-rc.2",
-    "tag": "v1.4.0-rc.2",
+    "version": "v1.4.0",
+    "tag": "v1.4.0",
     "go": "1.15"
   },
   "reflect": {
@@ -49,6 +49,10 @@
         "Sum": "h1:L1WsD3DuZ/mO7X5G8y2IkSVLuXSNP9gkduYcwIawUSg=",
         "GoModSum": "h1:QH+77kHBTGQyhwF0lJjcePKNNHD1CcuySLbuRU+ZtLs="
       }
+    },
+    "revisions": {
+      "root": "3af6d45fd9dbe0ff1249afa246a44caf995b29a1",
+      "reflect": "3af6d45fd9dbe0ff1249afa246a44caf995b29a1"
     }
   }
 }
