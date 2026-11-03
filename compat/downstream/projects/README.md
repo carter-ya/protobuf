@@ -94,3 +94,55 @@ options are not rewritten to make a migration appear transparent. The full
 68-check original/replacement matrix remains required, including frozen and
 regenerated consumers. New reflection tests run only against the maintained
 runtime; original controls retain their original dependency graph.
+
+## Published-pair qualification
+
+The source-checkout matrix above and the published-package matrix are separate
+gates. To test the RC2 modules users actually download, run:
+
+```sh
+python3 compat/downstream/projects/test_published.py
+python3 compat/downstream/projects/run.py /tmp/published-gogo-projects --published
+```
+
+`--profile` and `--frozen-only` retain their diagnostic meanings. The ordinary
+published CI runs the full configured scope for all four projects. It uses Go
+1.27 for the pinned projects' own toolchain requirements; this does not raise the
+root module's Go 1.15 or the optional module's Go 1.23 minimum.
+
+The gate reads `release/manifest.json`'s `published_pair`, currently root
+`v1.4.0-rc.2` and `reflect/v0.1.0-rc.2` at
+`3af6d45fd9dbe0ff1249afa246a44caf995b29a1`, with their recorded zip/go.mod
+checksums. It independently resolves both public tags, downloads the fork
+modules into a new external module cache, and checks their full origins and
+canonical declarations. The official runtime pin comes from the downloaded
+release contract, so later harness/dependency work cannot silently change the
+runtime selected for an older release.
+
+Fork consumers use versioned remote replacements for both canonical module
+paths. Supported regeneration installs the published generator through a tools
+module, checks its binary identity, and uses includes and the comparison helper
+from that same downloaded root. No local gogo or reflect checkout can qualify
+the fork. Ambient workspace/modfile settings, private proxy overrides, Go/git
+credentials and copied consumer go.sum caches are excluded. Optional CI API
+authentication is used only to resolve public tag metadata.
+
+The original v1.3.2 control remains an explicitly labelled local archive, with
+the same development-only go.mod/go.sum normalization as the source matrix.
+The only other local module replacements allowed are the exact regenerated
+upstream project copies; their initial archives are checksum-pinned. These
+controlled copies are not local replacements for the published gogo modules.
+All other dependency sources must come from the fresh cache. Consumer module
+graphs are checked after every default/purego/race test; original/fork wire
+exchange and real selected-package tests remain mandatory. Unsupported native
+representations keep the same explicit diagnostics.
+
+Reports distinguish the harness `source_revision`/working tree from the actual
+published `tested_revision`. They retain helper/template/pin hashes, module
+identities, full tag resolutions, generator build information, module graphs,
+message records and command logs. Unit provenance fixtures are guard tests,
+not downstream qualification evidence. The [published downstream workflow](../../../.github/workflows/published-downstreams.yml)
+uploads actual reports for each project without module/build caches. These
+results cover the named versions/packages and supported regeneration paths;
+they do not claim whole-product deployment testing or transparent OPAQUE
+migration of upstream custom/value-storage schemas.

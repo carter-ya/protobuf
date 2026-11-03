@@ -10,8 +10,9 @@ runtime dependency changes are required.
 
 This option affects Go's `encoding/json` method interface. It does not choose
 the Protobuf JSON message entrypoint; standard JSON/text still use their explicit
-packages. Gogo continues to emit the Open Struct API. HYBRID/OPAQUE remains separately tracked. Enum prefix and optimization settings
-have separate qualified matrices.
+packages. OPEN remains the default; [native HYBRID/OPAQUE](../SUPPORT.md) are
+separate opt-ins. Enum prefix and optimization settings have their own
+qualified matrices.
 
 Edition 2023 uses ordinary imports for `google/protobuf/go_features.proto`.
 Without an explicit `M` mapping, gogo maps that schema's official Go package to
@@ -20,8 +21,8 @@ the local `github.com/gogo/protobuf/gofeatures` binding. Edition 2024/2026 can u
 extension and complete raw descriptor avoid modern Go runtime imports and share
 one registered extension descriptor with the generator. The feature audit now
 checks all four compiled Go feature definitions and enum values against the
-compiler's own schema, even where the backend still diagnoses unimplemented
-semantics.
+compiler's own schema. A complete inventory remains distinct from the
+representation and runtime boundaries recorded in that audit.
 
 `sh compat/check-go-enum-json.sh` runs 90 isolated consumers: five backends,
 three Editions, default/true/false file settings, default/purego. It checks the

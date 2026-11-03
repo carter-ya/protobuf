@@ -17,6 +17,13 @@ if test -n "${FEATURE_AUDIT_REPORT:-}"; then cp "$tmp/report.json" "$FEATURE_AUD
 python3 - "$tmp" "$repo" <<'PYTEST'
 import copy,json,pathlib,subprocess,sys
 out,repo=map(pathlib.Path,sys.argv[1:]);original=json.loads((repo/'compat/feature-audit/inventory.json').read_text())
+report=json.loads((out/'report.json').read_text())
+api=next(row for row in report['inventory']['go'] if row['name']=='api_level')
+gaps={row['name'] for row in report['inventory']['remaining'] if row['status']=='gap'}
+if api['status']!='implemented' or not report['complete_inventory'] or report['all_features_implemented']:
+ raise RuntimeError('RC2 API coverage and global feature coverage must remain distinct')
+if not {'modern_messageset','non_native_live_storage'} <= gaps:
+ raise RuntimeError('modern representation boundaries disappeared from the audit')
 for name in ['field','value']:
  bad=copy.deepcopy(original)
  if name=='field':bad['core'].pop()

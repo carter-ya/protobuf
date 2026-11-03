@@ -1,0 +1,54 @@
+name: Published downstream compatibility
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published-projects:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [prometheus, kubernetes, buildkit, cockroach]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check published module provenance guards
+        run: |
+          python3 release/check.py
+          python3 compat/downstream/projects/test_published.py
+      - name: Install pinned protoc
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify actual published modules against the pinned real project
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 compat/downstream/projects/run.py "$RUNNER_TEMP/published-downstream" --published --profile ${{ matrix.project }}
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: published-downstream-${{ matrix.project }}
+          path: |
+            ${{ runner.temp }}/published-downstream/qualification.json
+            ${{ runner.temp }}/published-downstream/*.log
+            ${{ runner.temp }}/published-downstream/tools/go.mod
+            ${{ runner.temp }}/published-downstream/tools/go.sum
+            ${{ runner.temp }}/published-downstream/*/go.mod
+            ${{ runner.temp }}/published-downstream/*/go.sum
+            ${{ runner.temp }}/published-downstream/*/default.json
+            ${{ runner.temp }}/published-downstream/*/purego.json
+            ${{ runner.temp }}/published-downstream/*/race.json
+          if-no-files-found: error

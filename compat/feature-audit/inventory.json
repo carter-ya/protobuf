@@ -148,11 +148,15 @@
     {
       "name": "api_level",
       "number": 2,
-      "status": "gap",
-      "owner": "OPEN and HYBRID implemented; OPAQUE remains deferred",
+      "status": "implemented",
+      "owner": "default OPEN; opt-in native HYBRID and OPAQUE with protoopaque alternates",
       "evidence": [
         "compat/hybrid/README.md",
         "compat/check-hybrid.sh",
+        "compat/opaque/prepare.py",
+        "compat/opaque/alternate.py",
+        "compat/opaque/mixed.py",
+        "compat/opaque/generated_tests.py",
         "protoc-gen-gogo/generator/go_features.go"
       ],
       "values": {
@@ -215,6 +219,26 @@
         "reflect/README.md",
         "compat/check-live-reflect.sh",
         "compat/check-hybrid.sh"
+      ]
+    },
+    {
+      "name": "modern_messageset",
+      "number": 0,
+      "status": "gap",
+      "owner": "legacy MessageSet supported; modern live profile deferred pending downstream demand",
+      "evidence": [
+        "reflect/README.md",
+        "compat/downstream/projects/messageset-demand.json"
+      ]
+    },
+    {
+      "name": "non_native_live_storage",
+      "number": 0,
+      "status": "gap",
+      "owner": "live profile rejects custom/std/embedded/value mappings, absent unknown storage and byte-backed extensions; legacy mappings remain separate",
+      "evidence": [
+        "reflect/README.md",
+        "compat/check-live-reflect.sh"
       ]
     }
   ]

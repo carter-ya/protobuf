@@ -1,6 +1,7 @@
 # Exhaustive feature inventory
 
-Reference rechecked on 2026-11-01: stable Protobuf 36.2 and official Go 1.36.12;
+RC2 status aligned on 2026-11-03; the schema reference remains stable Protobuf
+36.2 and official Go 1.36.12;
 37.0-rc1 / Go 1.37.0-rc.1 remain separate previews. Sources are the official
 [releases](https://github.com/protocolbuffers/protobuf/releases),
 [feature settings](https://protobuf.dev/editions/features/),
@@ -36,11 +37,11 @@ handoff are tracked alongside the runtime tests.
 Legacy proto2 closed enums are now available through explicit
 [`enforce_closed_enums=true`](../legacy-enums/README.md) regeneration, including
 imports, packed values, map entries, oneofs and extensions. Unmarked/frozen
-bindings retain historical decoding. The remaining implementation gaps are:
+bindings retain historical decoding.
 
 The [legacy enum JSON API](../go-enum-json/README.md) now implements its official
 false default and file/enum overrides, with independent official-generator
-method and behavior checks. The remaining Go generation gaps are:
+method and behavior checks.
 
 The [enum prefix API](../go-enum-prefix/README.md) implements KEEP, STRIP and
 GENERATE_BOTH with file/enum/entry inheritance and migration aliases.
@@ -51,8 +52,13 @@ defaults.
 
 * OPEN remains the default. Optional [HYBRID](../hybrid/README.md) implements
   setters, presence/clear/which methods and builders with scoped API overrides.
-  OPAQUE remains diagnosed and recorded as a gap; the audit still cannot claim
-  all Go API features are implemented.
+  Explicit OPAQUE adds private protobuf fields and the same qualified accessors,
+  presence, oneof and builder API. HYBRID supports `protoopaque` alternate files,
+  generated tests and annotations, with mixed imports and source overrides.
+  These ship in the [published RC2 pair](../../release/NOTES.md); the
+  [OPAQUE matrices](../opaque/prepare.py) compare the official APIs across all
+  five backends. Native pointer storage and eager decoding remain; reduced
+  memory use and lazy decoding are not claimed.
 * The optional [live reflection module](../../reflect/README.md) implements
   production V2 interoperability over the documented native storage profile.
   Generated native ProtoReflect preserves actual Go type identity. Frozen
@@ -63,6 +69,13 @@ defaults.
 * Historical JSON/text entrypoints intentionally preserve legacy behavior;
   standard entrypoints are explicit. Unsupported gogo representations must be
   diagnosed or individually qualified, not silently included in a blanket claim.
+
+The machine-readable `api_level` feature is now `implemented`. The separate
+`remaining` rows retain explicit gaps for modern MessageSet and non-native live
+storage. Consequently `complete_inventory=true` and
+`all_features_implemented=false` describe different facts: the pinned schema
+inventory is complete, while those supported-profile boundaries remain. The
+inventory does not extend qualification beyond the linked tests and contracts.
 
 The four `EditionUnstable` skips are outside the released Edition 2023/2024/2026
 range. C++/Java/C#/Rust-specific API features are not Go output APIs; their schema

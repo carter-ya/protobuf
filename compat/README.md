@@ -86,17 +86,19 @@ The Editions backend covers 2023 reflection output: explicit
 and implicit presence, required fields, UTF-8 policy, packed/expanded primitives,
 open/closed enums (including imported enum definitions), map unknowns, oneofs
 and DELIMITED messages. `check-editions.sh` uses protoc 36.2 as an independent
-binary/text oracle. Production capabilities are enabled in the final entrypoint layer.
-Gogo extensions and unsupported explicit Go features currently produce
-diagnostics rather than partial output.
+binary/text oracle. Production entrypoints enable these capabilities.
+Unsupported gogo extensions and Go feature values produce diagnostics rather
+than partial output.
 Raw descriptor data is kept separately from the private lowered generator view.
 
 Edition 2024 fixtures cover option-only dependencies and option retention.
 Runtime-retained custom options remain in reflection data; source-retained
-options do not leak into embedded descriptors. This generator keeps gogo's
-Open Struct API across editions. Explicit API_OPEN and keeping enum prefixes
-are accepted; explicit HYBRID/OPAQUE APIs and other unsupported Go features
-produce errors. No modern Go runtime is imported by consumers.
+options do not leak into embedded descriptors. OPEN remains the default across
+editions. Explicit native ProtoReflect, HYBRID and OPAQUE use the optional live
+profile; HYBRID also supports `protoopaque` builds. See the
+[published RC2 installation guide](../release/INSTALL.md) and the separate
+[HYBRID](hybrid/README.md) / [OPAQUE](opaque/README.md) matrices. Unselected
+legacy consumers retain their APIs and do not acquire a modern Go dependency.
 
 Edition 2026 adds custom JSON enum spellings, including empty strings, aliases,
 quotes, Unicode, repeated values and map values. The text-format enum registry

@@ -33,8 +33,22 @@
   "publication": "manual",
   "qualification_profile": "native-opaque-v1",
   "published_pair": {
-    "root": "v1.4.0-rc.1",
-    "reflect": "reflect/v0.1.0-rc.1",
-    "revision": "533267c4c68359c533a07ece14e6cb2320a22b8b"
+    "root": "v1.4.0-rc.2",
+    "reflect": "reflect/v0.1.0-rc.2",
+    "revision": "3af6d45fd9dbe0ff1249afa246a44caf995b29a1",
+    "modules": {
+      "root": {
+        "Path": "github.com/carter-ya/protobuf",
+        "Version": "v1.4.0-rc.2",
+        "Sum": "h1:ZOZ4OZAao8YUdfz3kk55ZaXwttK10cxdo70D/brRSzU=",
+        "GoModSum": "h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q="
+      },
+      "reflect": {
+        "Path": "github.com/carter-ya/protobuf/reflect",
+        "Version": "v0.1.0-rc.2",
+        "Sum": "h1:L1WsD3DuZ/mO7X5G8y2IkSVLuXSNP9gkduYcwIawUSg=",
+        "GoModSum": "h1:QH+77kHBTGQyhwF0lJjcePKNNHD1CcuySLbuRU+ZtLs="
+      }
+    }
   }
 }

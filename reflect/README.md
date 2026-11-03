@@ -102,9 +102,9 @@ numeric-scalar builder inputs are copied; string-pointer and message/slice/map
 ownership follows the official API. Storage retains native pointers and eager
 decoding; no reduced-memory or lazy-decoding performance claim is made.
 
-These development capabilities require root version 18 and are not present in
-the published RC1 pair. The next proposed pair is root `v1.4.0-rc.2` and
-`reflect/v0.1.0-rc.2`; no RC2 publication is implied by these source files.
+These capabilities require root version 18 and ship in the published pair root
+`v1.4.0-rc.2` and `reflect/v0.1.0-rc.2`, both from commit
+`3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. RC1 excludes OPAQUE.
 
 When consuming this maintained fork, replace both modules at the same qualified
 revision. The nested module's local `replace` directive is not inherited by
@@ -126,12 +126,12 @@ normalize descriptors should use `command.ReadWithSources` and
 
 ## Release pairing
 
-The published module release `reflect/v0.1.0-rc.1` is paired with root
-`v1.4.0-rc.1` at commit `533267c4c68359c533a07ece14e6cb2320a22b8b`; that pair
-provides OPEN reflection/HYBRID and excludes OPAQUE. The next candidate in
-release/manifest.json uses the RC2 pair above. Applications replace both module
-paths at the exact qualified candidate commit until new tags are approved and
-published. Follow [the remote installation guide](../release/INSTALL.md).
+The published module release [reflect/v0.1.0-rc.2](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2)
+is paired with [root v1.4.0-rc.2](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0-rc.2)
+at commit `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. Replace both canonical
+module paths with those remote fork versions and use matching generators.
+Follow [the remote installation guide](../release/INSTALL.md). Later development
+commits are qualified separately and do not alter these immutable tags.
 
 This RC retains the exact development runtime revision in go.mod for Edition
 2026 option/JSON semantics. The parent runtime has no V2 dependency. See the
