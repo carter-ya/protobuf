@@ -1,8 +1,10 @@
-# OPAQUE development qualification
+# Published OPAQUE and protoopaque qualification
 
-The published root v1.4.0-rc.1 / reflect v0.1.0-rc.1 pair does not include this
-development work. Explicit OPAQUE generation is being qualified on top of that
-pair; do not describe the earlier tags as supporting it.
+The published root `v1.4.0-rc.2` / `reflect/v0.1.0-rc.2` pair includes explicit
+OPAQUE and HYBRID `protoopaque` builds at commit
+`3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. See the
+[published installation guide](../../release/INSTALL.md). RC1 excludes OPAQUE;
+both release pairs remain immutable as the qualification harness evolves.
 
 `prepare.py OUTPUT` uses protoc 36.2 and Go 1.23 or newer. It exercises all five
 maintained generators across proto3, proto2 and Editions 2023/2024/2026 in default,
@@ -34,5 +36,6 @@ profile runs, including build-specific annotations and declaration order.
 `generated_tests.py OUTPUT` checks 30 generated gadget-test builds. Each uses
 all five generators with default/purego/race modes. Normal HYBRID tests retain
 field access and scalar-pointer sharing; OPAQUE tests reject field access and
-match official numeric-scalar builder ownership. Current published RC tags
-remain immutable and do not acquire these development capabilities.
+match official numeric-scalar builder ownership. RC2's published-mode cold-cache
+installation checks include explicit OPAQUE and both HYBRID build modes on
+Go1.23/Go1.27; [release notes](../../release/NOTES.md) link the actual tag CI.

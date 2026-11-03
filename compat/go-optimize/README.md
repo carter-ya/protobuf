@@ -12,10 +12,11 @@ code, not field layouts, field numbers, binary data or JSON/text mappings.
   strategy. In particular, choosing gogofast/faster/slick/types remains an
   explicit backend choice; it is not silently changed to reflection.
 
-The backend remains gogo's Open Struct API. This does not implement HYBRID or
-OPAQUE, transparent ProtoReflect, or the exact source output of Google's Go
-backend. Production runtime dependencies and Go 1.15 remain unchanged. The
-source schema retains its original feature settings in raw descriptors.
+This optimization matrix exercises gogo's default Open Struct profile. Native
+ProtoReflect, HYBRID and OPAQUE have [separate qualification](../SUPPORT.md);
+passing this matrix does not qualify every combination with those profiles or
+the exact source output of Google's generator. The root runtime dependencies
+and Go 1.15 remain unchanged. Raw descriptors retain the source feature settings.
 
 A selected SPEED parent that reaches an unselected dependency without matching
 fast methods uses shared tables for that parent instead of generating references

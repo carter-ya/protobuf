@@ -12,8 +12,13 @@ without regeneration. The runtime has no new module dependencies and retains
 | --- | --- | --- |
 | Existing proto2 / proto3 | Original API, field layout, tags and behavior | Version3 |
 | proto3 optional | gogo, gogofast, gogofaster, gogoslick, gogotypes | Version4 |
-| Editions 2023 / 2024 | Five gogo-runtime backends, historical Open Struct API | Version5 base; later capabilities up to Version14 |
-| Edition 2026 | Same backends, custom JSON enum spellings in jsonpb | Version6 base; later capabilities up to Version14 |
+| Editions 2023 / 2024 | Five gogo-runtime backends, historical OPEN default | Version5 base; later opt-in capabilities through Version18 |
+| Edition 2026 | Same backends, custom JSON enum spellings in jsonpb | Version6 base; later opt-in capabilities through Version18 |
+| Native ProtoReflect / HYBRID / OPAQUE | Optional Go1.23 live module; HYBRID protoopaque alternate builds | Version18 |
+
+The published pair is root `v1.4.0-rc.2` and `reflect/v0.1.0-rc.2` from
+`3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. See the
+[versioned installation guide](release/INSTALL.md). Both remain prereleases.
 
 New optional fields preserve absent vs explicit zero values. Synthetic oneofs
 remain in descriptors but do not appear as public Go oneof wrappers. Explicit
@@ -46,15 +51,17 @@ The ordinary enum name maps and `String` methods retain proto names.
 - Editions permit the tested fast codecs and auxiliary/naming/tag allowlist.
   Custom field representations, unsafe codecs and other unverified extensions
   remain rejected. See `compat/README.md` for the exercised combinations.
-- Gogo preserves its Open Struct API in every edition. Explicit API_OPEN and
-  keeping enum prefixes are accepted. KEEP/STRIP/GENERATE_BOTH naming is
-  qualified separately. HYBRID/OPAQUE and other unimplemented explicit Go
-  feature requests are rejected.
+- OPEN remains the default in every edition. Explicit OPEN/HYBRID/OPAQUE and
+  KEEP/STRIP/GENERATE_BOTH naming have their own qualified matrices. Native
+  live modes require the paired optional module and supported storage; custom,
+  value/embedded, missing-unknown and MessageSet representations are rejected.
+  See [the live profile](reflect/README.md). Unknown Go feature values still
+  produce diagnostics instead of partial output.
 - Unvalidated auxiliary plugins do not inherit Editions support.
 - Unsupported/future editions fail instead of using the latest known defaults.
 
-These are draft maintenance changes, not a claim that the historical
-conformance runner proves current full Protobuf conformance. Tests cover the
+These guarantees describe the qualified RC2 profile. The historical runner does
+not establish full current Protobuf conformance; separate tests cover the
 implemented feature contracts and independent interoperability paths.
 
 ## Verification

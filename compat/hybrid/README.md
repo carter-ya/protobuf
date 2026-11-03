@@ -20,7 +20,10 @@ runtime revision matches reflect/go.mod; the parent module still targets 1.15.
 Unselected output remains in the historical compatibility and real-project
 gates. Selection normalizes convenience-generator defaults to the qualified
 native storage profile; explicitly incompatible mappings produce diagnostics.
-OPAQUE is outside this implementation.
+This matrix exercises OPEN/HYBRID. Explicit OPAQUE and HYBRID `protoopaque`
+alternates ship in the [published RC2 pair](../../release/NOTES.md) and have
+separate [qualification matrices](../opaque/README.md); the 70 runs above are
+not OPAQUE evidence.
 
 `mixed.py` imports gogo and gogofaster HYBRID packages sharing option-only
 metadata in one process, under the race detector. CLI entrypoints preserve
