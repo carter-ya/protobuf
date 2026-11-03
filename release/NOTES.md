@@ -1,13 +1,12 @@
-RC1 was published separately and remains immutable. These are draft RC2 notes;
-RC2 tags and Releases are not created by this implementation.
+# Published v1.4.0-rc.2 and reflect/v0.1.0-rc.2
 
-# Proposed v1.4.0-rc.2 and reflect/v0.1.0-rc.2
-
-This document is a prepared RC announcement. This preparation does not publish
-tags or GitHub Releases; consult remote tags and Releases for publication status.
-Both components must come from the same qualified commit. The root module keeps
+Published on 2026-11-03 from qualified commit
+`3af6d45fd9dbe0ff1249afa246a44caf995b29a1`:
+[root RC2](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0-rc.2) and
+[reflect RC2](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2).
+Both are prereleases, and RC1 tags remain unchanged. The root module keeps
 `github.com/gogo/protobuf`; the optional module keeps its `/reflect` suffix.
-Use the fork replacements in [INSTALL.md](INSTALL.md).
+Use the published fork replacements in [INSTALL.md](INSTALL.md).
 
 ## Root runtime and generators
 
@@ -37,7 +36,7 @@ Opting in may change convenience-generator defaults to pointer/unknown storage.
 Review the regenerated diff. Explicit custom/std/embedded mappings, flattened
 message values, missing unknown storage, byte-backed extensions and MessageSet
 are rejected for the live profile. OPAQUE and the HYBRID `protoopaque` alternate build are qualified in this
-development candidate. Proto fields are private; accessors, presence, builders,
+published RC2 pair. Proto fields are private; accessors, presence, builders,
 legacy/V2 binary, JSONPB/standard JSONPB, expanded Any text and native reflection
 are covered. The physical layout retains native pointers and eager decoding.
 Legacy MessageSet remains available; only the live profile rejects it. Default old generation remains available.
@@ -56,7 +55,16 @@ native failure or skip. See `compat/native-conformance/official-failures.json`.
 These cases are retained as individual limitations, not reported as passing
 conformance. The legacy/standard runtime suites have separate inventories.
 
-The candidate requires its own current-head cold-cache remote-consumer
-report, including explicit OPAQUE and both HYBRID build modes. The versioned post-tag gate and actual release publication are separate
-steps. Do not convert code-review/CI success into a claim that a package has
-already been published or that all Protobuf features are implemented.
+The exact source passed four clean reviews with no unresolved threads and all
+236 PR checks. After atomic tag publication, both tag pairs passed Go 1.15's
+ten legacy cases and Go 1.23/1.27's 105 modern cases, including explicit OPAQUE
+and both HYBRID build modes, in fresh external module caches. Full tag origins,
+module checksums and dependency graphs were verified. All 62 tag checks passed:
+[root installation](https://github.com/carter-ya/protobuf/actions/runs/41562661542),
+[reflect installation](https://github.com/carter-ya/protobuf/actions/runs/41562661362),
+[root compatibility](https://github.com/carter-ya/protobuf/actions/runs/41562661505),
+[reflect compatibility](https://github.com/carter-ya/protobuf/actions/runs/41562661363).
+
+These results establish the published RC2 scope; later maintenance commits
+require their own current-head qualification. They do not imply support for
+every Protobuf feature, representation, or deployed downstream product.

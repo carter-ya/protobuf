@@ -1,6 +1,6 @@
 # Qualified compatibility and migration
 
-Status date: 2026-11-01. This maintenance line starts from original gogo/protobuf
+Status date: 2026-11-03. This maintenance line starts from original gogo/protobuf
 v1.3.2. The module remains `github.com/gogo/protobuf`; the root runtime requires
 Go 1.15. Existing valid proto2/proto3 bindings and their public Go layouts remain
 usable. Malformed-wire fixes enforce field-number and group bounds. Historical
@@ -20,7 +20,7 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Production backends | gogo, gogofast, gogofaster, gogoslick, gogotypes | Optional, Editions, auxiliary and binary differential matrices |
 | Legacy closed enums | Explicit `enforce_closed_enums=true`; definition-scoped imports, unknown retention and extensions | [Five-backend matrix and migration contract](legacy-enums/README.md) |
 | Proto3 optional | Scalar/enum/message/bytes presence, synthetic oneofs, supported cast/custom/std rows | [Representation contract](optional/README.md) and five-backend default/purego tests |
-| Editions | 2023, 2024 and 2026; default OPEN and opt-in HYBRID profile | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
+| Editions | 2023, 2024 and 2026; default OPEN and opt-in HYBRID/OPAQUE profiles | Scalar/complex/auxiliary matrices, raw descriptors and independent oracles |
 | Core Editions semantics | Presence, LEGACY_REQUIRED, UTF8 VERIFY/NONE, packed/expanded, open/closed enums, maps, oneofs, DELIMITED, extensions and option retention | `check-editions.sh`, `check-editions-fast.sh`, required-boundary and binary checks |
 | Go optimization | Explicit SPEED/CODE_SIZE, inherited/nested overrides and mixed graphs; retained backend defaults | [Five-backend strategy contract](go-optimize/README.md) |
 | Go enum prefixes | KEEP/STRIP/GENERATE_BOTH, inherited and per-entry settings; imported defaults and aliases | [Five-backend naming/interop matrix](go-enum-prefix/README.md) |
@@ -30,6 +30,7 @@ profile does not imply that every Go-specific generation feature is implemented.
 | Standard JSON/text | Explicit `jsonpb/standard` and `textpb/standard` entrypoints | Complete pinned 36.2 standard conformance profile and differential fuzz |
 | Native modern Go interoperability | Optional Go 1.23 live native ProtoReflect; native type identity, required/closed enum/group/map-backed extension profile | [Runtime contract](../reflect/README.md), `check-live-reflect.sh` and official prototest |
 | HYBRID | Opt-in setters, Has/Clear/Which, builders and file/message/nested API overrides | [Five-backend native consumer and official API matrix](hybrid/README.md) |
+| OPAQUE / protoopaque | Explicit private fields/accessors/builders; HYBRID alternate files, generated tests and annotations | `compat/opaque/{prepare,alternate,mixed,generated_tests}.py` and Go 1.23/1.27 CI |
 | Detached modern conversion | Historical explicit Snapshot/Apply experiment | [C02 scope and restrictions](modern/README.md); separate from the live module |
 | Preview | protoc 37.0-rc1 and official Go v1.37.0-rc.1 | [Separate preview qualification](preview/README.md), isolated Go 1.26+ consumers |
 
@@ -187,11 +188,13 @@ native pointer/message layouts; incompatible custom/std/embedded mappings,
 flattened messages, byte-backed extensions and MessageSet are diagnosed. Selected
 convenience backends default to qualified pointer/unknown storage, so review
 regenerated field types. Explicit OPAQUE and HYBRID `protoopaque` alternate builds
-are qualified in the development candidate, including per-file API defaults,
+ship in the published RC2 pair, including per-file API defaults,
 source overrides, private-field accessors, builder ownership, legacy JSONPB,
 required/default handling and expanded Any text. The optional module requires
-root version 18. Published RC1 excludes OPAQUE; the next RC2 pair is not yet
-published. Storage remains native pointers with eager decoding; memory/lazy
+root version 18. Published RC1 excludes OPAQUE; root `v1.4.0-rc.2` and
+`reflect/v0.1.0-rc.2` both identify `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`.
+See the [published installation guide](../release/INSTALL.md). Storage remains
+native pointers with eager decoding; memory/lazy
 optimizations are not claimed. Unknown or future Editions are rejected.
 
 Legacy MessageSet remains supported. Its modern reflection extension is deferred

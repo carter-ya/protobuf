@@ -39,6 +39,25 @@ class ReleaseContract(unittest.TestCase):
         with self.assertRaises(ValueError):
             contract.validate(self.manifest, self.root_mod + '\nrequire google.golang.org/protobuf v1.36.12\n', self.reflect_mod, self.sums)
 
+    def test_rejects_incomplete_published_provenance(self):
+        for kind in ['revision', 'tag', 'missing-module', 'path', 'version', 'sum', 'go-mod-sum']:
+            bad = copy.deepcopy(self.manifest)
+            pair = bad['published_pair']
+            if kind == 'revision':
+                pair['revision'] = 'main'
+            elif kind == 'tag':
+                pair['reflect'] = pair['reflect'].removeprefix('reflect/')
+            elif kind == 'missing-module':
+                pair['modules'].pop('reflect')
+            elif kind == 'path':
+                pair['modules']['root']['Path'] = 'github.com/gogo/protobuf'
+            elif kind == 'version':
+                pair['modules']['reflect']['Version'] = 'v0.0.0'
+            else:
+                pair['modules']['root']['Sum' if kind == 'sum' else 'GoModSum'] = 'h1:wrong'
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                contract.validate(bad, self.root_mod, self.reflect_mod, self.sums)
+
 
 if __name__ == '__main__':
     unittest.main()

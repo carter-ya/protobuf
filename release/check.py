@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate the paired release contract without publishing any artifacts."""
+import base64
 import json
 import pathlib
 import re
@@ -59,6 +60,27 @@ def validate(manifest, root_mod, reflect_mod, sums):
             raise ValueError('runtime checksum drifted: ' + key)
     if 'google.golang.org/protobuf' in root_mod:
         raise ValueError('legacy root acquired a V2 dependency')
+    published = manifest['published_pair']
+    if not re.fullmatch('[0-9a-f]{40}', published['revision']):
+        raise ValueError('published source must be an immutable full revision')
+    if not re.fullmatch(r'v1\.\d+\.\d+(?:-rc\.\d+)?', published['root']) or not re.fullmatch(r'reflect/v0\.\d+\.\d+(?:-rc\.\d+)?', published['reflect']):
+        raise ValueError('invalid published tag pairing')
+    if set(published['modules']) != {'root', 'reflect'}:
+        raise ValueError('published module identities are incomplete')
+    for component in ['root', 'reflect']:
+        identity = published['modules'][component]
+        expected_path = manifest['repository'] + ('/reflect' if component == 'reflect' else '')
+        expected_version = published[component].removeprefix('reflect/')
+        if identity['Path'] != expected_path or identity['Version'] != expected_version:
+            raise ValueError('published module identity differs from its tag')
+        for field in ['Sum', 'GoModSum']:
+            value = identity[field]
+            try:
+                valid = value.startswith('h1:') and len(base64.b64decode(value[3:], validate=True)) == 32
+            except (ValueError, TypeError):
+                valid = False
+            if not valid:
+                raise ValueError('invalid published module checksum: ' + field)
 
 
 def main():

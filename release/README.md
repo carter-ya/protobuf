@@ -1,18 +1,20 @@
 # Maintenance release contract
 
-The next candidate adds OPAQUE and HYBRID `protoopaque` builds.
-The published [root RC1](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0-rc.1) and
-[reflect RC1](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.1)
-remain at commit `533267c4c68359c533a07ece14e6cb2320a22b8b` and do not include OPAQUE.
+The published [root RC2](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0-rc.2) and
+[reflect RC2](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2)
+identify commit `3af6d45fd9dbe0ff1249afa246a44caf995b29a1` and include OPAQUE and
+HYBRID `protoopaque` builds. Both tags passed published-version cold-cache
+installation on Go 1.15/1.23/1.27 and their complete compatibility workflows.
+RC1 remains at `533267c4c68359c533a07ece14e6cb2320a22b8b` and excludes OPAQUE.
 
-This change prepares RC2; it does not publish it. `manifest.json` is the machine-readable
-source of truth for proposed versions, minimum toolchains, compiler and the
-optional official-runtime pin. Preparing this contract does not create tags,
-GitHub Releases or artifacts. The manifest records the RC channel and manual
-publication policy; actual publication status is established by remote tags and
-GitHub Releases, not a permanently embedded unpublished flag.
+`manifest.json` separates the current qualification contract from the immutable
+`published_pair`, which records the latest verified tags, source revision and
+remote module checksums. Current maintenance commits are not additional
+published versions. Future publication remains manual; remote tags and GitHub
+Releases establish publication status. Editing this file never publishes or
+retags a version.
 
-| Component | Import/module path | Proposed tag | Minimum Go |
+| Component | Import/module path | Published RC2 tag | Minimum Go |
 | --- | --- | --- | --- |
 | Legacy runtime and all five generators | github.com/gogo/protobuf | v1.4.0-rc.2 | 1.15 |
 | Optional live reflection | github.com/gogo/protobuf/reflect | reflect/v0.1.0-rc.2 | 1.23 |
