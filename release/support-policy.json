@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "root": {
+    "minimum_go": "1.15",
+    "independent_stable_promotion": true,
+    "official_v2_dependency": false
+  },
+  "reflect": {
+    "minimum_go": "1.23",
+    "channel": "release-candidate",
+    "runtime_policy": "pinned-development-runtime-for-rc",
+    "stable_requires_qualified_official_stable_runtime": true,
+    "minimum_go_change": "explicit-versioned-policy-change"
+  },
+  "pairing": {
+    "immutable_published_components": true,
+    "per_component_revision_and_checksum_evidence": true,
+    "cold_cache_and_real_downstream_qualification": true,
+    "manual_publication": true
+  },
+  "upstream_observation": {
+    "checked_on": "2026-11-03",
+    "stable_reference": "v1.36.12",
+    "stable_reference_gap": "edition-2026-runtime-support",
+    "next_release_minimum_go": "1.26",
+    "sources": [
+      "https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.36.12",
+      "https://protobuf.dev/news/2026-10-16/",
+      "https://raw.githubusercontent.com/protocolbuffers/protobuf-go/v1.37.0-rc.1/go.mod"
+    ]
+  }
+}

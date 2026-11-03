@@ -31,6 +31,11 @@ See [installation](INSTALL.md) for actual remote-consumer commands,
 
 ## Official runtime decision
 
+The [root/optional-module support decision](SUPPORT.md) records the independent
+root-stable route while preserving the Go1.23 modern RC line. Its machine policy
+is checked in CI; a future upstream Go1.26 requirement does not silently change
+this line's compatibility floor.
+
 The optional reflection module retains
 `google.golang.org/protobuf v1.36.13-0.20261007182434-0c373ff94f29` for this RC.
 Its module and go.mod checksums are pinned in `manifest.json` and reflect/go.sum.
