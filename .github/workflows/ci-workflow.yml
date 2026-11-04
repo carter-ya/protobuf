@@ -11,6 +11,9 @@ jobs:
   build_and_test:
     name: go ${{ matrix.go_version }} - pb-${{ matrix.protobuf_version }}
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gopath/src/github.com/gogo/protobuf
     strategy:
       matrix:
         go_version: [1.15.x, 1.12.x]
@@ -18,15 +21,17 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v1
+        uses: actions/checkout@v6
         with:
           path: gopath/src/github.com/gogo/protobuf
-          fetch-depth: 5
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go_version }}
+          cache: false
 
       - name: Setup protoc
         env:
@@ -39,7 +44,11 @@ jobs:
         run: env && go env && pwd
 
       - name: Build server all
-        run: GOPATH=/home/runner/work/protobuf/gopath GOBIN=$GOPATH/bin PATH=$HOME/bin:$GOBIN:$PATH make buildserverall
+        run: |
+          export GOPATH="$GITHUB_WORKSPACE/gopath"
+          export GOBIN="$GOPATH/bin"
+          export PATH="$HOME/bin:$GOBIN:$PATH"
+          make buildserverall
 
       - name: Diff check
         if: matrix.protobuf_version == '3.14.0' && matrix.go_version == '1.15.x'
