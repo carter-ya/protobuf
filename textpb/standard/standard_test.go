@@ -9,7 +9,10 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-var _ = proto.TextMarshaler{false, false} // historical configuration layout
+// A local defined type retains the positional configuration layout check.
+type historicalTextLayout proto.TextMarshaler
+
+var _ = historicalTextLayout{false, false}
 
 type probe struct {
 	XXX_unrecognized []byte

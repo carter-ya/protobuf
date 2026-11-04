@@ -3,7 +3,8 @@
 This candidate fixes two confirmed runtime boundaries from the master review:
 optional standard mappings preserve unknown wrong-wire occurrences, and
 standard text maps initialize an omitted closed-enum value from its schema
-default. Targeted regressions reproduce both failures before the fix. Final
+default. Packed closed-enum decoding keeps the remaining input separately to
+avoid quadratic copying; omitted map message values enforce required fields. Targeted regressions reproduce both failures before the fix. Final
 publication requires the reviewed source, all CI and actual tag installation.
 The existing root v1.4.0 tag and every RC tag remain immutable; reflect RC2 keeps
 its original source, Go1.23 floor and fixed official-runtime dependency.

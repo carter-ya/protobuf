@@ -41,7 +41,7 @@ func FilterEditionEnums(data []byte, fields map[uint64]*EditionEnumFilter) ([]by
 		end := start + size
 		field := data[start:end]
 		if rule := fields[tag]; rule != nil {
-			body, extra, err := rule.filter.filter(data[offset:end], wire, tag)
+			body, extra, _, err := rule.filter.filter(data[offset:end], wire, tag)
 			if err != nil && err != errInternalBadWireType {
 				return nil, nil, err
 			}

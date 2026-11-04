@@ -10,9 +10,12 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-// Keep the historical unkeyed configuration literals source-compatible.
-var _ = jsonpb.Marshaler{false, false, "", false, nil}
-var _ = jsonpb.Unmarshaler{false, nil}
+// Local defined types retain the positional configuration layout checks.
+type historicalJSONMarshalerLayout jsonpb.Marshaler
+type historicalJSONUnmarshalerLayout jsonpb.Unmarshaler
+
+var _ = historicalJSONMarshalerLayout{false, false, "", false, nil}
+var _ = historicalJSONUnmarshalerLayout{false, nil}
 
 func TestCompleteDocumentAndUnicode(t *testing.T) {
 	for _, input := range []string{`{"oInt32":1} {}`, `{"oInt32":1} garbage`, `{"oString":"\ud800"}`, `{"oString":"\udc00"}`, "{\"oString\":\"\xff\"}", `{"oInt32":1,"oInt32":2}`, `{"oInt32":1,"o_int32":2}`, `{"oInt32":" 1"}`} {

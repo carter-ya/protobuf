@@ -112,6 +112,15 @@ func (p *textParser) readStandardMapEntry(dst reflect.Value, properties *Propert
 			return err
 		}
 	}
+	if !valueSeen {
+		messageType := value.Type()
+		if messageType.Kind() == reflect.Ptr {
+			messageType = messageType.Elem()
+		}
+		if messageType.Kind() == reflect.Struct && reflect.PtrTo(messageType).Implements(protoMessageType) && GetProperties(messageType).reqCount > 0 {
+			return p.missingRequiredFieldError(reflect.Zero(messageType))
+		}
+	}
 	if dst.IsNil() {
 		dst.Set(reflect.MakeMap(dst.Type()))
 	}

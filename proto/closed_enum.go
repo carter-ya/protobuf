@@ -66,64 +66,67 @@ func appendEnumVarint(b []byte, n uint64) []byte {
 // filter returns the input untouched on rejection so that the normal unknown
 // field path retains the entire field (or map entry). Packed unknown values
 // become individual unknown varints, matching the Protobuf closed-enum rules.
-func (c *closedEnumFilter) filter(b []byte, wire int, tag uint64) ([]byte, []byte, error) {
+// A rewritten occurrence returns its original tail separately, without copying it.
+// That tail is non-nil only for rewritten packed occurrences; callers resume it
+// after consuming the filtered body. Unchanged input still contains its tail.
+func (c *closedEnumFilter) filter(b []byte, wire int, tag uint64) ([]byte, []byte, []byte, error) {
 	if wire == WireVarint && !c.mapValue {
 		n, size := decodeVarint(b)
 		if size == 0 {
-			return b, nil, io.ErrUnexpectedEOF
+			return b, nil, nil, io.ErrUnexpectedEOF
 		}
 		if !c.values[int32(n)] {
-			return b, nil, errInternalBadWireType
+			return b, nil, nil, errInternalBadWireType
 		}
-		return b, nil, nil
+		return b, nil, nil, nil
 	}
 	if wire != WireBytes || (!c.mapValue && !c.allowPacked) {
-		return b, nil, errInternalBadWireType
+		return b, nil, nil, errInternalBadWireType
 	}
 	n, size := decodeVarint(b)
 	if size == 0 || n > uint64(len(b)-size) {
-		return b, nil, io.ErrUnexpectedEOF
+		return b, nil, nil, io.ErrUnexpectedEOF
 	}
 	body, rest := b[size:size+int(n)], b[size+int(n):]
 	if c.mapValue {
 		if c.strictMap {
 			if err := validateEditionMap(body, c.verifyMapKey); err != nil {
-				return b, nil, err
+				return b, nil, nil, err
 			}
 		}
 		valid := true
 		for len(body) > 0 {
 			key, k := decodeVarint(body)
 			if k == 0 {
-				return b, nil, io.ErrUnexpectedEOF
+				return b, nil, nil, io.ErrUnexpectedEOF
 			}
 			if err := validateWireKey(key, k); err != nil {
-				return b, nil, err
+				return b, nil, nil, err
 			}
 			body = body[k:]
 			if key == 2<<3 {
 				value, v := decodeVarint(body)
 				if v == 0 {
-					return b, nil, io.ErrUnexpectedEOF
+					return b, nil, nil, io.ErrUnexpectedEOF
 				}
 				valid = c.values[int32(value)]
 			}
 			var err error
 			body, err = skipField(body, int(key)&7, key>>3)
 			if err != nil {
-				return b, nil, err
+				return b, nil, nil, err
 			}
 		}
 		if !valid {
-			return b, nil, errInternalBadWireType
+			return b, nil, nil, errInternalBadWireType
 		}
-		return b, nil, nil
+		return b, nil, nil, nil
 	}
 	var known, unknown []byte
 	for len(body) > 0 {
 		value, v := decodeVarint(body)
 		if v == 0 {
-			return b, nil, io.ErrUnexpectedEOF
+			return b, nil, nil, io.ErrUnexpectedEOF
 		}
 		if c.values[int32(value)] {
 			known = append(known, body[:v]...)
@@ -134,10 +137,9 @@ func (c *closedEnumFilter) filter(b []byte, wire int, tag uint64) ([]byte, []byt
 		body = body[v:]
 	}
 	if len(unknown) == 0 {
-		return b, nil, nil
+		return b, nil, nil, nil
 	}
 	filtered := appendEnumVarint(nil, uint64(len(known)))
 	filtered = append(filtered, known...)
-	filtered = append(filtered, rest...)
-	return filtered, unknown, nil
+	return filtered, unknown, rest, nil
 }

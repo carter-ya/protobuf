@@ -6,8 +6,13 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 compiler=${1:?pass the pinned current protoc path}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
-export PATH="$(dirname -- "$compiler"):$PATH"
+export GOBIN="$tmp/bin"
+mkdir -p "$GOBIN"
+export PATH="$GOBIN:$(dirname -- "$compiler"):$PATH"
 cd "$repo"
+# The nested compatibility script owns and removes its own tool directory.
+# Keep separate drivers alive for the later purego integration tests.
+go install ./protoc-gen-gogo ./protoc-gen-gogofast ./protoc-gen-gogofaster ./protoc-gen-gogoslick ./protoc-gen-gogotypes ./protoc-min-version
 sh compat/check.sh
 suite="$tmp/gopath/src/github.com/gogo/protobuf"
 mkdir -p "$suite"

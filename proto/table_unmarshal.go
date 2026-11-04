@@ -166,6 +166,7 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 	}
 	var errLater error
 	for len(b) > 0 {
+		var filteredRest []byte
 		// Read tag and wire type.
 		// Special case 1 and 2 byte varints.
 		var x uint64
@@ -203,7 +204,7 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			var err error
 			if f.closed != nil {
 				var unknown []byte
-				b, unknown, err = f.closed.filter(b, wire, tag)
+				b, unknown, filteredRest, err = f.closed.filter(b, wire, tag)
 				if len(unknown) > 0 && u.unrecognized.IsValid() {
 					z := m.offset(u.unrecognized).toBytes()
 					*z = append(*z, unknown...)
@@ -211,6 +212,9 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			}
 			if err == nil {
 				b, err = fn(b, m.offset(f.field), wire)
+				if filteredRest != nil {
+					b = filteredRest
+				}
 			}
 			if err == nil {
 				if f.reqWord == 0 {
@@ -288,13 +292,14 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			}
 		}
 		if c := closedExtension; c != nil {
-			filtered, unknown, err := c.filter(b, wire, tag)
+			filtered, unknown, rest, err := c.filter(b, wire, tag)
 			if err == errInternalBadWireType {
 				invalidExtension = true
 			} else if err != nil {
 				return err
 			} else {
 				b = filtered
+				filteredRest = rest
 			}
 			if len(unknown) > 0 && u.unrecognized.IsValid() {
 				z := m.offset(u.unrecognized).toBytes()
@@ -308,6 +313,9 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			b, err = skipField(b, wire, tag)
 			if err != nil {
 				return err
+			}
+			if filteredRest != nil {
+				b = filteredRest
 			}
 			continue
 		}
@@ -377,6 +385,9 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 
 		if emap != nil {
 			emap[int32(tag)] = e
+		}
+		if filteredRest != nil {
+			b = filteredRest
 		}
 	}
 	if len(reqExtra) > 0 && errLater == nil {

@@ -111,5 +111,7 @@ that unpublished candidate tags already exist or that post-tag verification ran.
 The current source candidate prepares root `v1.4.1` to fix two reviewed runtime
 boundaries: preserve unknown wrong-wire occurrences of optional standard
 mappings, and initialize omitted standard-text map enum values from their schema
-default. The v1.4.0 tag and all RC tags remain immutable. This candidate is not a
+default, avoid quadratic copying when filtering packed enums, and validate
+required fields in omitted map message values. The v1.4.0 tag and all RC tags
+remain immutable. This candidate is not a
 new published version until its exact source and actual tag pass qualification.
