@@ -13,7 +13,7 @@ func TestMergeDiscardClosedEnumLinearAllocation(t *testing.T) {
 	n := new(pb.Closed)
 	m := closedView(t, n)
 	// Retain regular unknowns and unregistered native extension storage.
-	m.SetUnknown(append(delimited(200, bytes.Repeat([]byte{1}, 32<<10)), varint(107, 9)...))
+	m.SetUnknown(append(delimited(99, bytes.Repeat([]byte{1}, 32<<10)), varint(107, 9)...))
 	previous := append([]byte(nil), m.GetUnknown()...)
 	input := bytes.Repeat(append(varint(1, 5), varint(1, 99)...), 4000)
 	options := v2.UnmarshalOptions{Merge: true, DiscardUnknown: true}
@@ -57,5 +57,45 @@ func TestOrdinaryUnknownDecodeLinearAllocation(t *testing.T) {
 	t.Logf("allocated %d bytes for %d unknown input bytes", allocated, len(input))
 	if allocated > uint64(len(input)*256+(2<<20)) {
 		t.Fatal("unknown decode repeatedly copied the accumulated buffer")
+	}
+}
+
+func TestExtensionUnknownDecodeLinearAllocation(t *testing.T) {
+	n := new(pb.Closed)
+	m := closedView(t, n)
+	m.SetUnknown(varint(107, 1))
+	regular := varint(99, 3)
+	extension := varint(108, 9)
+	input := bytes.Repeat(append(append([]byte(nil), regular...), extension...), 4000)
+	options := v2.UnmarshalOptions{Merge: true}
+	if err := options.Unmarshal(nil, m.Interface()); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	err := options.Unmarshal(input, m.Interface())
+	runtime.ReadMemStats(&after)
+	want := append(bytes.Repeat(regular, 4000), varint(107, 1)...)
+	want = append(want, bytes.Repeat(extension, 4000)...)
+	if err != nil || !bytes.Equal(m.GetUnknown(), want) {
+		t.Fatal("regular/extension unknown merge changed wire data", err)
+	}
+	allocated := after.TotalAlloc - before.TotalAlloc
+	t.Logf("allocated %d bytes for %d mixed unknown input bytes", allocated, len(input))
+	if allocated > uint64(len(input)*256+(2<<20)) {
+		t.Fatal("extension-capable decode repeatedly copied accumulated unknowns")
+	}
+}
+
+func TestUnknownExtensionsSurvivePartialDecodeError(t *testing.T) {
+	n := new(pb.Closed)
+	m := closedView(t, n)
+	m.SetUnknown(varint(107, 1))
+	if err := (v2.UnmarshalOptions{Merge: true}).Unmarshal(append(varint(108, 9), 0x80), m.Interface()); err == nil {
+		t.Fatal("malformed trailing tag was accepted")
+	}
+	if want := append(varint(107, 1), varint(108, 9)...); !bytes.Equal(m.GetUnknown(), want) {
+		t.Fatal("an error discarded previously decoded unknown extensions", m.GetUnknown())
 	}
 }

@@ -35,7 +35,8 @@ var nativeMethods = protoiface.Methods{
 		}
 		resolver := nativeResolver{provided: provided, owner: m}
 		options := v2.UnmarshalOptions{Merge: true, AllowPartial: true, DiscardUnknown: in.Flags&protoiface.UnmarshalDiscardUnknown != 0, Resolver: resolver, RecursionLimit: in.Depth}
-		slow := slowView{m}
+		slow := &slowView{Message: m}
+		defer slow.flushUnknownExtensions()
 		for buf := in.Buf; len(buf) > 0; {
 			number, wire, taglen := protowire.ConsumeTag(buf)
 			if taglen < 0 {
@@ -92,22 +93,58 @@ var nativeMethods = protoiface.Methods{
 	},
 }
 
-type slowView struct{ protoreflect.Message }
+// slowView is private to one official reflective decode. The official decoder
+// appends one validated occurrence to GetUnknown before calling SetUnknown.
+// Keep regular wire in its native append buffer and collect extension changes
+// until this decode returns, so neither prefix is copied for each occurrence.
+type slowView struct {
+	protoreflect.Message
+	unknownExtensions map[int32][]byte
+}
 
-func (s slowView) ProtoReflect() protoreflect.Message   { return s }
-func (s slowView) Interface() protoreflect.ProtoMessage { return s }
-func (s slowView) ProtoMethods() *protoiface.Methods    { return nil }
-
-func (s slowView) SetUnknown(b protoreflect.RawFields) {
+func (s *slowView) ProtoReflect() protoreflect.Message   { return s }
+func (s *slowView) Interface() protoreflect.ProtoMessage { return s }
+func (s *slowView) ProtoMethods() *protoiface.Methods    { return nil }
+func (s *slowView) GetUnknown() protoreflect.RawFields {
 	m := s.Message.(*message)
+	return m.nativeField(m.info.unknown).Bytes()
+}
+func (s *slowView) SetUnknown(b protoreflect.RawFields) {
+	m := s.Message.(*message)
+	m.requireMutable()
+	regular := m.nativeField(m.info.unknown)
 	if m.info.desc.ExtensionRanges().Len() == 0 {
-		// The official decoder has already validated each occurrence. Keep
-		// its append buffer instead of revalidating the accumulated prefix.
-		m.requireMutable()
-		m.nativeField(m.info.unknown).SetBytes(b)
+		regular.SetBytes(b)
 		return
 	}
-	m.SetUnknown(b)
+	// Only the new, already validated occurrence needs classification.
+	raw := b[len(regular.Bytes()):]
+	number, _, n := protowire.ConsumeField(raw)
+	if n < 0 || n != len(raw) {
+		panic("gogoreflect: invalid internal unknown append")
+	}
+	if !m.info.desc.ExtensionRanges().Has(number) || gogo.RegisteredExtensions(m.native())[int32(number)] != nil {
+		regular.SetBytes(b)
+		return
+	}
+	if s.unknownExtensions == nil {
+		fields, err := gogo.UnregisteredExtensionWire(m.native())
+		if err != nil {
+			panic(err)
+		}
+		if fields == nil {
+			fields = make(map[int32][]byte)
+		}
+		s.unknownExtensions = fields
+	}
+	s.unknownExtensions[int32(number)] = append(s.unknownExtensions[int32(number)], raw...)
+}
+func (s *slowView) flushUnknownExtensions() {
+	if s.unknownExtensions != nil {
+		if err := gogo.ReplaceUnregisteredExtensions(s.Message.(*message).native(), s.unknownExtensions); err != nil {
+			panic(err)
+		}
+	}
 }
 
 type extensionResolver interface {

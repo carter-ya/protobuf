@@ -142,8 +142,8 @@ before upgrading or attempting a downgrade to the stable reference.
 ### Source fixes after RC2
 
 The current source avoids repeated unknown-buffer copies during closed-enum
-merge/discard decoding and ordinary unknown-field decoding without extension
-ranges. These fixes are not in the immutable published reflect RC2 module.
+merge/discard decoding and ordinary unknown-field decoding, including messages
+with extension ranges. These fixes are not in the immutable published reflect RC2 module.
 RC2 may allocate disproportionately for inputs containing many such occurrences,
 including Merge+DiscardUnknown with a large existing unknown buffer. Bound input
 sizes and occurrence counts when using that RC with untrusted wire data, or use
