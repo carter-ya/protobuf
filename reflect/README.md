@@ -103,7 +103,7 @@ ownership follows the official API. Storage retains native pointers and eager
 decoding; no reduced-memory or lazy-decoding performance claim is made.
 
 These capabilities require root version 18. The qualified published combination
-is stable root `v1.4.0` at `057d06490a721bea0fceb39c5c088bc1ef3085e8` and this optional
+is stable root `v1.4.1` at `58ec58f77b1c65d9805d60502df5b6476f08dd4e` and this optional
 module `reflect/v0.1.0-rc.2` at `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`.
 The optional module remains RC; RC1 excludes OPAQUE. Match the root generator
 and runtime version, and select the separately qualified optional version.
@@ -129,7 +129,7 @@ normalize descriptors should use `command.ReadWithSources` and
 
 The existing module [reflect/v0.1.0-rc.2](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2)
 retains its original source, dependency pin and minimum root `v1.4.0-rc.2`.
-Stable root [v1.4.0](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0)
+Stable root [v1.4.1](https://github.com/carter-ya/protobuf/releases/tag/v1.4.1)
 satisfies that minimum and passed the complete cross-revision qualification.
 Earlier RC2 root/reflect pairing remains immutable. Later development commits
 are qualified independently and do not move either tag.
@@ -147,7 +147,8 @@ with extension ranges. Closed-enum occurrences use an empty carrier so the
 accumulated lists/maps/extensions are not revalidated or re-encoded for each
 field. Final required-field completeness is checked by the outer V2 operation.
 These fixes are not in the immutable published reflect RC2 module.
-RC2 may allocate disproportionately for inputs containing many unknown or known closed-enum occurrences,
+RC2 may use disproportionate CPU or memory for inputs containing many unknown
+or known closed-enum occurrences,
 including Merge+DiscardUnknown with a large existing unknown buffer. Bound input
 sizes and occurrence counts when using that RC with untrusted wire data, or use
 a separately qualified full source revision. Root v1.4.1 publication does not

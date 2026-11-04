@@ -114,9 +114,9 @@ python3 compat/downstream/projects/run.py /tmp/root-stable-projects \
 
 Use Go 1.27, Python 3.12 and protoc 36.2. Optional `--candidate-repository github.com/OWNER/protobuf` selects a public fork for the root only; the reused
 reflect component stays at its recorded publisher. This mode is mutually
-exclusive with `--published`. The canonical root requirement is `v1.4.0`,
-replaced remotely with the candidate's immutable pseudo-version; reflect uses
-the actual `v0.1.0-rc.2` replacement. This does not claim that `v1.4.0` exists.
+exclusive with `--published`. The canonical root requirement is the current manifest version,
+replaced remotely with the candidate's immutable resolved module version; reflect uses
+the actual `v0.1.0-rc.2` replacement. Candidate mode alone does not establish that a proposed version is published.
 
 `.github/workflows/root-stable-readiness.yml` runs all four pinned projects at
 the actual PR head with empty caches. The scope remains original/fork controls,

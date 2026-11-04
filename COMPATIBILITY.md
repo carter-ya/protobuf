@@ -16,8 +16,8 @@ without regeneration. The runtime has no new module dependencies and retains
 | Edition 2026 | Same backends, custom JSON enum spellings in jsonpb | Version6 base; later opt-in capabilities through Version18 |
 | Native ProtoReflect / HYBRID / OPAQUE | Optional Go1.23 live module; HYBRID protoopaque alternate builds | Version18 |
 
-The published combination is stable root `v1.4.0` from
-`057d06490a721bea0fceb39c5c088bc1ef3085e8` and optional `reflect/v0.1.0-rc.2` from
+The published combination is stable root `v1.4.1` from
+`58ec58f77b1c65d9805d60502df5b6476f08dd4e` and optional `reflect/v0.1.0-rc.2` from
 `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. See the
 [versioned installation guide](release/INSTALL.md). The optional module remains RC.
 

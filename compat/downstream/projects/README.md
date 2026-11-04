@@ -111,7 +111,7 @@ published CI runs the full configured scope for all four projects. It uses Go
 root module's Go 1.15 or the optional module's Go 1.23 minimum.
 
 The gate reads `release/manifest.json`'s `published_pair`, currently root
-stable `v1.4.0` at `057d06490a721bea0fceb39c5c088bc1ef3085e8` and optional
+stable `v1.4.1` at `58ec58f77b1c65d9805d60502df5b6476f08dd4e` and optional
 `reflect/v0.1.0-rc.2` at `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`,
 with their recorded zip/go.mod checksums and separate source revisions. It independently resolves both public tags, downloads the fork
 modules into a new external module cache, and checks their full origins and

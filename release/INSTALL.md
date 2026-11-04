@@ -1,18 +1,13 @@
 # Install the maintained fork
 
-This source prepares the `v1.4.1` root patch. The commands below target that
-version and become usable after its tag is published and verified. The latest
-verified identities remain in manifest.json until the post-publication update.
-The optional module stays RC2; no optional-module tag is changed.
-
-The earlier verified combination is stable root [v1.4.0](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0)
-from commit `057d06490a721bea0fceb39c5c088bc1ef3085e8`, and optional
+The verified published combination is stable root [v1.4.1](https://github.com/carter-ya/protobuf/releases/tag/v1.4.1)
+from commit `58ec58f77b1c65d9805d60502df5b6476f08dd4e`, and optional
 [reflect/v0.1.0-rc.2](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2)
-from commit `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. The optional modern module remains
-RC and retains its fixed official-runtime snapshot. Root stays at Go1.15,
-optional reflection at Go1.23. The exact combination passed actual tag-based
-cold-cache installation on Go1.15/1.23/1.27; see [stable notes](STABLE-NOTES.md).
-The earlier RC2 pair and RC1 pair remain immutable historical versions.
+from commit `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. The optional module remains RC and
+retains its fixed official-runtime snapshot. Root stays at Go1.15, optional
+reflection at Go1.23. The exact combination passed actual tag-based cold-cache
+installation on Go1.15/1.23/1.27; see [stable notes](STABLE-NOTES.md).
+The earlier stable and RC tags remain immutable historical versions.
 
 ## Published tools and legacy runtime
 

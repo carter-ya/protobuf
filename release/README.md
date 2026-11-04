@@ -1,7 +1,7 @@
 # Maintenance release contract
 
-The stable root [v1.4.0](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0)
-identifies `057d06490a721bea0fceb39c5c088bc1ef3085e8`. It is qualified with the existing
+The stable root [v1.4.1](https://github.com/carter-ya/protobuf/releases/tag/v1.4.1)
+identifies `58ec58f77b1c65d9805d60502df5b6476f08dd4e`. It is qualified with the existing
 optional [reflect RC2](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2)
 at `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. Root is stable; the optional modern
 module remains RC with its immutable official-runtime snapshot. Both component
@@ -16,7 +16,7 @@ remains manual; remote tags and GitHub Releases establish availability.
 
 | Component | Import/module path | Published tag | Minimum Go |
 | --- | --- | --- | --- |
-| Runtime and all five generators | github.com/gogo/protobuf | v1.4.0 (stable) | 1.15 |
+| Runtime and all five generators | github.com/gogo/protobuf | v1.4.1 (stable) | 1.15 |
 | Optional live reflection | github.com/gogo/protobuf/reflect | reflect/v0.1.0-rc.2 | 1.23 |
 
 The root minor version adds opt-in APIs while retaining old imports/default
@@ -108,10 +108,11 @@ commit-based gate establishes remote packaging readiness; it is not evidence
 that unpublished candidate tags already exist or that post-tag verification ran.
 
 
-The current source candidate prepares root `v1.4.1` to fix two reviewed runtime
-boundaries: preserve unknown wrong-wire occurrences of optional standard
-mappings, and initialize omitted standard-text map enum values from their schema
-default, avoid quadratic copying when filtering packed enums, and validate
-required fields in omitted map message values. The v1.4.0 tag and all RC tags
-remain immutable. This candidate is not a
-new published version until its exact source and actual tag pass qualification.
+The published root `v1.4.1` patch fixes four reviewed runtime boundaries:
+optional standard mappings retain unknown wrong-wire occurrences, standard text
+maps use the schema's first enum value when the value is omitted, packed closed
+enums avoid quadratic tail copying, and omitted map message values enforce
+required fields. Targeted regressions, minimum-Go historical CI and complete
+current-head checks passed before publication. The existing v1.4.0 tag and all
+RC tags remain immutable. The published optional module's tag, source,
+dependency pin and minimum root are unchanged.
