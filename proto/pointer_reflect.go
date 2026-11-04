@@ -94,7 +94,11 @@ func valToPointer(v reflect.Value) pointer {
 // offset converts from a pointer to a structure to a pointer to
 // one of its fields.
 func (p pointer) offset(f field) pointer {
-	return pointer{v: p.v.Elem().FieldByIndex(f).Addr()}
+	v := p.v.Elem()
+	for _, index := range f {
+		v = generatedField(v, index)
+	}
+	return pointer{v: v.Addr()}
 }
 
 func (p pointer) isNil() bool {

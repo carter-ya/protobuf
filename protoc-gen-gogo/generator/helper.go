@@ -51,10 +51,13 @@ func (d *FileDescriptor) Enums() []*EnumDescriptor {
 }
 
 func (d *Descriptor) IsGroup() bool {
-	return d.group
+	return d.group && d.file.edition == nil
 }
 
 func (g *Generator) IsGroup(field *descriptor.FieldDescriptorProto) bool {
+	if g.file.edition != nil {
+		return field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP
+	}
 	if d, ok := g.typeNameToObject[field.GetTypeName()].(*Descriptor); ok {
 		return d.IsGroup()
 	}
@@ -70,6 +73,9 @@ func (g *Generator) TypeNameByObject(typeName string) Object {
 }
 
 func (g *Generator) OneOfTypeName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+	if name := message.opaqueOneofs[field]; g.Opaque(message) && name != "" {
+		return name
+	}
 	typeName := message.TypeName()
 	ccTypeName := CamelCaseSlice(typeName)
 	fieldName := g.GetOneOfFieldName(message, field)
@@ -164,7 +170,7 @@ func (this *importedPackage) Location() string {
 	return this.importPrefix + this.pkg
 }
 
-func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+func (g *Generator) legacyFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
 	goTyp, _ := g.GoType(message, field)
 	fieldname := CamelCase(*field.Name)
 	if gogoproto.IsCustomName(field) {
@@ -173,7 +179,7 @@ func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDes
 	if gogoproto.IsEmbed(field) {
 		fieldname = EmbedFieldName(goTyp)
 	}
-	if field.OneofIndex != nil {
+	if field.IsRealOneof() {
 		fieldname = message.OneofDecl[int(*field.OneofIndex)].GetName()
 		fieldname = CamelCase(fieldname)
 	}
@@ -190,7 +196,7 @@ func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDes
 	return fieldname
 }
 
-func (g *Generator) GetOneOfFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+func (g *Generator) legacyOneofFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
 	goTyp, _ := g.GoType(message, field)
 	fieldname := CamelCase(*field.Name)
 	if gogoproto.IsCustomName(field) {
@@ -225,6 +231,10 @@ func (g *Generator) IsMap(field *descriptor.FieldDescriptorProto) bool {
 }
 
 func (g *Generator) GetMapKeyField(field, keyField *descriptor.FieldDescriptorProto) *descriptor.FieldDescriptorProto {
+	if g.file.edition != nil {
+		keyField = proto.Clone(keyField).(*descriptor.FieldDescriptorProto)
+		g.inheritMapFeatures(field, keyField)
+	}
 	if !gogoproto.IsCastKey(field) {
 		return keyField
 	}
@@ -244,6 +254,7 @@ func (g *Generator) GetMapValueField(field, valField *descriptor.FieldDescriptor
 		g.Fail("cannot have a customtype and casttype: ", field.String())
 	}
 	valField = proto.Clone(valField).(*descriptor.FieldDescriptorProto)
+	g.inheritMapFeatures(field, valField)
 	if valField.Options == nil {
 		valField.Options = &descriptor.FieldOptions{}
 	}
@@ -323,7 +334,9 @@ func EmbedFieldName(goTyp string) string {
 }
 
 func (g *Generator) GeneratePlugin(p Plugin) {
+	previous := plugins
 	plugins = []Plugin{p}
+	defer func() { plugins = previous }()
 	p.Init(g)
 	// Generate the output. The generator runs for every file, even the files
 	// that we don't generate output for, so that we can collate the full list
@@ -442,6 +455,9 @@ func (g *Generator) AllFiles() *descriptor.FileDescriptorSet {
 	set.File = make([]*descriptor.FileDescriptorProto, len(g.allFiles))
 	for i := range g.allFiles {
 		set.File[i] = g.allFiles[i].FileDescriptorProto
+		if g.allFiles[i].original != nil {
+			set.File[i] = g.allFiles[i].original
+		}
 	}
 	return set
 }
@@ -458,4 +474,33 @@ func (g *Generator) useTypes() string {
 
 func (d *FileDescriptor) GoPackageName() string {
 	return string(d.packageName)
+}
+
+func (g *Generator) GetFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+	if name := message.opaqueFields[field]; g.Opaque(message) && name != "" {
+		return name
+	}
+	name := g.legacyFieldName(message, field)
+	if g.Opaque(message) {
+		return opaqueFieldName(name)
+	}
+	return name
+}
+func (g *Generator) GetOneOfFieldName(message *Descriptor, field *descriptor.FieldDescriptorProto) string {
+	if g.Opaque(message) {
+		if field.IsRealOneof() {
+			if name := message.opaqueMembers[field]; name != "" {
+				return name
+			}
+		} else {
+			if name := message.opaqueFields[field]; name != "" {
+				return name
+			}
+		}
+	}
+	name := g.legacyOneofFieldName(message, field)
+	if g.Opaque(message) && !field.IsRealOneof() {
+		return opaqueFieldName(name)
+	}
+	return name
 }

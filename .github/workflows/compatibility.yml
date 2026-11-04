@@ -1,0 +1,428 @@
+name: Legacy compatibility
+on: [push, pull_request]
+jobs:
+  release-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python3 release/check.py
+      - run: python3 release/test_contract.py
+      - run: python3 release/support.py
+      - run: python3 release/test_support.py
+      - run: python3 release/test_selection.py
+
+  native-hybrid:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: reflect/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify native reflection and HYBRID across five generators
+        run: |
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/hybrid/prepare.py "$RUNNER_TEMP/native-hybrid" --official-generator "$RUNNER_TEMP/protoc-gen-go"
+          python3 compat/hybrid/mixed.py "$RUNNER_TEMP/native-hybrid-mixed"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: native-hybrid-${{ matrix.go }}
+          path: ${{ runner.temp }}/native-hybrid/qualification.json
+          if-no-files-found: error
+
+  opaque-generation:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: reflect/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify OPAQUE across five generators and compare official APIs
+        run: |
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/opaque/prepare.py "$RUNNER_TEMP/opaque-generation" --official-generator "$RUNNER_TEMP/protoc-gen-go"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: opaque-generation-${{ matrix.go }}
+          path: ${{ runner.temp }}/opaque-generation/qualification.json
+          if-no-files-found: error
+
+  opaque-alternates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: reflect/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify HYBRID alternate builds, imports and generated tests
+        run: |
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/opaque/alternate.py "$RUNNER_TEMP/opaque-alternates" --official-generator "$RUNNER_TEMP/protoc-gen-go"
+          python3 compat/opaque/mixed.py "$RUNNER_TEMP/opaque-mixed"
+          python3 compat/opaque/generated_tests.py "$RUNNER_TEMP/opaque-generated-tests"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: opaque-alternates-${{ matrix.go }}
+          path: |
+            ${{ runner.temp }}/opaque-alternates/qualification.json
+            ${{ runner.temp }}/opaque-mixed/qualification.json
+            ${{ runner.temp }}/opaque-generated-tests/qualification.json
+          if-no-files-found: error
+
+  live-reflection:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: reflect/go.sum
+      - name: Install pinned compiler
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Verify live reflection and official reflection contracts
+        run: sh compat/check-live-reflect.sh
+
+  preview-qualification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install stable compiler for schema comparison
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify pinned compiler and Go previews
+        run: python3 compat/preview/run.py "$RUNNER_TEMP/protobuf-preview"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: protobuf-preview-qualification
+          path: |
+            ${{ runner.temp }}/protobuf-preview/qualification.json
+            ${{ runner.temp }}/protobuf-preview/schema-audit.json*
+            ${{ runner.temp }}/protobuf-preview/*.pb
+            ${{ runner.temp }}/protobuf-preview/*.log
+            ${{ runner.temp }}/protobuf-preview/**/testdata/fuzz/**
+          if-no-files-found: error
+
+  performance-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned protoc release
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Check benchmark fixtures and result inventory
+        run: >-
+          python3 compat/bench/run.py "$RUNNER_TEMP/codec-benchmark"
+          --profile legacy-current --profile optional-current
+          --profile edition2026-current --profile extensions-current
+          --count 1 --benchtime 1x
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: codec-benchmark-smoke
+          path: ${{ runner.temp }}/codec-benchmark
+          if-no-files-found: error
+
+  standard-differential:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    defaults:
+      run:
+        working-directory: compat/qualify
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: compat/qualify/go.sum
+      - run: go test ./...
+      - run: go test -tags purego ./...
+      - run: go test -race ./...
+      - name: Fuzz standard text against official Go
+        run: GOMAXPROCS=2 go test -run '^$' -fuzz '^FuzzText$' -fuzztime=20s -parallel=2
+      - name: Fuzz standard JSON against official Go
+        run: GOMAXPROCS=2 go test -run '^$' -fuzz '^FuzzJSON$' -fuzztime=20s -parallel=2
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: differential-corpus-${{ matrix.go }}
+          path: compat/qualify/testdata/fuzz
+          if-no-files-found: ignore
+
+  runtime-race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+      - run: go test -race ./proto ./jsonpb/... ./textpb/standard
+      - run: go test -race -tags purego ./proto ./jsonpb/... ./textpb/standard
+
+  proto-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: compat/proto-format-requirements.txt
+      - run: python -m pip install -r compat/proto-format-requirements.txt
+      - run: python compat/format-proto.py --check
+
+  compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+        protoc: ['21.8', '36.2']
+        include:
+          - go: '1.15.15'
+            protoc: '36.2'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Install pinned protoc release
+        env:
+          PROTOC_RELEASE: ${{ matrix.protoc }}
+        run: |
+          curl --fail --location --retry 3 "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_RELEASE}/protoc-${PROTOC_RELEASE}-linux-x86_64.zip" -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/protoc/bin/protoc" --version
+      - run: sh compat/check.sh
+      - run: sh compat/check-optional.sh
+      - run: sh compat/check-entrypoints.sh
+      - run: sh compat/check-optional-mappings.sh
+      - run: sh compat/check-oneof-merge.sh
+      - run: sh compat/check-compare-floats.sh
+      - run: sh compat/check-features.sh
+      - run: sh compat/check-gostring.sh
+      - run: sh compat/check-wkt-metadata.sh
+      - run: sh compat/check-required.sh
+      - run: sh compat/check-required-merge.sh
+      - run: sh compat/check-legacy-enums.sh
+      - run: sh compat/check-go-enum-json.sh
+      - run: sh compat/check-go-enum-prefix.sh
+      - run: sh compat/check-go-optimize.sh
+      - run: sh compat/check-editions-plugins.sh
+      - run: sh compat/check-editions-fast.sh
+      - run: sh compat/check-editions.sh
+
+  downstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+      - name: Install pinned protoc release
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - run: sh compat/check-downstream.sh
+
+  real-projects:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [prometheus, kubernetes, buildkit, cockroach]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+          cache-dependency-path: compat/downstream/projects/pins.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned protoc release
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Qualify original and maintained implementations against real projects
+        run: python3 compat/downstream/projects/run.py "$RUNNER_TEMP/downstream" --profile ${{ matrix.project }}
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: downstream-${{ matrix.project }}
+          path: |
+            ${{ runner.temp }}/downstream/qualification.json
+            ${{ runner.temp }}/downstream/*.log
+            ${{ runner.temp }}/downstream/**/go.mod
+            ${{ runner.temp }}/downstream/**/go.sum
+            ${{ runner.temp }}/downstream/**/default.json
+            ${{ runner.temp }}/downstream/**/purego.json
+            ${{ runner.temp }}/downstream/**/race.json
+          if-no-files-found: error
+
+  conformance:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned protoc release
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/conformance/bin
+          key: conformance-36.2-ubuntu24.04-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('compat/conformance/build-runner.py', 'compat/conformance/runner-main.cc', 'compat/qualify/binary/closed.proto') }}
+      - name: Build pinned upstream conformance suites
+        run: python3 compat/conformance/build-runner.py "$RUNNER_TEMP/conformance"
+      - name: Check modern conformance baseline
+        env:
+          PROTOBUF_CONFORMANCE_SOURCE: ${{ runner.temp }}/conformance/protobuf-36.2
+          PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
+          CONFORMANCE_OUTPUT: ${{ runner.temp }}/conformance-report
+        run: sh compat/check-conformance.sh
+      - name: Qualify binary semantics across five generators
+        env:
+          PROTOBUF_CONFORMANCE_SOURCE: ${{ runner.temp }}/conformance/protobuf-36.2
+          PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
+          BINARY_FUZZ_OUTPUT: ${{ runner.temp }}/conformance-report/binary-differential
+        run: sh compat/check-binary-fuzz.sh
+      - name: Qualify explicit optimization modes against the C++ binary oracle
+        env:
+          PROTOBUF_CONFORMANCE_SOURCE: ${{ runner.temp }}/conformance/protobuf-36.2
+          PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
+        run: |
+          for mode in SPEED CODE_SIZE; do
+            BINARY_OPTIMIZE_MODE="$mode" BINARY_FUZZ_OUTPUT="$RUNNER_TEMP/conformance-report/binary-$mode" sh compat/check-binary-fuzz.sh
+          done
+      - name: Compare native HYBRID all-types with official Go
+        env:
+          PROTOBUF_CONFORMANCE_SOURCE: ${{ runner.temp }}/conformance/protobuf-36.2
+          PROTOBUF_CONFORMANCE_RUNNER: ${{ runner.temp }}/conformance/bin/conformance_test_runner
+        run: |
+          python3 compat/native-conformance/test_gate.py
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go-native" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/native-conformance/prepare.py "$PROTOBUF_CONFORMANCE_SOURCE" "$RUNNER_TEMP/native-conformance/native"
+          python3 compat/native-conformance/prepare.py "$PROTOBUF_CONFORMANCE_SOURCE" "$RUNNER_TEMP/native-conformance/official" --official-generator "$RUNNER_TEMP/protoc-gen-go-native"
+          python3 compat/native-conformance/run.py "$PROTOBUF_CONFORMANCE_RUNNER" "$RUNNER_TEMP/native-conformance/native/testee" "$RUNNER_TEMP/conformance-report/native-hybrid" --official-testee "$RUNNER_TEMP/native-conformance/official/testee"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: conformance-results
+          path: ${{ runner.temp }}/conformance-report
+          if-no-files-found: error
+
+  modern-go:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.23.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned protoc release
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/protoc.zip"
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+      - name: Check explicit modern Go integration
+        run: sh compat/check-modern.sh
+      - name: Compare enum JSON API behavior with official Go
+        run: |
+          (cd compat/qualify && go build -o "$RUNNER_TEMP/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go)
+          python3 compat/go-enum-json/prepare.py "$RUNNER_TEMP/official-enum-json" --official-generator "$RUNNER_TEMP/protoc-gen-go"
+          python3 compat/go-enum-prefix/prepare.py "$RUNNER_TEMP/official-enum-prefix" --official-generator "$RUNNER_TEMP/protoc-gen-go"

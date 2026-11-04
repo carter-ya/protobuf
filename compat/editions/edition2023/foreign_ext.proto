@@ -1,0 +1,8 @@
+edition = "2023";
+package compat.editions.v2023;
+option go_package = "github.com/gogo/protobuf/compat/editions/edition2023";
+import "compat/editions/edition2023/sample.proto";
+option features.utf8_validation = NONE;
+extend Extensible {
+  string ext_from_foreign_scope = 120;
+}

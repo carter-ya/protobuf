@@ -67,6 +67,12 @@ func (a *InternalMessageInfo) Unmarshal(msg Message, b []byte) error {
 type unmarshalInfo struct {
 	typ reflect.Type // type of the protobuf struct
 
+	// Extension fragment decoding checks newly encountered wire payloads only.
+	// Required-field completeness is checked after all fragments have merged.
+	editionFragment bool
+	extensionGraph  bool
+	requiredMerge   bool
+
 	// 0 = only typ field is initialized
 	// 1 = completely initialized
 	initialized     int32
@@ -74,6 +80,7 @@ type unmarshalInfo struct {
 	dense           []unmarshalFieldInfo          // fields indexed by tag #
 	sparse          map[uint64]unmarshalFieldInfo // fields indexed by tag #
 	reqFields       []string                      // names of required fields
+	reqExtraWords   int                           // words after the first 64 required fields
 	reqMask         uint64                        // 1<<len(reqFields)-1
 	unrecognized    field                         // offset of []byte to put unrecognized data (or invalidField if we should throw it away)
 	extensions      field                         // offset of extensions field (of type proto.XXX_InternalExtensions), or invalidField if it does not exist
@@ -81,7 +88,8 @@ type unmarshalInfo struct {
 	extensionRanges []ExtensionRange              // if non-nil, implies extensions field is valid
 	isMessageSet    bool                          // if true, implies extensions field is valid
 
-	bytesExtensions field // offset of XXX_extensions with type []byte
+	closedExtensions map[uint64]*closedEnumFilter
+	bytesExtensions  field // offset of XXX_extensions with type []byte
 }
 
 // An unmarshaler takes a stream of bytes and a pointer to a field of a message.
@@ -99,31 +107,42 @@ type unmarshalFieldInfo struct {
 
 	// if a required field, contains a single set bit at this field's index in the required field list.
 	reqMask uint64
+	reqWord int // zero for the historical first-word path
 
-	name string // name of the field, for error reporting
+	name   string // name of the field, for error reporting
+	closed *closedEnumFilter
 }
 
 var (
-	unmarshalInfoMap  = map[reflect.Type]*unmarshalInfo{}
-	unmarshalInfoLock sync.Mutex
+	unmarshalInfoMap       = map[reflect.Type]*unmarshalInfo{}
+	editionFragmentInfoMap = map[reflect.Type]*unmarshalInfo{}
+	unmarshalInfoLock      sync.Mutex
 )
 
 // getUnmarshalInfo returns the data structure which can be
 // subsequently used to unmarshal a message of the given type.
 // t is the type of the message (note: not pointer to message).
 func getUnmarshalInfo(t reflect.Type) *unmarshalInfo {
+	return getUnmarshalInfoWithPolicy(t, false)
+}
+
+func getUnmarshalInfoWithPolicy(t reflect.Type, fragment bool) *unmarshalInfo {
 	// It would be correct to return a new unmarshalInfo
 	// unconditionally. We would end up allocating one
 	// per occurrence of that type as a message or submessage.
 	// We use a cache here just to reduce memory usage.
 	unmarshalInfoLock.Lock()
 	defer unmarshalInfoLock.Unlock()
-	u := unmarshalInfoMap[t]
+	cache := unmarshalInfoMap
+	if fragment {
+		cache = editionFragmentInfoMap
+	}
+	u := cache[t]
 	if u == nil {
-		u = &unmarshalInfo{typ: t}
+		u = &unmarshalInfo{typ: t, editionFragment: fragment}
 		// Note: we just set the type here. The rest of the fields
 		// will be initialized on first use.
-		unmarshalInfoMap[t] = u
+		cache[t] = u
 	}
 	return u
 }
@@ -141,16 +160,23 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		return unmarshalMessageSet(b, m.offset(u.extensions).toExtensions())
 	}
 	var reqMask uint64 // bitmask of required fields we've seen.
+	var reqExtra []uint64
+	if u.reqExtraWords > 0 {
+		reqExtra = make([]uint64, u.reqExtraWords)
+	}
 	var errLater error
 	for len(b) > 0 {
+		var filteredRest []byte
 		// Read tag and wire type.
 		// Special case 1 and 2 byte varints.
 		var x uint64
+		tagSize := 1
 		if b[0] < 128 {
 			x = uint64(b[0])
 			b = b[1:]
 		} else if len(b) >= 2 && b[1] < 128 {
 			x = uint64(b[0]&0x7f) + uint64(b[1])<<7
+			tagSize = 2
 			b = b[2:]
 		} else {
 			var n int
@@ -158,7 +184,11 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			if n == 0 {
 				return io.ErrUnexpectedEOF
 			}
+			tagSize = n
 			b = b[n:]
+		}
+		if err := validateWireKey(x, tagSize); err != nil {
+			return err
 		}
 		tag := x >> 3
 		wire := int(x) & 7
@@ -172,9 +202,26 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		}
 		if fn := f.unmarshal; fn != nil {
 			var err error
-			b, err = fn(b, m.offset(f.field), wire)
+			if f.closed != nil {
+				var unknown []byte
+				b, unknown, filteredRest, err = f.closed.filter(b, wire, tag)
+				if len(unknown) > 0 && u.unrecognized.IsValid() {
+					z := m.offset(u.unrecognized).toBytes()
+					*z = append(*z, unknown...)
+				}
+			}
 			if err == nil {
-				reqMask |= f.reqMask
+				b, err = fn(b, m.offset(f.field), wire)
+				if filteredRest != nil {
+					b = filteredRest
+				}
+			}
+			if err == nil {
+				if f.reqWord == 0 {
+					reqMask |= f.reqMask
+				} else {
+					reqExtra[f.reqWord-1] |= f.reqMask
+				}
 				continue
 			}
 			if r, ok := err.(*RequiredNotSetError); ok {
@@ -183,12 +230,17 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 				if errLater == nil {
 					errLater = r
 				}
-				reqMask |= f.reqMask
+				if f.reqWord == 0 {
+					reqMask |= f.reqMask
+				} else {
+					reqExtra[f.reqWord-1] |= f.reqMask
+				}
 				continue
 			}
 			if err != errInternalBadWireType {
 				if err == errInvalidUTF8 {
-					if errLater == nil {
+					_, required := errLater.(*RequiredNotSetError)
+					if errLater == nil || required {
 						fullName := revProtoTypes[reflect.PtrTo(u.typ)] + "." + f.name
 						errLater = &invalidUTF8Error{fullName}
 					}
@@ -199,13 +251,71 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			// Fragments with bad wire type are treated as unknown fields.
 		}
 
+		// Registered Editions closed-enum extensions need the same unknown-value
+		// routing as ordinary fields before the bytes enter the extension store.
+		invalidExtension := false
+		// String extension payloads are otherwise decoded lazily. Consult
+		// the live registry so registration after table initialization also
+		// honors explicit UTF-8 policy, while legacy tags keep their rules.
+		if len(u.extensionRanges) != 0 {
+			if ext := extensionMaps[u.typ][int32(tag)]; checkedStringExtensionType(ext) {
+				if wire != WireBytes {
+					invalidExtension = true
+				} else if err := validateStringExtension(b, ext.Name); err != nil {
+					return err
+				}
+			}
+		}
+		if len(u.extensionRanges) != 0 {
+			extension := extensionMaps[u.typ][int32(tag)]
+			if editionExtensionPolicy(extension) {
+				properties := extensionProperties(extension)
+				expected := properties.WireType
+				if properties.Wire == "group" {
+					expected = WireStartGroup
+				}
+				packed := properties.Repeated && wire == WireBytes && (expected == WireVarint || expected == WireFixed32 || expected == WireFixed64)
+				if wire != expected && !packed {
+					invalidExtension = true
+				}
+			}
+		}
+		closedExtension := u.closedExtensions[tag]
+		if closedExtension == nil && len(u.extensionRanges) != 0 {
+			// Registrations can arrive after table initialization. Keep the
+			// immutable cache, but consult live metadata for a missed extension.
+			if extension := extensionMaps[u.typ][int32(tag)]; extension != nil {
+				property := extensionProperties(extension)
+				if len(property.ClosedEnum) != 0 {
+					closedExtension = &closedEnumFilter{values: property.ClosedEnum, allowPacked: property.Repeated}
+				}
+			}
+		}
+		if c := closedExtension; c != nil {
+			filtered, unknown, rest, err := c.filter(b, wire, tag)
+			if err == errInternalBadWireType {
+				invalidExtension = true
+			} else if err != nil {
+				return err
+			} else {
+				b = filtered
+				filteredRest = rest
+			}
+			if len(unknown) > 0 && u.unrecognized.IsValid() {
+				z := m.offset(u.unrecognized).toBytes()
+				*z = append(*z, unknown...)
+			}
+		}
 		// Unknown tag.
 		if !u.unrecognized.IsValid() {
 			// Don't keep unrecognized data; just skip it.
 			var err error
-			b, err = skipField(b, wire)
+			b, err = skipField(b, wire, tag)
 			if err != nil {
 				return err
+			}
+			if filteredRest != nil {
+				b = filteredRest
 			}
 			continue
 		}
@@ -215,6 +325,9 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		var emap map[int32]Extension
 		var e Extension
 		for _, r := range u.extensionRanges {
+			if invalidExtension {
+				break
+			}
 			if uint64(r.Start) <= tag && tag <= uint64(r.End) {
 				if u.extensions.IsValid() {
 					mp := m.offset(u.extensions).toExtensions()
@@ -244,9 +357,28 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		// Use wire type to skip data.
 		var err error
 		b0 := b
-		b, err = skipField(b, wire)
+		b, err = skipField(b, wire, tag)
 		if err != nil {
 			return err
+		}
+		// Validate only this new occurrence in fragment mode. Inspecting the
+		// accumulated store here would reparse earlier fragments recursively.
+		if u.editionFragment && !invalidExtension && len(u.extensionRanges) != 0 {
+			extension := extensionMaps[u.typ][int32(tag)]
+			if _, native := nativeEditionMessageExtension(extension); native {
+				occurrence := encodeVarint(nil, tag<<3|uint64(wire))
+				occurrence = append(occurrence, b0[:len(b0)-len(b)]...)
+				if _, occurrenceErr := decodeEditionMessageExtensionPartial(occurrence, extension, false); occurrenceErr != nil {
+					return occurrenceErr
+				}
+			}
+		}
+		if emap != nil {
+			e, err = materializeEditionExtension(e, extensionMaps[u.typ][int32(tag)])
+			if err != nil {
+				return err
+			}
+			z = &e.enc
 		}
 		*z = encodeVarint(*z, tag<<3|uint64(wire))
 		*z = append(*z, b0[:len(b0)-len(b)]...)
@@ -254,8 +386,22 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 		if emap != nil {
 			emap[int32(tag)] = e
 		}
+		if filteredRest != nil {
+			b = filteredRest
+		}
 	}
-	if reqMask != u.reqMask && errLater == nil {
+	if len(reqExtra) > 0 && errLater == nil {
+		for bit, name := range u.reqFields {
+			word := reqMask
+			if bit >= 64 {
+				word = reqExtra[bit/64-1]
+			}
+			if word&(uint64(1)<<uint(bit%64)) == 0 {
+				errLater = &RequiredNotSetError{name}
+			}
+		}
+	}
+	if len(reqExtra) == 0 && reqMask != u.reqMask && errLater == nil {
 		// A required field of this message is missing.
 		for _, n := range u.reqFields {
 			if reqMask&1 == 0 {
@@ -264,7 +410,42 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			reqMask >>= 1
 		}
 	}
+	if !u.editionFragment && u.requiredMerge {
+		if _, required := errLater.(*RequiredNotSetError); errLater != nil && !required {
+			return errLater
+		}
+		return validateEditionMessageGraph(m.asPointerTo(u.typ).Interface().(Message), true)
+	}
+	if !u.editionFragment && u.extensionGraph {
+		if err := validateEditionExtensionsInGraph(m.asPointerTo(u.typ).Interface().(Message)); err != nil {
+			return err
+		}
+	}
 	return errLater
+}
+
+func checkedStringExtensionType(ext *ExtensionDesc) bool {
+	if ext == nil || !strings.Contains(ext.Tag, ",proto3") {
+		return false
+	}
+	t := reflect.TypeOf(ext.ExtensionType)
+	if t == nil || (t.Kind() != reflect.Ptr && t.Kind() != reflect.Slice) || t.Elem().Kind() != reflect.String {
+		return false
+	}
+	var policy Properties
+	policy.Parse(ext.Tag)
+	return policy.proto3 && !policy.UTF8None
+}
+
+func validateStringExtension(data []byte, name string) error {
+	length, n := decodeVarint(data)
+	if n == 0 || length > uint64(len(data)-n) {
+		return io.ErrUnexpectedEOF
+	}
+	if !utf8.Valid(data[n : n+int(length)]) {
+		return &invalidUTF8Error{name}
+	}
+	return nil
 }
 
 // computeUnmarshalInfo fills in u with information for use
@@ -276,6 +457,8 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		return
 	}
 	t := u.typ
+	u.extensionGraph = hasEditionExtensionGraph(t)
+	u.requiredMerge = hasRequiredMergePolicy(t)
 	n := t.NumField()
 
 	// Set up the "not found" value for the unrecognized byte buffer.
@@ -337,6 +520,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 
 		tags := f.Tag.Get("protobuf")
 		tagArray := strings.Split(tags, ",")
+
 		if len(tagArray) < 2 {
 			panic("protobuf tag not enough fields in " + t.Name() + "." + f.Name + ": " + tags)
 		}
@@ -353,21 +537,21 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		}
 
 		// Extract unmarshaling function from the field (its type and tags).
-		unmarshal := fieldUnmarshaler(&f)
+		unmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph || u.requiredMerge)
 
 		// Required field?
 		var reqMask uint64
+		var reqWord int
 		if tagArray[2] == "req" {
 			bit := len(u.reqFields)
 			u.reqFields = append(u.reqFields, name)
-			reqMask = uint64(1) << uint(bit)
-			// TODO: if we have more than 64 required fields, we end up
-			// not verifying that all required fields are present.
-			// Fix this, perhaps using a count of required fields?
+			reqMask = uint64(1) << uint(bit%64)
+			reqWord = bit / 64
 		}
 
 		// Store the info in the correct slot in the message.
-		u.setTag(tag, toField(&f), unmarshal, reqMask, name)
+		u.setTag(tag, toField(&f), unmarshal, reqMask, name, reqWord)
+		u.setClosedEnum(tag, &f)
 	}
 
 	// Find any types associated with oneof fields.
@@ -385,7 +569,7 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 			typ := tptr.Elem()        // Msg_X
 
 			f := typ.Field(0) // oneof implementers have one field
-			baseUnmarshal := fieldUnmarshaler(&f)
+			baseUnmarshal := fieldUnmarshaler(&f, u.editionFragment || u.extensionGraph || u.requiredMerge)
 			tags := strings.Split(f.Tag.Get("protobuf"), ",")
 			fieldNum, err := strconv.Atoi(tags[1])
 			if err != nil {
@@ -406,8 +590,11 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 					// We have found the corresponding interface for this struct.
 					// That lets us know where this struct should be stored
 					// when we encounter it during unmarshaling.
-					unmarshal := makeUnmarshalOneof(typ, of.ityp, baseUnmarshal)
+					var policy Properties
+					policy.Parse(f.Tag.Get("protobuf"))
+					unmarshal := makeUnmarshalOneof(typ, of.ityp, baseUnmarshal, policy.ExplicitPresence || policy.oneofMerge)
 					u.setTag(fieldNum, of.field, unmarshal, 0, name)
+					u.setClosedEnum(fieldNum, &f)
 				}
 			}
 
@@ -423,6 +610,18 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 		u.extensionRanges = fn.Call(nil)[0].Interface().([]ExtensionRange)
 	}
 
+	if message, ok := reflect.New(t).Interface().(Message); ok {
+		for number, ext := range RegisteredExtensions(message) {
+			var p Properties
+			p.Parse(ext.Tag)
+			if len(p.ClosedEnum) > 0 {
+				if u.closedExtensions == nil {
+					u.closedExtensions = make(map[uint64]*closedEnumFilter)
+				}
+				u.closedExtensions[uint64(number)] = &closedEnumFilter{values: p.ClosedEnum, allowPacked: p.Repeated}
+			}
+		}
+	}
 	// Explicitly disallow tag 0. This will ensure we flag an error
 	// when decoding a buffer of all zeros. Without this code, we
 	// would decode and skip an all-zero buffer of even length.
@@ -433,6 +632,9 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 
 	// Set mask for required field check.
 	u.reqMask = uint64(1)<<uint(len(u.reqFields)) - 1
+	if len(u.reqFields) > 64 {
+		u.reqExtraWords = (len(u.reqFields) - 1) / 64
+	}
 
 	atomic.StoreInt32(&u.initialized, 1)
 }
@@ -442,8 +644,11 @@ func (u *unmarshalInfo) computeUnmarshalInfo() {
 // field/unmarshal = unmarshal info for that field.
 // reqMask = if required, bitmask for field position in required field list. 0 otherwise.
 // name = short name of the field.
-func (u *unmarshalInfo) setTag(tag int, field field, unmarshal unmarshaler, reqMask uint64, name string) {
+func (u *unmarshalInfo) setTag(tag int, field field, unmarshal unmarshaler, reqMask uint64, name string, reqWord ...int) {
 	i := unmarshalFieldInfo{field: field, unmarshal: unmarshal, reqMask: reqMask, name: name}
+	if len(reqWord) != 0 {
+		i.reqWord = reqWord[0]
+	}
 	n := u.typ.NumField()
 	if tag >= 0 && (tag < 16 || tag < 2*n) { // TODO: what are the right numbers here?
 		for len(u.dense) <= tag {
@@ -459,27 +664,52 @@ func (u *unmarshalInfo) setTag(tag int, field field, unmarshal unmarshaler, reqM
 }
 
 // fieldUnmarshaler returns an unmarshaler for the given field.
-func fieldUnmarshaler(f *reflect.StructField) unmarshaler {
+func fieldUnmarshaler(f *reflect.StructField, fragment bool) unmarshaler {
 	if f.Type.Kind() == reflect.Map {
-		return makeUnmarshalMap(f)
+		return makeUnmarshalMap(f, fragment)
 	}
-	return typeUnmarshaler(f.Type, f.Tag.Get("protobuf"))
+	return typeUnmarshalerWithPolicy(f.Type, f.Tag.Get("protobuf"), fragment)
 }
 
 // typeUnmarshaler returns an unmarshaler for the given field type / field tag pair.
 func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
+	return typeUnmarshalerWithPolicy(t, tags, false)
+}
+
+func typeUnmarshalerWithPolicy(t reflect.Type, tags string, fragment bool) unmarshaler {
 	tagArray := strings.Split(tags, ",")
+	if !unsafeAllowed && optionalCastTags(tagArray) {
+		builtinType := optionalCastType(t)
+		if builtinType != t {
+			unmarshal := typeUnmarshalerWithPolicy(builtinType, tags, fragment)
+			return func(data []byte, field pointer, wire int) ([]byte, error) {
+				slot := optionalCastPointer(field, t, builtinType)
+				remaining, err := unmarshal(data, slot, wire)
+				// A decoder may replace the scalar pointer or bytes slice.
+				// Convert that result back without losing its named Go type.
+				field.asPointerTo(t).Elem().Set(slot.asPointerTo(builtinType).Elem().Convert(t))
+				return remaining, err
+			}
+		}
+	}
 	encoding := tagArray[0]
 	name := "unknown"
 	ctype := false
 	isTime := false
 	isDuration := false
 	isWktPointer := false
+	proto3Optional := false
 	proto3 := false
 	validateUTF8 := true
 	for _, tag := range tagArray[3:] {
 		if strings.HasPrefix(tag, "name=") {
 			name = tag[5:]
+		}
+		if tag == "proto3_optional" {
+			proto3Optional = true
+		}
+		if tag == "utf8_none" {
+			validateUTF8 = false
 		}
 		if tag == "proto3" {
 			proto3 = true
@@ -498,6 +728,10 @@ func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 		}
 	}
 	validateUTF8 = validateUTF8 && proto3
+
+	if proto3Optional && (isTime || isDuration || isWktPointer) {
+		return makeOptionalStdUnmarshaler(t)
+	}
 
 	// Figure out packaging (pointer, slice, or both)
 	slice := false
@@ -813,22 +1047,26 @@ func typeUnmarshaler(t reflect.Type, tags string) unmarshaler {
 			switch encoding {
 			case "bytes":
 				if slice {
-					return makeUnmarshalMessageSlice(getUnmarshalInfo(t), name)
+					return makeUnmarshalMessageSlice(getUnmarshalInfoWithPolicy(t, fragment), name)
 				}
-				return makeUnmarshalMessage(getUnmarshalInfo(t), name)
+				return makeUnmarshalMessage(getUnmarshalInfoWithPolicy(t, fragment), name)
 			}
 		}
 		switch encoding {
 		case "bytes":
 			if slice {
-				return makeUnmarshalMessageSlicePtr(getUnmarshalInfo(t), name)
+				return makeUnmarshalMessageSlicePtr(getUnmarshalInfoWithPolicy(t, fragment), name)
 			}
-			return makeUnmarshalMessagePtr(getUnmarshalInfo(t), name)
+			return makeUnmarshalMessagePtr(getUnmarshalInfoWithPolicy(t, fragment), name)
 		case "group":
-			if slice {
-				return makeUnmarshalGroupSlicePtr(getUnmarshalInfo(t), name)
+			tag, err := strconv.ParseUint(tagArray[1], 10, 29)
+			if err != nil || tag == 0 {
+				panic("proto: invalid group field tag")
 			}
-			return makeUnmarshalGroupPtr(getUnmarshalInfo(t), name)
+			if slice {
+				return makeUnmarshalGroupSlicePtr(getUnmarshalInfoWithPolicy(t, fragment), name, tag)
+			}
+			return makeUnmarshalGroupPtr(getUnmarshalInfoWithPolicy(t, fragment), name, tag)
 		}
 	}
 	panic(fmt.Sprintf("unmarshaler not found type:%s encoding:%s", t, encoding))
@@ -1107,7 +1345,7 @@ func unmarshalSint32Value(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	*f.toInt32() = v
 	return b, nil
 }
@@ -1121,7 +1359,7 @@ func unmarshalSint32Ptr(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	f.setInt32Ptr(v)
 	return b, nil
 }
@@ -1144,7 +1382,7 @@ func unmarshalSint32Slice(b []byte, f pointer, w int) ([]byte, error) {
 				return nil, io.ErrUnexpectedEOF
 			}
 			b = b[n:]
-			v := int32(x>>1) ^ int32(x)<<31>>31
+			v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 			f.appendInt32Slice(v)
 		}
 		return res, nil
@@ -1157,7 +1395,7 @@ func unmarshalSint32Slice(b []byte, f pointer, w int) ([]byte, error) {
 		return nil, io.ErrUnexpectedEOF
 	}
 	b = b[n:]
-	v := int32(x>>1) ^ int32(x)<<31>>31
+	v := int32(uint32(x)>>1) ^ int32(x)<<31>>31
 	f.appendInt32Slice(v)
 	return b, nil
 }
@@ -1862,12 +2100,12 @@ func makeUnmarshalMessageSlicePtr(sub *unmarshalInfo, name string) unmarshaler {
 	}
 }
 
-func makeUnmarshalGroupPtr(sub *unmarshalInfo, name string) unmarshaler {
+func makeUnmarshalGroupPtr(sub *unmarshalInfo, name string, tag uint64) unmarshaler {
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		if w != WireStartGroup {
 			return b, errInternalBadWireType
 		}
-		x, y := findEndGroup(b)
+		x, y := findEndGroup(b, tag)
 		if x < 0 {
 			return nil, io.ErrUnexpectedEOF
 		}
@@ -1888,12 +2126,12 @@ func makeUnmarshalGroupPtr(sub *unmarshalInfo, name string) unmarshaler {
 	}
 }
 
-func makeUnmarshalGroupSlicePtr(sub *unmarshalInfo, name string) unmarshaler {
+func makeUnmarshalGroupSlicePtr(sub *unmarshalInfo, name string, tag uint64) unmarshaler {
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		if w != WireStartGroup {
 			return b, errInternalBadWireType
 		}
-		x, y := findEndGroup(b)
+		x, y := findEndGroup(b, tag)
 		if x < 0 {
 			return nil, io.ErrUnexpectedEOF
 		}
@@ -1911,7 +2149,7 @@ func makeUnmarshalGroupSlicePtr(sub *unmarshalInfo, name string) unmarshaler {
 	}
 }
 
-func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
+func makeUnmarshalMap(f *reflect.StructField, fragment bool) unmarshaler {
 	t := f.Type
 	kt := t.Key()
 	vt := t.Elem()
@@ -1931,12 +2169,21 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 			valTags = append(valTags, t)
 		}
 	}
-	unmarshalKey := typeUnmarshaler(kt, f.Tag.Get("protobuf_key"))
-	unmarshalVal := typeUnmarshaler(vt, strings.Join(valTags, ","))
+	valueTag := strings.Join(valTags, ",")
+	unmarshalKey := typeUnmarshalerWithPolicy(kt, f.Tag.Get("protobuf_key"), fragment)
+	unmarshalVal := typeUnmarshalerWithPolicy(vt, valueTag, fragment)
+	// The tag is immutable codec metadata, shared by every map entry.
+	var valueProp Properties
+	valueProp.Parse(valueTag)
+	hasEnumDefault := valueProp.HasDefault && vt.Kind() == reflect.Int32 && len(valueProp.ClosedEnum) > 0
+	var enumDefault int64
+	if hasEnumDefault {
+		enumDefault, _ = strconv.ParseInt(valueProp.Default, 10, 32)
+	}
 	return func(b []byte, f pointer, w int) ([]byte, error) {
 		// The map entry is a submessage. Figure out how big it is.
 		if w != WireBytes {
-			return nil, fmt.Errorf("proto: bad wiretype for map field: got %d want %d", w, WireBytes)
+			return b, errInternalBadWireType
 		}
 		x, n := decodeVarint(b)
 		if n == 0 {
@@ -1957,10 +2204,16 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 		var nerr nonFatal
 		k := reflect.New(kt)
 		v := reflect.New(vt)
+		if hasEnumDefault {
+			v.Elem().SetInt(enumDefault)
+		}
 		for len(b) > 0 {
 			x, n := decodeVarint(b)
 			if n == 0 {
 				return nil, io.ErrUnexpectedEOF
+			}
+			if err := validateWireKey(x, n); err != nil {
+				return nil, err
 			}
 			wire := int(x) & 7
 			b = b[n:]
@@ -1983,7 +2236,7 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 			}
 
 			// Skip past unknown fields.
-			b, err = skipField(b, wire)
+			b, err = skipField(b, wire, x>>3)
 			if err != nil {
 				return nil, err
 			}
@@ -2004,22 +2257,41 @@ func makeUnmarshalMap(f *reflect.StructField) unmarshaler {
 
 // makeUnmarshalOneof makes an unmarshaler for oneof fields.
 // for:
-// message Msg {
-//   oneof F {
-//     int64 X = 1;
-//     float64 Y = 2;
-//   }
-// }
+//
+//	message Msg {
+//	  oneof F {
+//	    int64 X = 1;
+//	    float64 Y = 2;
+//	  }
+//	}
+//
 // typ is the type of the concrete entry for a oneof case (e.g. Msg_X).
 // ityp is the interface type of the oneof field (e.g. isMsg_F).
 // unmarshal is the unmarshaler for the base type of the oneof case (e.g. int64).
 // Note that this function will be called once for each case in the oneof.
-func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler) unmarshaler {
+func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler, mergeMessage bool) unmarshaler {
 	sf := typ.Field(0)
 	field0 := toField(&sf)
+	mergeMessage = mergeMessage && sf.Type.Kind() == reflect.Ptr && sf.Type.Elem().Kind() == reflect.Struct
+	var policy Properties
+	if mergeMessage {
+		policy.Parse(sf.Tag.Get("protobuf"))
+		if policy.Wire == "group" {
+			policy.WireType = WireStartGroup
+		}
+	}
 	return func(b []byte, f pointer, w int) ([]byte, error) {
+		if mergeMessage && w != policy.WireType {
+			return b, errInternalBadWireType
+		}
 		// Allocate holder for value.
 		v := reflect.New(typ)
+		if mergeMessage {
+			previous := f.asPointerTo(ityp).Elem()
+			if !previous.IsNil() && previous.Elem().Type() == v.Type() && !previous.Elem().IsNil() {
+				v = previous.Elem()
+			}
+		}
 
 		// Unmarshal data into holder.
 		// We unmarshal into the first field of the holder object.
@@ -2027,7 +2299,7 @@ func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler) unmarshal
 		var nerr nonFatal
 		b, err = unmarshal(b, valToPointer(v).offset(field0), w)
 		if !nerr.Merge(err) {
-			return nil, err
+			return b, err
 		}
 
 		// Write pointer to holder into target field.
@@ -2040,8 +2312,16 @@ func makeUnmarshalOneof(typ, ityp reflect.Type, unmarshal unmarshaler) unmarshal
 // Error used by decode internally.
 var errInternalBadWireType = errors.New("proto: internal error: bad wiretype")
 
+// A wire key is a uint32 varint with a nonzero 29-bit field number.
+func validateWireKey(key uint64, size int) error {
+	if size > 5 || key>>3 == 0 || key>>3 > 536870911 {
+		return fmt.Errorf("proto: invalid field tag %d", key>>3)
+	}
+	return nil
+}
+
 // skipField skips past a field of type wire and returns the remaining bytes.
-func skipField(b []byte, wire int) ([]byte, error) {
+func skipField(b []byte, wire int, tag uint64) ([]byte, error) {
 	switch wire {
 	case WireVarint:
 		_, k := decodeVarint(b)
@@ -2066,7 +2346,7 @@ func skipField(b []byte, wire int) ([]byte, error) {
 		}
 		b = b[uint64(k)+m:]
 	case WireStartGroup:
-		_, i := findEndGroup(b)
+		_, i := findEndGroup(b, tag)
 		if i == -1 {
 			return b, io.ErrUnexpectedEOF
 		}
@@ -2082,12 +2362,21 @@ func skipField(b []byte, wire int) ([]byte, error) {
 // unpaired EndGroup.
 // findEndGroup returns the indexes of the start and end of the EndGroup tag.
 // Returns (-1,-1) if it can't find one.
-func findEndGroup(b []byte) (int, int) {
-	depth := 1
+func findEndGroup(b []byte, expected ...uint64) (int, int) {
+	// Buffer.DecodeGroup has no outer field number (zero is its wildcard).
+	// Table decoders provide the number consumed in the opening tag.
+	var small [16]uint64
+	groups := small[:1]
+	if len(expected) != 0 {
+		groups[0] = expected[0]
+	}
 	i := 0
 	for {
 		x, n := decodeVarint(b[i:])
 		if n == 0 {
+			return -1, -1
+		}
+		if validateWireKey(x, n) != nil {
 			return -1, -1
 		}
 		j := i
@@ -2120,10 +2409,16 @@ func findEndGroup(b []byte) (int, int) {
 			}
 			i += int(m)
 		case WireStartGroup:
-			depth++
+			if len(groups) >= 10000 {
+				return -1, -1
+			}
+			groups = append(groups, x>>3)
 		case WireEndGroup:
-			depth--
-			if depth == 0 {
+			if tag := groups[len(groups)-1]; tag != 0 && tag != x>>3 {
+				return -1, -1
+			}
+			groups = groups[:len(groups)-1]
+			if len(groups) == 0 {
 				return j, i
 			}
 		default:

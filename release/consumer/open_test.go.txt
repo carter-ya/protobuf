@@ -1,0 +1,40 @@
+package consumer
+
+import (
+	pb "example.com/release-consumer/pb"
+	gogo "github.com/gogo/protobuf/proto"
+	live "github.com/gogo/protobuf/reflect"
+	v2 "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/testing/prototest"
+	"reflect"
+	"testing"
+)
+
+func TestOpenNativeConsumer(t *testing.T) {
+	n := &pb.Record{Count: gogo.Int32(0), Name: gogo.String("open"), Choice: &pb.Record_Text{Text: "plain"}}
+	if _, ok := reflect.TypeOf(n).MethodByName("SetName"); ok {
+		t.Fatal("unexpected HYBRID API")
+	}
+	wrapped, err := live.Wrap(n)
+	if err != nil || wrapped != n {
+		t.Fatal("native identity", err)
+	}
+	fd := n.ProtoReflect().Descriptor().Fields().ByName("count")
+	n.ProtoReflect().Set(fd, protoreflect.ValueOfInt32(17))
+	if n.GetCount() != 17 {
+		t.Fatal("live write")
+	}
+	wire, err := v2.Marshal(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := new(pb.Record)
+	if err = gogo.Unmarshal(wire, old); err != nil || !gogo.Equal(n, old) {
+		t.Fatal("legacy decode", err)
+	}
+	if _, ok := v2.Clone(n).(*pb.Record); !ok {
+		t.Fatal("native clone")
+	}
+	prototest.Message{}.Test(t, n.ProtoReflect().Type())
+}

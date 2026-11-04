@@ -281,6 +281,17 @@ func encodeExtension(extension *ExtensionDesc, value interface{}) ([]byte, error
 }
 
 func decodeExtensionFromBytes(extension *ExtensionDesc, buf []byte) (interface{}, error) {
+	if editionExtensionPolicy(extension) {
+		values, err := editionExtensionsFromBytes(buf)
+		if err != nil {
+			return nil, err
+		}
+		value, ok := values[extension.Field]
+		if !ok {
+			return nil, ErrMissingExtension
+		}
+		return decodeExtension(value.enc, extension)
+	}
 	o := 0
 	for o < len(buf) {
 		tag, n := DecodeVarint((buf)[o:])

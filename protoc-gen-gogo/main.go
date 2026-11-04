@@ -53,5 +53,6 @@ import (
 )
 
 func main() {
-	command.Write(command.Generate(command.Read()))
+	req, sources := command.ReadWithSources()
+	command.Write(command.GenerateWithSources(req, sources))
 }

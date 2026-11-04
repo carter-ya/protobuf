@@ -39,35 +39,35 @@ for a protocol buffer variable v:
 
   - Names are turned from camel_case to CamelCase for export.
   - There are no methods on v to set fields; just treat
-	them as structure fields.
+    them as structure fields.
   - There are getters that return a field's value if set,
-	and return the field's default value if unset.
-	The getters work even if the receiver is a nil message.
+    and return the field's default value if unset.
+    The getters work even if the receiver is a nil message.
   - The zero value for a struct is its correct initialization state.
-	All desired fields must be set before marshaling.
+    All desired fields must be set before marshaling.
   - A Reset() method will restore a protobuf struct to its zero state.
   - Non-repeated fields are pointers to the values; nil means unset.
-	That is, optional or required field int32 f becomes F *int32.
+    That is, optional or required field int32 f becomes F *int32.
   - Repeated fields are slices.
   - Helper functions are available to aid the setting of fields.
-	msg.Foo = proto.String("hello") // set field
+    msg.Foo = proto.String("hello") // set field
   - Constants are defined to hold the default values of all fields that
-	have them.  They have the form Default_StructName_FieldName.
-	Because the getter methods handle defaulted values,
-	direct use of these constants should be rare.
+    have them.  They have the form Default_StructName_FieldName.
+    Because the getter methods handle defaulted values,
+    direct use of these constants should be rare.
   - Enums are given type names and maps from names to values.
-	Enum values are prefixed by the enclosing message's name, or by the
-	enum's type name if it is a top-level enum. Enum types have a String
-	method, and a Enum method to assist in message construction.
+    Enum values are prefixed by the enclosing message's name, or by the
+    enum's type name if it is a top-level enum. Enum types have a String
+    method, and a Enum method to assist in message construction.
   - Nested messages, groups and enums have type names prefixed with the name of
-	the surrounding message type.
+    the surrounding message type.
   - Extensions are given descriptor names that start with E_,
-	followed by an underscore-delimited list of the nested messages
-	that contain it (if any) followed by the CamelCased name of the
-	extension field itself.  HasExtension, ClearExtension, GetExtension
-	and SetExtension are functions for manipulating extensions.
+    followed by an underscore-delimited list of the nested messages
+    that contain it (if any) followed by the CamelCased name of the
+    extension field itself.  HasExtension, ClearExtension, GetExtension
+    and SetExtension are functions for manipulating extensions.
   - Oneof field sets are given a single field in their message,
-	with distinguished wrapper types for each possible field value.
+    with distinguished wrapper types for each possible field value.
   - Marshal and Unmarshal are functions to encode and decode the wire format.
 
 When the .proto file specifies `syntax="proto3"`, there are some differences:
@@ -328,8 +328,16 @@ func (nf *nonFatal) Merge(err error) (ok bool) {
 	if !isNonFatal(err) {
 		return false // fatal error
 	}
-	if nf.E == nil {
-		nf.E = err // store first instance of non-fatal error
+	replace := nf.E == nil
+	if required, ok := nf.E.(interface{ RequiredNotSet() bool }); ok && required.RequiredNotSet() {
+		if invalid, ok := err.(interface{ InvalidUTF8() bool }); ok && invalid.InvalidUTF8() {
+			replace = true
+		}
+	}
+	if replace {
+		// UTF-8 is a wire-time failure; a required error can disappear after
+		// later fragments fill the missing fields.
+		nf.E = err
 	}
 	return true
 }
@@ -625,7 +633,7 @@ func setDefaults(v reflect.Value, recur, zeros bool) {
 	}
 
 	for _, sf := range dm.scalars {
-		f := v.Field(sf.index)
+		f := generatedField(v, sf.index)
 		if !f.IsNil() {
 			// field already set
 			continue
@@ -713,7 +721,7 @@ func setDefaults(v reflect.Value, recur, zeros bool) {
 	}
 
 	for _, ni := range dm.nested {
-		f := v.Field(ni)
+		f := generatedField(v, ni)
 		// f is *T or T or []*T or []T
 		switch f.Kind() {
 		case reflect.Struct:
@@ -785,6 +793,16 @@ func buildDefaultMessage(t reflect.Type) (dm defaultMessage) {
 		case nested:
 			dm.nested = append(dm.nested, fi)
 		case sf != nil:
+			// New private generated bindings use descriptor C escapes for byte
+			// defaults. Preserve the historical exported-layout convention.
+			if prop.HasDefault && ft.Kind() == reflect.Slice && ft.Elem().Kind() == reflect.Uint8 && t.Field(fi).PkgPath != "" {
+				decoded, err := unquoteC(prop.Default, '"')
+				if err != nil {
+					log.Printf("proto: invalid private bytes default: %v", err)
+					continue
+				}
+				sf.value = []byte(decoded)
+			}
 			sf.index = fi
 			dm.scalars = append(dm.scalars, *sf)
 		}
@@ -952,6 +970,42 @@ const (
 	// ProtoPackageIsVersion3 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.
 	GoGoProtoPackageIsVersion3 = true
+
+	// Optional-aware generated files require this runtime. Legacy files retain
+	// the Version3 assertion and remain usable without regeneration.
+	GoGoProtoPackageIsVersion4 = true
+
+	// Editions field tags require independently resolved presence and validation.
+	GoGoProtoPackageIsVersion5 = true
+
+	// Edition 2026 JSON enum spellings require the new JSON registry.
+	GoGoProtoPackageIsVersion6 = true
+
+	// Version7 verifies every required field in messages wider than 64 fields.
+	GoGoProtoPackageIsVersion7 = true
+
+	// Version8 supports generated Editions closed-enum filtering.
+	GoGoProtoPackageIsVersion8 = true
+	// Version9 adds generated group bodies and declaration-scoped extensions.
+	GoGoProtoPackageIsVersion9 = true
+	// Version10 adds presence-preserving optional field mappings.
+	GoGoProtoPackageIsVersion10 = true
+	// Version11 adds optional custom and standard type presence operations.
+	GoGoProtoPackageIsVersion11 = true
+	// Version12 adds explicit oneof message merge metadata.
+	GoGoProtoPackageIsVersion12 = true
+	// Version13 validates native Editions message extensions and decoded merges.
+	GoGoProtoPackageIsVersion13 = true
+	// Version14 defers required completeness until the logical message merges.
+	GoGoProtoPackageIsVersion14 = true
+	// Version15 qualifies explicit legacy closed-enum generation and live extensions.
+	GoGoProtoPackageIsVersion15 = true
+	// Version16 supports generated compact table codec wrappers.
+	GoGoProtoPackageIsVersion16 = true
+	// Version17 adds the optional V2 reflection extension bridge.
+	GoGoProtoPackageIsVersion17 = true
+	// Version18 adds generated private native storage for OPAQUE messages.
+	GoGoProtoPackageIsVersion18 = true
 
 	// ProtoPackageIsVersion2 is referenced from generated protocol buffer files
 	// to assert that that code is compatible with this version of the proto package.

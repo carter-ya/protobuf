@@ -52,6 +52,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 var (
@@ -75,10 +76,21 @@ type writer interface {
 
 // textWriter is an io.Writer that tracks its indentation level.
 type textWriter struct {
-	ind      int
-	complete bool // if the current position is a complete line
-	compact  bool // whether to write out as a one-liner
-	w        writer
+	ind            int
+	complete       bool // if the current position is a complete line
+	compact        bool // whether to write out as a one-liner
+	standard       bool // explicit standard text policy
+	printUnknown   bool
+	unknownDepth   int
+	depth          int
+	recursionLimit int
+	active         map[textPointer]bool
+	w              writer
+}
+
+type textPointer struct {
+	typ     reflect.Type
+	address uintptr
 }
 
 func (w *textWriter) WriteString(s string) (n int, err error) {
@@ -212,18 +224,16 @@ func isAny(sv reflect.Value) bool {
 // It returns (true, error) when sv was written in expanded format or an error
 // was encountered.
 func (tm *TextMarshaler) writeProto3Any(w *textWriter, sv reflect.Value) (bool, error) {
-	turl := sv.FieldByName("TypeUrl")
-	val := sv.FieldByName("Value")
-	if !turl.IsValid() || !val.IsValid() {
-		return true, errors.New("proto: invalid google.protobuf.Any message")
-	}
-
-	b, ok := val.Interface().([]byte)
+	turl, val, ok := anyStorageFields(sv)
 	if !ok {
 		return true, errors.New("proto: invalid google.protobuf.Any message")
 	}
+	b := val.Bytes()
 
 	parts := strings.Split(turl.String(), "/")
+	if w.standard && (len(parts) < 2 || !validStandardTextName(turl.String())) {
+		return false, nil // retain ordinary Any fields when expansion is invalid
+	}
 	mt := MessageType(parts[len(parts)-1])
 	if mt == nil {
 		return false, nil
@@ -234,7 +244,7 @@ func (tm *TextMarshaler) writeProto3Any(w *textWriter, sv reflect.Value) (bool, 
 	}
 	w.Write([]byte("["))
 	u := turl.String()
-	if requiresQuotes(u) {
+	if !w.standard && requiresQuotes(u) {
 		writeString(w, u)
 	} else {
 		w.Write([]byte(u))
@@ -258,6 +268,27 @@ func (tm *TextMarshaler) writeProto3Any(w *textWriter, sv reflect.Value) (bool, 
 }
 
 func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
+	if w.standard {
+		if !sv.IsValid() || sv.Kind() != reflect.Struct {
+			return fmt.Errorf("proto: standard text requires a struct message")
+		}
+		if w.depth >= w.recursionLimit {
+			return fmt.Errorf("proto: standard text nesting exceeds limit %d", w.recursionLimit)
+		}
+		w.depth++
+		defer func() { w.depth-- }()
+		if sv.CanAddr() {
+			pointer := textPointer{sv.Type(), sv.Addr().Pointer()}
+			if w.active[pointer] {
+				return fmt.Errorf("proto: cycle in standard text message %v", sv.Type())
+			}
+			if w.active == nil {
+				w.active = make(map[textPointer]bool)
+			}
+			w.active[pointer] = true
+			defer delete(w.active, pointer)
+		}
+	}
 	if tm.ExpandAny && isAny(sv) {
 		if canExpand, err := tm.writeProto3Any(w, sv); canExpand {
 			return err
@@ -265,8 +296,15 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 	}
 	st := sv.Type()
 	sprops := GetProperties(st)
+	var schema *textSchema
+	if w.standard {
+		schema = standardTextSchema(st)
+		if schema.err != nil {
+			return fmt.Errorf("proto: invalid text schema for %v: %v", st, schema.err)
+		}
+	}
 	for i := 0; i < sv.NumField(); i++ {
-		fv := sv.Field(i)
+		fv := generatedField(sv, i)
 		props := sprops.Prop[i]
 		name := st.Field(i).Name
 
@@ -280,7 +318,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			//   XXX_extensions   map[int32]proto.Extension
 			// The first is handled here;
 			// the second is handled at the bottom of this function.
-			if name == "XXX_unrecognized" && !fv.IsNil() {
+			if name == "XXX_unrecognized" && !fv.IsNil() && w.printUnknown {
 				if err := writeUnknownStruct(w, fv.Interface().([]byte)); err != nil {
 					return err
 				}
@@ -288,12 +326,18 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			continue
 		}
 		if fv.Kind() == reflect.Ptr && fv.IsNil() {
+			if w.standard && props.Required {
+				return &RequiredNotSetError{st.String() + "." + props.OrigName}
+			}
 			// Field not filled in. This could be an optional field or
 			// a required field that wasn't filled in. Either way, there
 			// isn't anything we can show for it.
 			continue
 		}
 		if fv.Kind() == reflect.Slice && fv.IsNil() {
+			if w.standard && props.Required {
+				return &RequiredNotSetError{st.String() + "." + props.OrigName}
+			}
 			// Repeated field that is empty, or a bytes field that is unused.
 			continue
 		}
@@ -301,7 +345,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 		if props.Repeated && fv.Kind() == reflect.Slice {
 			// Repeated field.
 			for j := 0; j < fv.Len(); j++ {
-				if err := writeName(w, props); err != nil {
+				if err := writeStandardTextName(w, props, schema); err != nil {
 					return err
 				}
 				if !w.compact {
@@ -310,7 +354,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 					}
 				}
 				v := fv.Index(j)
-				if v.Kind() == reflect.Ptr && v.IsNil() {
+				if v.Kind() == reflect.Ptr && v.IsNil() && !w.standard {
 					// A nil message in a repeated field is not valid,
 					// but we can handle that more gracefully than panicking.
 					if _, err := w.Write([]byte("<nil>\n")); err != nil {
@@ -336,8 +380,14 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			keys := fv.MapKeys()
 			sort.Sort(mapKeys(keys))
 			for _, key := range keys {
+				if w.standard {
+					if w.depth >= w.recursionLimit {
+						return fmt.Errorf("proto: standard text map nesting exceeds limit %d", w.recursionLimit)
+					}
+					w.depth++
+				}
 				val := fv.MapIndex(key)
-				if err := writeName(w, props); err != nil {
+				if err := writeStandardTextName(w, props, schema); err != nil {
 					return err
 				}
 				if !w.compact {
@@ -371,7 +421,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 					return err
 				}
 				// nil values aren't legal, but we can avoid panicking because of them.
-				if val.Kind() != reflect.Ptr || !val.IsNil() {
+				if val.Kind() != reflect.Ptr || !val.IsNil() || w.standard {
 					// value
 					if _, err := w.WriteString("value:"); err != nil {
 						return err
@@ -396,17 +446,23 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 				if err := w.WriteByte('\n'); err != nil {
 					return err
 				}
+				if w.standard {
+					w.depth--
+				}
 			}
 			continue
 		}
-		if props.proto3 && fv.Kind() == reflect.Slice && fv.Len() == 0 {
+		if props.proto3 && !(props.Proto3Optional || props.ExplicitPresence || w.standard && props.Required) && fv.Kind() == reflect.Slice && fv.Len() == 0 {
 			// empty bytes field
 			continue
 		}
-		if props.proto3 && fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
+		if props.proto3 && !(props.Proto3Optional || props.ExplicitPresence || w.standard && props.Required) && fv.Kind() != reflect.Ptr && fv.Kind() != reflect.Slice {
 			// proto3 non-repeated scalar field; skip if zero value
 			if isProto3Zero(fv) {
-				continue
+				negativeZero := w.standard && (fv.Kind() == reflect.Float32 || fv.Kind() == reflect.Float64) && math.Signbit(fv.Float())
+				if !negativeZero {
+					continue
+				}
 			}
 		}
 
@@ -419,6 +475,9 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 				if fv.IsNil() {
 					continue
 				}
+				if w.standard && fv.Elem().Kind() == reflect.Ptr && fv.Elem().IsNil() {
+					continue
+				}
 				inner := fv.Elem().Elem() // interface -> *T -> T
 				tag := inner.Type().Field(0).Tag.Get("protobuf")
 				props = new(Properties) // Overwrite the outer props var, but not its pointee.
@@ -429,7 +488,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 				// Special case to cope with malformed messages gracefully:
 				// If the value in the oneof is a nil pointer, don't panic
 				// in writeAny.
-				if fv.Kind() == reflect.Ptr && fv.IsNil() {
+				if fv.Kind() == reflect.Ptr && fv.IsNil() && !w.standard {
 					// Use errors.New so writeAny won't render quotes.
 					msg := errors.New("/* nil */")
 					fv = reflect.ValueOf(&msg).Elem()
@@ -437,7 +496,7 @@ func (tm *TextMarshaler) writeStruct(w *textWriter, sv reflect.Value) error {
 			}
 		}
 
-		if err := writeName(w, props); err != nil {
+		if err := writeStandardTextName(w, props, schema); err != nil {
 			return err
 		}
 		if !w.compact {
@@ -480,9 +539,57 @@ var textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 // writeAny writes an arbitrary field.
 func (tm *TextMarshaler) writeAny(w *textWriter, v reflect.Value, props *Properties) error {
+	if w.standard && v.Kind() == reflect.Ptr && v.IsNil() {
+		if v.Type().Elem().Kind() != reflect.Struct || !v.Type().Implements(protoMessageType) {
+			return fmt.Errorf("proto: nil standard text mapped value %v requires its own representation", v.Type())
+		}
+		v = reflect.New(v.Type().Elem())
+	}
 	v = reflect.Indirect(v)
+	if w.standard && !v.IsValid() {
+		return fmt.Errorf("proto: invalid standard text value")
+	}
+	if w.standard && props != nil && props.proto3 && !props.UTF8None && v.Kind() == reflect.String && !utf8.ValidString(v.String()) {
+		return &invalidUTF8Error{props.OrigName}
+	}
 
 	if props != nil {
+		if props.Proto3Optional && props.WktPointer {
+			if w.standard {
+				if w.depth >= w.recursionLimit {
+					return fmt.Errorf("proto: standard text wrapper nesting exceeds limit %d", w.recursionLimit)
+				}
+				w.depth++
+				defer func() { w.depth-- }()
+			}
+			// The Go field is scalar, but its declared protobuf type is a
+			// wrapper message. Emit the value even at zero (including -0).
+			if err := w.WriteByte('<'); err != nil {
+				return err
+			}
+			if !w.compact {
+				if err := w.WriteByte('\n'); err != nil {
+					return err
+				}
+			}
+			w.indent()
+			if _, err := w.WriteString("value:"); err != nil {
+				return err
+			}
+			if !w.compact {
+				if err := w.WriteByte(' '); err != nil {
+					return err
+				}
+			}
+			if err := tm.writeAny(w, v, nil); err != nil {
+				return err
+			}
+			if err := w.WriteByte('\n'); err != nil {
+				return err
+			}
+			w.unindent()
+			return w.WriteByte('>')
+		}
 		if len(props.CustomType) > 0 {
 			custom, ok := v.Interface().(Marshaler)
 			if ok {
@@ -665,7 +772,16 @@ func writeString(w *textWriter, s string) error {
 }
 
 func writeUnknownStruct(w *textWriter, data []byte) (err error) {
-	if !w.compact {
+	if w.standard {
+		for remaining := data; len(remaining) != 0; {
+			n, err := EditionFieldSize(remaining)
+			if err != nil {
+				return err
+			}
+			remaining = remaining[n:]
+		}
+	}
+	if !w.compact && !w.standard {
 		if _, err := fmt.Fprintf(w, "/* %d unknown bytes */\n", len(data)); err != nil {
 			return err
 		}
@@ -679,6 +795,9 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		}
 		wire, tag := x&7, x>>3
 		if wire == WireEndGroup {
+			if w.standard {
+				w.depth--
+			}
 			w.unindent()
 			if _, werr := w.Write(endBraceNewline); werr != nil {
 				return werr
@@ -702,17 +821,54 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		case WireBytes:
 			buf, e := b.DecodeRawBytes(false)
 			if e == nil {
-				_, err = fmt.Fprintf(w, "%q", buf)
+				if w.standard && unknownTextMessage(buf) {
+					if w.unknownDepth >= 100 || w.depth+w.unknownDepth >= w.recursionLimit {
+						return fmt.Errorf("proto: unknown text message nesting limit")
+					}
+					if err = w.WriteByte('{'); err != nil {
+						return err
+					}
+					if err = w.WriteByte('\n'); err != nil {
+						return err
+					}
+					w.indent()
+					w.unknownDepth++
+					err = writeUnknownStruct(w, buf)
+					w.unknownDepth--
+					w.unindent()
+					if err != nil {
+						return err
+					}
+					err = w.WriteByte('}')
+				} else if w.standard {
+					err = writeString(w, string(buf))
+				} else {
+					_, err = fmt.Fprintf(w, "%q", buf)
+				}
 			} else {
 				_, err = fmt.Fprintf(w, "/* %v */", e)
 			}
 		case WireFixed32:
 			x, err = b.DecodeFixed32()
-			err = writeUnknownInt(w, x, err)
+			if w.standard && err == nil {
+				_, err = fmt.Fprintf(w, "0x%08x", x)
+			} else {
+				err = writeUnknownInt(w, x, err)
+			}
 		case WireFixed64:
 			x, err = b.DecodeFixed64()
-			err = writeUnknownInt(w, x, err)
+			if w.standard && err == nil {
+				_, err = fmt.Fprintf(w, "0x%016x", x)
+			} else {
+				err = writeUnknownInt(w, x, err)
+			}
 		case WireStartGroup:
+			if w.standard {
+				if w.depth+w.unknownDepth >= w.recursionLimit {
+					return fmt.Errorf("proto: unknown text group nesting limit")
+				}
+				w.depth++
+			}
 			err = w.WriteByte('{')
 			w.indent()
 		case WireVarint:
@@ -729,6 +885,22 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		}
 	}
 	return nil
+}
+
+// As in the reference text printer, nonempty length-delimited unknown data
+// that forms a complete wire message can be rendered as a message body.
+func unknownTextMessage(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+	for len(data) != 0 {
+		n, err := EditionFieldSize(data)
+		if err != nil {
+			return false
+		}
+		data = data[n:]
+	}
+	return true
 }
 
 func writeUnknownInt(w *textWriter, x uint64, err error) error {
@@ -790,6 +962,9 @@ func (tm *TextMarshaler) writeExtensions(w *textWriter, pv reflect.Value) error 
 		}
 		if desc == nil {
 			// Unknown extension.
+			if !w.printUnknown {
+				continue
+			}
 			if err := writeUnknownStruct(w, ext.enc); err != nil {
 				return err
 			}
@@ -801,15 +976,24 @@ func (tm *TextMarshaler) writeExtensions(w *textWriter, pv reflect.Value) error 
 			return fmt.Errorf("failed getting extension: %v", err)
 		}
 
+		var properties *Properties
+		if w.standard {
+			properties = new(Properties)
+			typ := reflect.TypeOf(desc.ExtensionType)
+			if desc.repeated() {
+				typ = typ.Elem()
+			}
+			properties.Init(typ, desc.Name, desc.Tag, nil)
+		}
 		// Repeated extensions will appear as a slice.
 		if !desc.repeated() {
-			if err := tm.writeExtension(w, desc.Name, pb); err != nil {
+			if err := tm.writeExtension(w, desc.Name, pb, properties); err != nil {
 				return err
 			}
 		} else {
 			v := reflect.ValueOf(pb)
 			for i := 0; i < v.Len(); i++ {
-				if err := tm.writeExtension(w, desc.Name, v.Index(i).Interface()); err != nil {
+				if err := tm.writeExtension(w, desc.Name, v.Index(i).Interface(), properties); err != nil {
 					return err
 				}
 			}
@@ -818,7 +1002,7 @@ func (tm *TextMarshaler) writeExtensions(w *textWriter, pv reflect.Value) error 
 	return nil
 }
 
-func (tm *TextMarshaler) writeExtension(w *textWriter, name string, pb interface{}) error {
+func (tm *TextMarshaler) writeExtension(w *textWriter, name string, pb interface{}, properties *Properties) error {
 	if _, err := fmt.Fprintf(w, "[%s]:", name); err != nil {
 		return err
 	}
@@ -827,7 +1011,7 @@ func (tm *TextMarshaler) writeExtension(w *textWriter, name string, pb interface
 			return err
 		}
 	}
-	if err := tm.writeAny(w, reflect.ValueOf(pb), nil); err != nil {
+	if err := tm.writeAny(w, reflect.ValueOf(pb), properties); err != nil {
 		return err
 	}
 	if err := w.WriteByte('\n'); err != nil {
@@ -861,6 +1045,10 @@ type TextMarshaler struct {
 // Marshal writes a given protocol buffer in text format.
 // The only errors returned are from w.
 func (tm *TextMarshaler) Marshal(w io.Writer, pb Message) error {
+	return tm.marshal(w, pb, false, true, 0)
+}
+
+func (tm *TextMarshaler) marshal(w io.Writer, pb Message, standard, printUnknown bool, recursionLimit int) error {
 	val := reflect.ValueOf(pb)
 	if pb == nil || val.IsNil() {
 		w.Write([]byte("<nil>"))
@@ -873,9 +1061,12 @@ func (tm *TextMarshaler) Marshal(w io.Writer, pb Message) error {
 		ww = bw
 	}
 	aw := &textWriter{
-		w:        ww,
-		complete: true,
-		compact:  tm.Compact,
+		w:              ww,
+		complete:       true,
+		compact:        tm.Compact,
+		standard:       standard,
+		printUnknown:   printUnknown,
+		recursionLimit: recursionLimit,
 	}
 
 	if etm, ok := pb.(encoding.TextMarshaler); ok {

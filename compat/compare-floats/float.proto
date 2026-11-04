@@ -1,0 +1,21 @@
+edition = "2023";
+package qualification.floats;
+option go_package = "example.com/gogo-float-compare/pb";
+import "gogoproto/gogo.proto";
+option (gogoproto.compare_all) = true;
+
+message Record {
+  float explicit_float = 1;
+  double explicit_double = 2;
+  repeated float float_list = 3;
+  repeated double double_list = 4;
+  map<string, float> float_map = 5;
+  map<string, double> double_map = 6;
+  oneof choice {
+    float choice_float = 7;
+    double choice_double = 8;
+  }
+  int32 tail = 9;
+  float implicit_float = 11 [features.field_presence = IMPLICIT];
+  double implicit_double = 12 [features.field_presence = IMPLICIT];
+}

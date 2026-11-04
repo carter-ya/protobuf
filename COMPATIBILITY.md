@@ -1,0 +1,245 @@
+# Compatibility-first maintenance
+
+The current compiler/backend matrix, standard conformance results, migration
+steps and intentional boundaries are maintained in [compat/SUPPORT.md](compat/SUPPORT.md).
+
+This fork starts at gogo/protobuf v1.3.2 (`b03c65ea`). The module and generated
+imports remain `github.com/gogo/protobuf`. Existing generated files remain usable
+without regeneration. The runtime has no new module dependencies and retains
+`go 1.15`; the isolated official-oracle test module requires Go 1.23.
+
+| Input | Supported output | Runtime guard |
+| --- | --- | --- |
+| Existing proto2 / proto3 | Original API, field layout, tags and behavior | Version3 |
+| proto3 optional | gogo, gogofast, gogofaster, gogoslick, gogotypes | Version4 |
+| Editions 2023 / 2024 | Five gogo-runtime backends, historical OPEN default | Version5 base; later opt-in capabilities through Version18 |
+| Edition 2026 | Same backends, custom JSON enum spellings in jsonpb | Version6 base; later opt-in capabilities through Version18 |
+| Native ProtoReflect / HYBRID / OPAQUE | Optional Go1.23 live module; HYBRID protoopaque alternate builds | Version18 |
+
+The published combination is stable root `v1.4.0` from
+`057d06490a721bea0fceb39c5c088bc1ef3085e8` and optional `reflect/v0.1.0-rc.2` from
+`3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. See the
+[versioned installation guide](release/INSTALL.md). The optional module remains RC.
+
+New optional fields preserve absent vs explicit zero values. Synthetic oneofs
+remain in descriptors but do not appear as public Go oneof wrappers. Explicit
+presence also distinguishes nil bytes from present empty bytes in binary, JSON,
+text, clone, merge and equality. New optional strings validate UTF-8 in both fast
+and reflection paths. Historical fast-string behavior is unchanged.
+
+Editions use a private resolved feature model. Raw syntax, editions, features and
+options remain in emitted descriptors; source-retained options are omitted by
+protoc. Enum openness comes from the enum definition, including imported enums.
+Closed-enum unknown values are retained, including packed values, map entries,
+oneofs and registered extensions. Extensions inherit their declaration scope.
+DELIMITED messages, required fields and per-field UTF-8/repeated encoding are
+supported. Option-only imports do not introduce runtime Go imports.
+
+Edition 2026 JSON names support aliases, empty strings and escaped/Unicode
+spellings. Proto names remain accepted in JSON and unchanged in text format.
+The ordinary enum name maps and `String` methods retain proto names.
+
+## Deliberate generation errors
+
+- Optional requires the gogo runtime. `nullable=false`, non-bytes customtype,
+  message cast, embedded, face and union combinations are rejected.
+  Scalar/enum/bytes casttype mappings with matching underlying Go types are
+  supported by all five optional backends and require runtime Version10.
+  Custom bytes and standard WKT mappings require runtime Version11; mapped
+  values retain representation-specific range and metadata limits. Explicit
+  unsafe codecs and conflicting mappings are rejected.
+  See `compat/optional/README.md` for the exact presence contract.
+- Editions permit the tested fast codecs and auxiliary/naming/tag allowlist.
+  Custom field representations, unsafe codecs and other unverified extensions
+  remain rejected. See `compat/README.md` for the exercised combinations.
+- OPEN remains the default in every edition. Explicit OPEN/HYBRID/OPAQUE and
+  KEEP/STRIP/GENERATE_BOTH naming have their own qualified matrices. Native
+  live modes require the paired optional module and supported storage; custom,
+  value/embedded, missing-unknown and MessageSet representations are rejected.
+  See [the live profile](reflect/README.md). Unknown Go feature values still
+  produce diagnostics instead of partial output.
+- Unvalidated auxiliary plugins do not inherit Editions support.
+- Unsupported/future editions fail instead of using the latest known defaults.
+
+These guarantees describe the qualified stable-root/optional-RC profile. The historical runner does
+not establish full current Protobuf conformance; separate tests cover the
+implemented feature contracts and independent interoperability paths.
+
+## Verification
+
+`compat/check.sh` compiles frozen v1.3.2 consumers, compares regenerated Go syntax
+and decoded descriptors, and runs the full historical suite in a disposable
+GOPATH-shaped copy. Formatting/comments and gzip representation may differ by
+Go version; declarations, tags, bodies and raw descriptor data must match.
+
+`compat/check-optional.sh` and `compat/check-entrypoints.sh` test optional
+presence and generator combinations. `compat/check-features.sh` reproduces the
+pinned protoc 36.2 defaults and validates feature inheritance and diagnostics.
+`compat/check-editions.sh` tests production generation, raw descriptors, option
+retention, runtime guards, and binary/text interoperability with protoc 36.2.
+The nested `compat/oracle` module pins official Go commit
+`0c373ff94f296da8645fbc892f211083b695709e` for two-way 2026 JSON checks.
+`compat/check-gostring.sh` covers the separate pre-existing nil timestamp fix.
+
+CI covers Go 1.23/1.27 with protoc 3.21.8/36.2 and a Go 1.15.15 runtime/compiler
+job with protoc 36.2. The modern official oracle runs only on Go 1.23+.
+
+`compat/check-downstream.sh` pins etcd raft v3.5.0 and CockroachDB errors v1.8.1
+(their manifests declare gogo v1.3.2 and v1.3.1 respectively). It tests frozen
+bindings, binary/JSON/Any and gRPC error roundtrips, raft's full package suite,
+and CockroachDB errbase/extgrpc tests. It then regenerates raft with the original
+and candidate gofast generators under the same protoc, compares code and raw
+descriptors, and repeats raft's suite with regenerated bindings and no business
+source edits. These dependencies are isolated from the root module.
+
+Etcd's frozen bindings use the golang runtime despite their gogo generator.
+Regeneration preserves that gofast choice. The smoke test uses integer enum JSON;
+looking up its named enum JSON through gogo's separate registry already fails
+with untouched v1.3.2 and is not broadened as part of this upgrade.
+
+## Explicit standard JSON entrypoint
+
+`jsonpb/standard` offers whole-document parsing, Unicode validation, presence
+preservation and deterministic duplicate/oneof rejection. Existing `jsonpb`
+configuration layouts and default behavior are unchanged. Modern conformance
+runs both entrypoints independently and records remaining limitations; see
+`jsonpb/standard/README.md` and `compat/conformance/README.md`.
+
+Standard JSON also supports full-range Duration, range-checked Timestamp,
+FieldMask strings, empty Any and Any-wrapped special types. It rejects
+non-finite Value numbers. Legacy jsonpb WKT representations and tolerance
+remain unchanged. These paths are checked against both the pinned C++ suites
+and official Go implementation.
+
+## Editions metadata in standard types
+
+`Syntax_SYNTAX_EDITIONS` is value 2. Type, Enum, Api and Method gain the ordinary
+string `Edition` field with their official field numbers (7, 6, 8 and 8).
+Method's syntax and edition metadata are deprecated in favor of the parent Api,
+matching upstream. Existing field numbers, defaults, imports and runtime guard
+remain unchanged. These additions do change the public WKT struct shapes;
+consumers using positional literals or depending on in-memory layout must adapt.
+Frozen original bindings remain usable and retain new metadata as unknown bytes.
+`compat/check-wkt-metadata.sh` verifies the exact permitted schema delta, generated
+snapshots and original consumers; the isolated official Go oracle checks both
+binary and JSON representations.
+
+Messages with more than 64 required fields now use an additional validation
+bitmap. Files containing such messages require runtime Version7, including
+proto2 files; smaller legacy messages keep their original guard and allocation
+path. The boundary consumer checks 63/64/65/128/129 fields, sparse tags, absent
+fields, explicit zeroes, nested parsing and Merge.
+
+Editions now support an explicit allowlist of getter/naming/tag options,
+Equal/Compare, Populate, Stringer and GoString. Empty bytes retain presence in
+generated equality/ordering. Unknown-field storage cannot be disabled. Custom
+representations, unsafe codecs, face/union and unverified options still fail
+with a scoped diagnostic. Auxiliary plugins advertise Editions only through an
+explicit capability; unrecognized plugins do not inherit it.
+
+## Modern Go conversion experiment
+
+`compat/modern` evaluates detached V2 dynamic snapshots with explicit replacement,
+local registries, protojson, Any, extensions and five-backend optional mappings.
+It also exercises actual frozen raft and CockroachDB errors bindings. It is an
+isolated Go 1.23 test module, not a generated ProtoReflect API or a released
+adapter. Data that cannot be retained on replacement is rejected before mutation.
+The pinned official dynamic runtime's closed-enum unknown interpretation and
+MessageSet restrictions are recorded in `compat/modern/README.md`; no transparent
+adaptation claim is made for those cases.
+
+## Explicit standard text entrypoint
+
+`textpb/standard` adds standard floating-point syntax, negative-zero output,
+closed-enum and UTF-8 policy checks while preserving the historical text APIs
+and TextMarshaler layout. The first implementation passes 125 formerly failing
+standard text cases. Unicode scalar validation and descriptor-backed reserved-name
+skipping remove 72 more. Any URL syntax removes another 8 and schema-based
+group names resolve the last 18. All 909 pinned Protobuf 36.2 text cases pass
+through the standard entrypoint without skips; the legacy baseline stays separate. Unknown fields
+can be omitted or printed using the explicit configuration. It is not a
+full text-conformance claim. See `textpb/standard/README.md`.
+
+## Concurrent read-only encoding
+
+JSON encoding checks time, duration and custom JSON interfaces by reflected type
+before materializing values. Ordinary messages are no longer copied while binary
+sizing updates internal caches. The runtime race gate covers proto, legacy and
+standard JSON, and standard text with default and purego builds. This contract
+assumes application fields are not being mutated concurrently.
+
+## MessageSet input compatibility
+
+MessageSet accepts both item groups and ordinary length-delimited extension
+fields. Mixed encodings retain wire order and output remains in MessageSet
+format. Merging after SetExtension or GetExtension retains decoded payloads.
+Unknown extension bodies remain opaque. The explicit V2 snapshot experiment
+continues to reject MessageSet because its target runtime does not support it.
+
+## Opt-in oneof message merging
+
+`merge_oneof_messages=true` emits Version12 metadata and merges repeated native
+oneof message members in regenerated proto2/proto3 files. Default generation
+retains historical replacement behavior. Custom/cast/standard representations
+are rejected for this policy; imported bindings keep their own decoding policy.
+The standard conformance profile uses a separately generated binary with this
+parameter. See `compat/oneof-merge/README.md` for the qualified scope.
+
+Native scalar oneof wrappers retain their value layout under proto2 fast
+entrypoints and explicit `nullable=true`. Codec and auxiliary generators use
+normalized cloned metadata; input descriptors and ordinary nullable fields retain
+their declaration policy. The five-backend gate covers selected zero, direct
+encoding, Clone/Equal/VerboseEqual/Compare/Populate and String/GoString.
+
+Standard text traversal has a configurable recursion limit (default 10,000) and
+Go message-cycle detection. Map entries, wrappers, expanded Any, reserved values
+and printed unknown messages observe the budget. Shared submessages are allowed,
+and encoder failure leaves the destination writer untouched. Existing root text
+bridges and historical configuration literals remain source compatible.
+
+## Required initialization after merging
+
+Fresh Editions bindings check required initialization after the final surviving
+message graph merges. Legacy proto2/proto3 select this policy explicitly with
+`merge_required_fields=true`; unmarked historical bindings retain their timing.
+Required-reachable files assert Version14, including dependency-only enclosing
+files. Malformed occurrence boundaries and checked UTF-8 still fail immediately.
+The [required merge contract](compat/required-merge/README.md) lists presence
+restrictions, regeneration requirements and the five-backend qualification matrix.
+
+## Explicit legacy closed-enum policy
+
+`enforce_closed_enums=true` qualifies native closed enums in regenerated legacy
+files without changing frozen bindings. Unknown values retain unknown bytes
+instead of setting singular/required/oneof fields. Packed lists, maps, nested
+messages, definition-scoped imports and registered enum extensions share the
+policy; late registrations are consulted after an immutable table-cache miss.
+The option asserts Version15. Explicit unknown-storage/presence conflicts and
+alternate runtimes are rejected. See the
+[contract and independent cross-reads](compat/legacy-enums/README.md).
+
+## Go enum JSON generation features
+
+Fresh Editions enum output honors the official
+`features.(pb.go).legacy_unmarshal_json_enum` default (false), file inheritance
+and enum overrides. Set true when regenerating earlier Editions output that
+relies on the deprecated `UnmarshalJSON` method. Frozen bindings and legacy
+proto2/proto3 generation keep their existing method policy. A local Go 1.15
+`gofeatures` binding handles ordinary Edition 2023 feature imports without a V2
+runtime dependency. See [the generated API contract](compat/go-enum-json/README.md).
+
+Go enum prefix settings now support file/enum/entry overrides, stripped names
+and dual-name migration aliases across all five backends. Defaults/getters and
+cross-file/public imports use the resolved Go constants; raw proto names and
+binary/JSON encodings are unchanged. Ambiguous custom Go names and collisions
+are diagnosed. See [prefix compatibility](compat/go-enum-prefix/README.md).
+
+## Explicit optimization strategies
+
+Editions 2024/2026 implement `optimize_mode` file/message inheritance and
+SPEED/CODE_SIZE overrides. Unselected/UNSPECIFIED settings retain the chosen
+backend's existing strategy. Compact table wrappers keep field layouts and fast
+method interfaces; selected parents can safely reach compact/unselected children.
+Version16 prevents linking wrappers to a runtime that would recursively call
+its own Marshal/Size methods. Unmarked custom marshalers keep their dispatch.
+See [the strategy contract and independent qualification](compat/go-optimize/README.md).

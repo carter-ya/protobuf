@@ -1,0 +1,17 @@
+{
+  "binary_json": [
+    "Recommended.Proto3.JsonInput.ListValueDeepNesting200",
+    "Recommended.Proto3.JsonInput.StructDeepNesting200",
+    "Recommended.Proto3.JsonInput.ValueDeepNesting200",
+    "Required.Proto3.ProtobufInput.BadTag_OverlongVarint"
+  ],
+  "text": [
+    "Recommended.Proto3.ProtobufInput.MessageUnknownFields_Print.TextFormatOutput",
+    "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogatePairBytes",
+    "Recommended.Proto3.TextFormatInput.StringLiteralShortUnicodeEscapeSurrogatePairString",
+    "Recommended.Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairLongShortBytes",
+    "Recommended.Proto3.TextFormatInput.StringLiteralUnicodeEscapeSurrogatePairLongShortString",
+    "Required.Proto3.TextFormatInput.FloatFieldNoNegativeOctal",
+    "Required.Proto3.TextFormatInput.FloatFieldNoOctal"
+  ]
+}

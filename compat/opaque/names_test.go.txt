@@ -1,0 +1,43 @@
+package consumer
+
+import (
+	pb "example.com/native/pb"
+	gogo "github.com/gogo/protobuf/proto"
+	v2 "google.golang.org/protobuf/proto"
+	"testing"
+)
+
+func TestAllocatedOpaqueNames(t *testing.T) {
+	n := new(pb.Names)
+	if err := gogo.Unmarshal([]byte{10, 1, 'x', 16, 7, 24, 9}, n); err != nil {
+		t.Fatal(err)
+	}
+	f := n.ProtoReflect().Descriptor().Fields()
+	if n.ProtoReflect().Get(f.ByNumber(1)).String() != "x" || n.ProtoReflect().Get(f.ByNumber(2)).Int() != 7 || n.GetNumber() != 9 {
+		t.Fatal("allocated name or oneof wrapper storage differs")
+	}
+	if data, err := v2.Marshal(n); err != nil {
+		t.Fatal(err)
+	} else {
+		copy := new(pb.Names)
+		if err = gogo.Unmarshal(data, copy); err != nil || !gogo.Equal(n, copy) {
+			t.Fatal("cross-runtime allocated names", err)
+		}
+	}
+}
+
+func TestOpaqueSetDefaults(t *testing.T) {
+	n := pb.Defaults_builder{Child: new(pb.Defaults), Children: []*pb.Defaults{new(pb.Defaults), nil}, Nodes: map[string]*pb.Defaults{"x": new(pb.Defaults), "nil": nil}}.Build()
+	if n.HasValue() {
+		t.Fatal("unexpected initial presence")
+	}
+	gogo.SetDefaults(n)
+	for _, m := range []*pb.Defaults{n, n.GetChild(), n.GetChildren()[0], n.GetNodes()["x"]} {
+		if !m.HasValue() || m.GetValue() != 7 || !m.HasLabel() || m.GetLabel() != "fallback" || !m.HasData() || string(m.GetData()) != "\x01\xff" || !m.HasState() || int32(m.GetState()) != 1 {
+			t.Fatal("default/presence traversal", m)
+		}
+	}
+	if n.GetChild().GetChild() != nil || n.GetChildren()[1] != nil || n.GetNodes()["nil"] != nil {
+		t.Fatal("defaults created absent child")
+	}
+}

@@ -33,13 +33,17 @@
 Package jsonpb provides marshaling and unmarshaling between protocol buffers and JSON.
 It follows the specification at https://developers.google.com/protocol-buffers/docs/proto3#json.
 
-This package produces a different output than the standard "encoding/json" package,
+This package produces a different output than the standard "encoding/json"
+
+	"encoding/base64" package,
+
 which does not operate correctly on protocol buffers.
 */
 package jsonpb
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,13 +54,18 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"github.com/gogo/protobuf/internal/storage"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 )
 
 const secondInNanos = int64(time.Second / time.Nanosecond)
 const maxSecondsInDuration = 315576000000
+
+// Only standard-mode container decoders consume this sentinel.
+var errIgnoredEnumName = errors.New("jsonpb: ignored unknown enum name")
 
 // Marshaler is a configurable object for converting between
 // protocol buffer objects and a JSON representation for them.
@@ -108,6 +117,7 @@ func defaultResolveAny(typeUrl string) (proto.Message, error) {
 // parsed.
 //
 // The JSON marshaling must follow the proto to JSON specification:
+//
 //	https://developers.google.com/protocol-buffers/docs/proto3#json
 type JSONPBMarshaler interface {
 	MarshalJSONPB(*Marshaler) ([]byte, error)
@@ -119,6 +129,7 @@ type JSONPBMarshaler interface {
 // produced.
 //
 // The JSON unmarshaling must follow the JSON to proto specification:
+//
 //	https://developers.google.com/protocol-buffers/docs/proto3#json
 type JSONPBUnmarshaler interface {
 	UnmarshalJSONPB(*Unmarshaler, []byte) error
@@ -126,6 +137,10 @@ type JSONPBUnmarshaler interface {
 
 // Marshal marshals a protocol buffer into JSON.
 func (m *Marshaler) Marshal(out io.Writer, pb proto.Message) error {
+	return (&jsonEncoder{Marshaler: m}).marshal(out, pb)
+}
+
+func (m *jsonEncoder) marshal(out io.Writer, pb proto.Message) error {
 	v := reflect.ValueOf(pb)
 	if pb == nil || (v.Kind() == reflect.Ptr && v.IsNil()) {
 		return errors.New("Marshal called with nil")
@@ -147,6 +162,15 @@ func (m *Marshaler) MarshalToString(pb proto.Message) (string, error) {
 	return buf.String(), nil
 }
 
+type jsonEncoder struct {
+	*Marshaler
+	standard bool
+}
+type jsonDecoder struct {
+	*Unmarshaler
+	standard bool
+}
+
 type int32Slice []int32
 
 var nonFinite = map[string]float64{
@@ -165,14 +189,17 @@ type isWkt interface {
 }
 
 var (
-	wktType     = reflect.TypeOf((*isWkt)(nil)).Elem()
-	messageType = reflect.TypeOf((*proto.Message)(nil)).Elem()
+	wktType           = reflect.TypeOf((*isWkt)(nil)).Elem()
+	timeType          = reflect.TypeOf(time.Time{})
+	durationType      = reflect.TypeOf(time.Duration(0))
+	jsonMarshalerType = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+	messageType       = reflect.TypeOf((*proto.Message)(nil)).Elem()
 )
 
 // marshalObject writes a struct to the Writer.
-func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeURL string) error {
+func (m *jsonEncoder) marshalObject(out *errWriter, v proto.Message, indent, typeURL string) error {
 	if jsm, ok := v.(JSONPBMarshaler); ok {
-		b, err := jsm.MarshalJSONPB(m)
+		b, err := jsm.MarshalJSONPB(m.Marshaler)
 		if err != nil {
 			return err
 		}
@@ -202,6 +229,11 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 	}
 
 	s := reflect.ValueOf(v).Elem()
+	if m.standard {
+		if handled, err := m.marshalStandardSpecial(out, v); handled || err != nil {
+			return err
+		}
+	}
 
 	// Handle well-known types.
 	if wkt, ok := v.(isWkt); ok {
@@ -211,12 +243,12 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 			// "Wrappers use the same representation in JSON
 			//  as the wrapped primitive type, ..."
 			sprop := proto.GetProperties(s.Type())
-			return m.marshalValue(out, sprop.Prop[0], s.Field(0), indent)
+			return m.marshalValue(out, sprop.Prop[0], storage.Field(s, 0), indent)
 		case "Any":
 			// Any is a bit more involved.
 			return m.marshalAny(out, v, indent)
 		case "Duration":
-			s, ns := s.Field(0).Int(), s.Field(1).Int()
+			s, ns := storage.Field(s, 0).Int(), storage.Field(s, 1).Int()
 			if s < -maxSecondsInDuration || s > maxSecondsInDuration {
 				return fmt.Errorf("seconds out of range %v", s)
 			}
@@ -246,11 +278,11 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 		case "Struct", "ListValue":
 			// Let marshalValue handle the `Struct.fields` map or the `ListValue.values` slice.
 			// TODO: pass the correct Properties if needed.
-			return m.marshalValue(out, &proto.Properties{}, s.Field(0), indent)
+			return m.marshalValue(out, &proto.Properties{}, storage.Field(s, 0), indent)
 		case "Timestamp":
 			// "RFC 3339, where generated output will always be Z-normalized
 			//  and uses 0, 3, 6 or 9 fractional digits."
-			s, ns := s.Field(0).Int(), s.Field(1).Int()
+			s, ns := storage.Field(s, 0).Int(), storage.Field(s, 1).Int()
 			if ns < 0 || ns >= secondInNanos {
 				return fmt.Errorf("ns out of range [0, %v)", secondInNanos)
 			}
@@ -266,13 +298,16 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 			return out.err
 		case "Value":
 			// Value has a single oneof.
-			kind := s.Field(0)
+			kind := storage.Field(s, 0)
 			if kind.IsNil() {
 				// "absence of any variant indicates an error"
 				return errors.New("nil Value")
 			}
 			// oneof -> *T -> T -> T.F
-			x := kind.Elem().Elem().Field(0)
+			x := storage.Field(kind.Elem().Elem(), 0)
+			if m.standard && x.Kind() == reflect.Float64 && (math.IsNaN(x.Float()) || math.IsInf(x.Float(), 0)) {
+				return fmt.Errorf("non-finite google.protobuf.Value")
+			}
 			// TODO: pass the correct Properties if needed.
 			return m.marshalValue(out, &proto.Properties{}, x, indent)
 		}
@@ -293,7 +328,7 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 	}
 
 	for i := 0; i < s.NumField(); i++ {
-		value := s.Field(i)
+		value := storage.Field(s, i)
 		valueField := s.Type().Field(i)
 		if strings.HasPrefix(valueField.Name, "XXX_") {
 			continue
@@ -301,6 +336,18 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 
 		//this is not a protobuf field
 		if valueField.Tag.Get("protobuf") == "" && valueField.Tag.Get("protobuf_oneof") == "" {
+			continue
+		}
+		// Explicitly absent optional fields remain absent even with EmitDefaults.
+		if (strings.Contains(valueField.Tag.Get("protobuf"), ",proto3_optional") || strings.Contains(valueField.Tag.Get("protobuf"), ",explicit")) &&
+			(value.Kind() == reflect.Ptr || value.Kind() == reflect.Slice) && value.IsNil() {
+			continue
+		}
+
+		if m.standard && value.Kind() == reflect.Ptr && value.IsNil() {
+			continue
+		}
+		if m.standard && value.Kind() == reflect.Slice && value.Type().Elem().Kind() == reflect.Uint8 && value.IsNil() && !strings.Contains(valueField.Tag.Get("protobuf"), ",proto3") {
 			continue
 		}
 
@@ -345,7 +392,7 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 		if valueField.Tag.Get("protobuf_oneof") != "" {
 			// value is an interface containing &T{real_value}.
 			sv := value.Elem().Elem() // interface -> *T -> T
-			value = sv.Field(0)
+			value = storage.Field(sv, 0)
 			valueField = sv.Type().Field(0)
 		}
 		prop := jsonProperties(valueField, m.OrigName)
@@ -419,7 +466,7 @@ func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeU
 	return out.err
 }
 
-func (m *Marshaler) writeSep(out *errWriter) {
+func (m *jsonEncoder) writeSep(out *errWriter) {
 	if m.Indent != "" {
 		out.write(",\n")
 	} else {
@@ -427,14 +474,21 @@ func (m *Marshaler) writeSep(out *errWriter) {
 	}
 }
 
-func (m *Marshaler) marshalAny(out *errWriter, any proto.Message, indent string) error {
+func (m *jsonEncoder) marshalAny(out *errWriter, any proto.Message, indent string) error {
 	// "If the Any contains a value that has a special JSON mapping,
 	//  it will be converted as follows: {"@type": xxx, "value": yyy}.
 	//  Otherwise, the value will be converted into a JSON object,
 	//  and the "@type" field will be inserted to indicate the actual data type."
 	v := reflect.ValueOf(any).Elem()
-	turl := v.Field(0).String()
-	val := v.Field(1).Bytes()
+	turl := storage.Field(v, 0).String()
+	val := storage.Field(v, 1).Bytes()
+	if m.standard && turl == "" && len(val) == 0 {
+		out.write("{}")
+		return out.err
+	}
+	if m.standard && (!strings.Contains(turl, "/") || strings.HasSuffix(turl, "/")) {
+		return fmt.Errorf("invalid Any type URL")
+	}
 
 	var msg proto.Message
 	var err error
@@ -451,7 +505,11 @@ func (m *Marshaler) marshalAny(out *errWriter, any proto.Message, indent string)
 		return err
 	}
 
-	if _, ok := msg.(isWkt); ok {
+	_, custom := msg.(isWkt)
+	if m.standard {
+		custom = standardCustomJSON(msg)
+	}
+	if custom {
 		out.write("{")
 		if m.Indent != "" {
 			out.write("\n")
@@ -481,7 +539,7 @@ func (m *Marshaler) marshalAny(out *errWriter, any proto.Message, indent string)
 	return m.marshalObject(out, msg, indent, turl)
 }
 
-func (m *Marshaler) marshalTypeURL(out *errWriter, indent, typeURL string) error {
+func (m *jsonEncoder) marshalTypeURL(out *errWriter, indent, typeURL string) error {
 	if m.Indent != "" {
 		out.write(indent)
 		out.write(m.Indent)
@@ -499,14 +557,23 @@ func (m *Marshaler) marshalTypeURL(out *errWriter, indent, typeURL string) error
 }
 
 // marshalField writes field description and value to the Writer.
-func (m *Marshaler) marshalField(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
+func (m *jsonEncoder) marshalField(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
 	if m.Indent != "" {
 		out.write(indent)
 		out.write(m.Indent)
 	}
-	out.write(`"`)
-	out.write(prop.JSONName)
-	out.write(`":`)
+	if m.standard {
+		name, err := json.Marshal(prop.JSONName)
+		if err != nil {
+			return err
+		}
+		out.write(string(name))
+		out.write(":")
+	} else {
+		out.write(`"`)
+		out.write(prop.JSONName)
+		out.write(`":`)
+	}
 	if m.Indent != "" {
 		out.write(" ")
 	}
@@ -517,13 +584,31 @@ func (m *Marshaler) marshalField(out *errWriter, prop *proto.Properties, v refle
 }
 
 // marshalValue writes the value to the Writer.
-func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
+func (m *jsonEncoder) marshalValue(out *errWriter, prop *proto.Properties, v reflect.Value, indent string) error {
 
+	if m.standard && v.Kind() == reflect.Ptr && v.IsNil() && v.Type().Implements(messageType) {
+		// A missing binary map message value denotes an empty message.
+		v = reflect.New(v.Type().Elem())
+	}
 	v = reflect.Indirect(v)
 
 	// Handle nil pointer
 	if v.Kind() == reflect.Invalid {
+		if m.standard {
+			return fmt.Errorf("nil message element cannot be encoded")
+		}
 		out.write("null")
+		return out.err
+	}
+
+	if m.standard && v.Kind() == reflect.String && !utf8.ValidString(v.String()) {
+		return fmt.Errorf("invalid UTF-8 string")
+	}
+
+	if prop != nil && prop.Proto3Optional && prop.WktPointer && v.Kind() == reflect.Slice && v.Len() == 0 {
+		// A present BytesValue with nil inner bytes is the empty string,
+		// not JSON null (which would erase the outer message presence).
+		out.write(`""`)
 		return out.err
 	}
 
@@ -565,7 +650,10 @@ func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v refle
 		}
 	}
 
-	if t, ok := v.Interface().(time.Time); ok {
+	// Check the reflected type before materializing a value. Interface on an
+	// ordinary message struct would copy its concurrently updated size cache.
+	if v.Type() == timeType {
+		t := v.Interface().(time.Time)
 		ts, err := types.TimestampProto(t)
 		if err != nil {
 			return err
@@ -573,17 +661,37 @@ func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v refle
 		return m.marshalValue(out, prop, reflect.ValueOf(ts), indent)
 	}
 
-	if d, ok := v.Interface().(time.Duration); ok {
+	if v.Type() == durationType {
+		d := v.Interface().(time.Duration)
 		dur := types.DurationProto(d)
 		return m.marshalValue(out, prop, reflect.ValueOf(dur), indent)
 	}
 
 	// Handle enumerations.
 	if !m.EnumsAsInts && prop.Enum != "" {
+		number := v
+		if number.Kind() == reflect.Ptr {
+			number = number.Elem()
+		}
+		if name, ok := proto.EnumJSONName(prop.Enum, int32(number.Int())); ok {
+			data, err := json.Marshal(name)
+			if err != nil {
+				return err
+			}
+			out.write(string(data))
+			return out.err
+		}
 		// Unknown enum values will are stringified by the proto library as their
 		// value. Such values should _not_ be quoted or they will be interpreted
 		// as an enum string instead of their value.
-		enumStr := v.Interface().(fmt.Stringer).String()
+		stringer, ok := v.Interface().(fmt.Stringer)
+		if prop.Proto3Optional && prop.CastType != "" && !ok {
+			// A named integer cast need not implement the schema enum's
+			// String method. Numeric enum JSON preserves unknown values too.
+			out.write(strconv.FormatInt(number.Int(), 10))
+			return out.err
+		}
+		enumStr := stringer.String()
 		var valStr string
 		if v.Kind() == reflect.Ptr {
 			valStr = strconv.Itoa(int(v.Elem().Int()))
@@ -632,9 +740,8 @@ func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v refle
 			return out.err
 		}
 
-		if m, ok := v.Interface().(interface {
-			MarshalJSON() ([]byte, error)
-		}); ok {
+		if v.Type().Implements(jsonMarshalerType) {
+			m := v.Interface().(json.Marshaler)
 			data, err := m.MarshalJSON()
 			if err != nil {
 				return err
@@ -664,6 +771,9 @@ func (m *Marshaler) marshalValue(out *errWriter, prop *proto.Properties, v refle
 		keys := v.MapKeys()
 		sort.Sort(mapKeys(keys))
 		for i, k := range keys {
+			if m.standard && k.Kind() == reflect.String && !utf8.ValidString(k.String()) {
+				return fmt.Errorf("invalid UTF-8 map key")
+			}
 			if i > 0 {
 				out.write(`,`)
 			}
@@ -769,7 +879,7 @@ func (u *Unmarshaler) UnmarshalNext(dec *json.Decoder, pb proto.Message) error {
 	if err := dec.Decode(&inputValue); err != nil {
 		return err
 	}
-	if err := u.unmarshalValue(reflect.ValueOf(pb).Elem(), inputValue, nil); err != nil {
+	if err := (&jsonDecoder{Unmarshaler: u}).unmarshalValue(reflect.ValueOf(pb).Elem(), inputValue, nil); err != nil {
 		return err
 	}
 	return checkRequiredFields(pb)
@@ -806,8 +916,14 @@ func UnmarshalString(str string, pb proto.Message) error {
 
 // unmarshalValue converts/copies a value into the target.
 // prop may be nil.
-func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMessage, prop *proto.Properties) error {
+func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMessage, prop *proto.Properties) error {
 	targetType := target.Type()
+	if u.standard {
+		inputValue = bytes.TrimSpace(inputValue)
+	}
+	if u.standard && string(inputValue) == "null" && prop != nil && !acceptsJSONNull(targetType) {
+		return nil
+	}
 
 	// Allocate memory for pointer fields.
 	if targetType.Kind() == reflect.Ptr {
@@ -823,7 +939,13 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 	}
 
 	if jsu, ok := target.Addr().Interface().(JSONPBUnmarshaler); ok {
-		return jsu.UnmarshalJSONPB(u, []byte(inputValue))
+		return jsu.UnmarshalJSONPB(u.Unmarshaler, []byte(inputValue))
+	}
+
+	if u.standard {
+		if handled, err := u.unmarshalStandardSpecial(target, inputValue); handled || err != nil {
+			return err
+		}
 	}
 
 	// Handle well-known types that are not pointers.
@@ -831,7 +953,7 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		switch w.XXX_WellKnownType() {
 		case "DoubleValue", "FloatValue", "Int64Value", "UInt64Value",
 			"Int32Value", "UInt32Value", "BoolValue", "StringValue", "BytesValue":
-			return u.unmarshalValue(target.Field(0), inputValue, prop)
+			return u.unmarshalValue(storage.Field(target, 0), inputValue, prop)
 		case "Any":
 			// Use json.RawMessage pointer type instead of value to support pre-1.8 version.
 			// 1.8 changed RawMessage.MarshalJSON from pointer type to value type, see
@@ -841,6 +963,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
+			if u.standard && len(jsonFields) == 0 {
+				return nil
+			}
 			val, ok := jsonFields["@type"]
 			if !ok || val == nil {
 				return errors.New("Any JSON doesn't have '@type'")
@@ -850,7 +975,10 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			if err := json.Unmarshal([]byte(*val), &turl); err != nil {
 				return fmt.Errorf("can't unmarshal Any's '@type': %q", *val)
 			}
-			target.Field(0).SetString(turl)
+			if u.standard && (!strings.Contains(turl, "/") || strings.HasSuffix(turl, "/")) {
+				return fmt.Errorf("invalid Any type URL")
+			}
+			storage.Field(target, 0).SetString(turl)
 
 			var m proto.Message
 			var err error
@@ -863,7 +991,14 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
-			if _, ok := m.(isWkt); ok {
+			_, custom := m.(isWkt)
+			if u.standard {
+				custom = standardCustomJSON(m)
+			}
+			if custom {
+				if u.standard && !u.AllowUnknownFields && len(jsonFields) != 2 {
+					return fmt.Errorf("unknown Any field")
+				}
 				val, ok := jsonFields["value"]
 				if !ok {
 					return errors.New("Any JSON doesn't have 'value'")
@@ -888,7 +1023,7 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			if err != nil {
 				return fmt.Errorf("can't marshal proto %T into Any.Value: %v", m, err)
 			}
-			target.Field(1).SetBytes(b)
+			storage.Field(target, 1).SetBytes(b)
 
 			return nil
 		case "Duration":
@@ -897,6 +1032,15 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
+			if u.standard {
+				seconds, nanos, standardDurationErr := parseStandardDuration(unq)
+				if standardDurationErr != nil {
+					return standardDurationErr
+				}
+				storage.Field(target, 0).SetInt(seconds)
+				storage.Field(target, 1).SetInt(nanos)
+				return nil
+			}
 			d, err := time.ParseDuration(unq)
 			if err != nil {
 				return fmt.Errorf("bad Duration: %v", err)
@@ -905,8 +1049,8 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			ns := d.Nanoseconds()
 			s := ns / 1e9
 			ns %= 1e9
-			target.Field(0).SetInt(s)
-			target.Field(1).SetInt(ns)
+			storage.Field(target, 0).SetInt(s)
+			storage.Field(target, 1).SetInt(ns)
 			return nil
 		case "Timestamp":
 			unq, err := unquote(string(inputValue))
@@ -914,26 +1058,35 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return err
 			}
 
+			if u.standard {
+				timestamp, standardTimestampErr := parseStandardTimestamp(unq)
+				if standardTimestampErr != nil {
+					return standardTimestampErr
+				}
+				storage.Field(target, 0).SetInt(timestamp.Seconds)
+				storage.Field(target, 1).SetInt(int64(timestamp.Nanos))
+				return nil
+			}
 			t, err := time.Parse(time.RFC3339Nano, unq)
 			if err != nil {
 				return fmt.Errorf("bad Timestamp: %v", err)
 			}
 
-			target.Field(0).SetInt(t.Unix())
-			target.Field(1).SetInt(int64(t.Nanosecond()))
+			storage.Field(target, 0).SetInt(t.Unix())
+			storage.Field(target, 1).SetInt(int64(t.Nanosecond()))
 			return nil
 		case "Struct":
 			var m map[string]json.RawMessage
 			if err := json.Unmarshal(inputValue, &m); err != nil {
 				return fmt.Errorf("bad StructValue: %v", err)
 			}
-			target.Field(0).Set(reflect.ValueOf(map[string]*types.Value{}))
+			storage.Field(target, 0).Set(reflect.ValueOf(map[string]*types.Value{}))
 			for k, jv := range m {
 				pv := &types.Value{}
 				if err := u.unmarshalValue(reflect.ValueOf(pv).Elem(), jv, prop); err != nil {
 					return fmt.Errorf("bad value in StructValue for key %q: %v", k, err)
 				}
-				target.Field(0).SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(pv))
+				storage.Field(target, 0).SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(pv))
 			}
 			return nil
 		case "ListValue":
@@ -942,9 +1095,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				return fmt.Errorf("bad ListValue: %v", err)
 			}
 
-			target.Field(0).Set(reflect.ValueOf(make([]*types.Value, len(s))))
+			storage.Field(target, 0).Set(reflect.ValueOf(make([]*types.Value, len(s))))
 			for i, sv := range s {
-				if err := u.unmarshalValue(target.Field(0).Index(i), sv, prop); err != nil {
+				if err := u.unmarshalValue(storage.Field(target, 0).Index(i), sv, prop); err != nil {
 					return err
 				}
 			}
@@ -952,20 +1105,20 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		case "Value":
 			ivStr := string(inputValue)
 			if ivStr == "null" {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_NullValue{}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_NullValue{}))
 			} else if v, err := strconv.ParseFloat(ivStr, 0); err == nil {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_NumberValue{NumberValue: v}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_NumberValue{NumberValue: v}))
 			} else if v, err := unquote(ivStr); err == nil {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_StringValue{StringValue: v}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_StringValue{StringValue: v}))
 			} else if v, err := strconv.ParseBool(ivStr); err == nil {
-				target.Field(0).Set(reflect.ValueOf(&types.Value_BoolValue{BoolValue: v}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_BoolValue{BoolValue: v}))
 			} else if err := json.Unmarshal(inputValue, &[]json.RawMessage{}); err == nil {
 				lv := &types.ListValue{}
-				target.Field(0).Set(reflect.ValueOf(&types.Value_ListValue{ListValue: lv}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_ListValue{ListValue: lv}))
 				return u.unmarshalValue(reflect.ValueOf(lv).Elem(), inputValue, prop)
 			} else if err := json.Unmarshal(inputValue, &map[string]json.RawMessage{}); err == nil {
 				sv := &types.Struct{}
-				target.Field(0).Set(reflect.ValueOf(&types.Value_StructValue{StructValue: sv}))
+				storage.Field(target, 0).Set(reflect.ValueOf(&types.Value_StructValue{StructValue: sv}))
 				return u.unmarshalValue(reflect.ValueOf(sv).Elem(), inputValue, prop)
 			} else {
 				return fmt.Errorf("unrecognized type for Value %q", ivStr)
@@ -1005,13 +1158,25 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 	// The case of an enum appearing as a number is handled
 	// at the bottom of this function.
 	if inputValue[0] == '"' && prop != nil && prop.Enum != "" {
+		// An unknown name may be ignored only in a scalar enum slot.
+		// A string in place of a repeated field is still malformed JSON.
+		if u.standard && targetType.Kind() != reflect.Int32 {
+			return fmt.Errorf("invalid target %q for enum %s", targetType.Kind(), prop.Enum)
+		}
 		vmap := proto.EnumValueMap(prop.Enum)
-		// Don't need to do unquoting; valid enum names
-		// are from a limited character set.
-		s := inputValue[1 : len(inputValue)-1]
-		n, ok := vmap[string(s)]
+		var name string
+		if err := json.Unmarshal(inputValue, &name); err != nil {
+			return err
+		}
+		n, ok := vmap[name]
 		if !ok {
-			return fmt.Errorf("unknown value %q for enum %s", s, prop.Enum)
+			n, ok = proto.EnumJSONValue(prop.Enum, name)
+		}
+		if !ok {
+			if u.standard && u.AllowUnknownFields {
+				return errIgnoredEnumName
+			}
+			return fmt.Errorf("unknown value %q for enum %s", name, prop.Enum)
 		}
 		if target.Kind() == reflect.Ptr { // proto2
 			target.Set(reflect.New(targetType.Elem()))
@@ -1034,11 +1199,15 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 
 	// Handle nested messages.
 	if targetType.Kind() == reflect.Struct {
+		if u.standard && string(inputValue) == "null" {
+			return fmt.Errorf("expected a message object")
+		}
 		var jsonFields map[string]json.RawMessage
 		if err := json.Unmarshal(inputValue, &jsonFields); err != nil {
 			return err
 		}
 
+		var fieldError error
 		consumeField := func(prop *proto.Properties) (json.RawMessage, bool) {
 			// Be liberal in what names we accept; both orig_name and camelName are okay.
 			fieldNames := acceptedJSONFieldNames(prop)
@@ -1046,6 +1215,10 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			vOrig, okOrig := jsonFields[fieldNames.orig]
 			vCamel, okCamel := jsonFields[fieldNames.camel]
 			if !okOrig && !okCamel {
+				return nil, false
+			}
+			if u.standard && okOrig && okCamel && fieldNames.orig != fieldNames.camel {
+				fieldError = fmt.Errorf("duplicate field %q", prop.OrigName)
 				return nil, false
 			}
 			// If, for some reason, both are present in the data, favour the camelName.
@@ -1068,25 +1241,53 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 				continue
 			}
 			valueForField, ok := consumeField(sprops.Prop[i])
+			if fieldError != nil {
+				return fieldError
+			}
 			if !ok {
 				continue
 			}
 
-			if err := u.unmarshalValue(target.Field(i), valueForField, sprops.Prop[i]); err != nil {
+			if err := u.unmarshalValue(storage.Field(target, i), valueForField, sprops.Prop[i]); err != nil {
+				if err == errIgnoredEnumName {
+					storage.Field(target, i).Set(reflect.Zero(storage.Field(target, i).Type()))
+					continue
+				}
 				return err
 			}
 		}
 		// Check for any oneof fields.
 		if len(jsonFields) > 0 {
+			seen := make(map[int]bool)
 			for _, oop := range sprops.OneofTypes {
 				raw, ok := consumeField(oop.Prop)
+				if fieldError != nil {
+					return fieldError
+				}
 				if !ok {
 					continue
 				}
+				if u.standard {
+					if string(bytes.TrimSpace(raw)) == "null" && !acceptsJSONNull(oop.Type.Elem().Field(0).Type) {
+						continue
+					}
+				}
 				nv := reflect.New(oop.Type.Elem())
-				target.Field(oop.Field).Set(nv)
-				if err := u.unmarshalValue(nv.Elem().Field(0), raw, oop.Prop); err != nil {
+				if !u.standard {
+					storage.Field(target, oop.Field).Set(nv)
+				}
+				if err := u.unmarshalValue(storage.Field(nv.Elem(), 0), raw, oop.Prop); err != nil {
+					if err == errIgnoredEnumName {
+						continue
+					}
 					return err
+				}
+				if u.standard {
+					if seen[oop.Field] {
+						return fmt.Errorf("multiple values for oneof")
+					}
+					seen[oop.Field] = true
+					storage.Field(target, oop.Field).Set(nv)
 				}
 			}
 		}
@@ -1125,6 +1326,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 	// Handle arrays
 	if targetType.Kind() == reflect.Slice {
 		if targetType.Elem().Kind() == reflect.Uint8 {
+			if u.standard && len(inputValue) > 0 && inputValue[0] != '"' {
+				return fmt.Errorf("expected base64 string")
+			}
 			outRef := reflect.New(targetType)
 			outVal := outRef.Interface()
 			//CustomType with underlying type []byte
@@ -1143,7 +1347,19 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			// https://github.com/golang/go/commit/c60707b14d6be26bf4213114d13070bff00d0b0a
 			var out []byte
 			if err := json.Unmarshal(inputValue, &out); err != nil {
-				return err
+				var encoded string
+				if stringErr := json.Unmarshal(inputValue, &encoded); stringErr != nil {
+					return err
+				}
+				for _, encoding := range []*base64.Encoding{base64.RawStdEncoding, base64.URLEncoding, base64.RawURLEncoding} {
+					out, err = encoding.DecodeString(encoded)
+					if err == nil {
+						break
+					}
+				}
+				if err != nil {
+					return err
+				}
 			}
 			target.SetBytes(out)
 			return nil
@@ -1156,11 +1372,20 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		if slc != nil {
 			l := len(slc)
 			target.Set(reflect.MakeSlice(targetType, l, l))
+			kept := 0
 			for i := 0; i < l; i++ {
-				if err := u.unmarshalValue(target.Index(i), slc[i], prop); err != nil {
+				if u.standard && string(bytes.TrimSpace(slc[i])) == "null" && !acceptsJSONNull(targetType.Elem()) {
+					return fmt.Errorf("null repeated element")
+				}
+				if err := u.unmarshalValue(target.Index(kept), slc[i], prop); err != nil {
+					if err == errIgnoredEnumName {
+						continue
+					}
 					return err
 				}
+				kept++
 			}
+			target.SetLen(kept)
 		}
 		return nil
 	}
@@ -1174,6 +1399,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		if mp != nil {
 			target.Set(reflect.MakeMap(targetType))
 			for ks, raw := range mp {
+				if u.standard && string(bytes.TrimSpace(raw)) == "null" && !acceptsJSONNull(targetType.Elem()) {
+					return fmt.Errorf("null map value")
+				}
 				// Unmarshal map key. The core json library already decoded the key into a
 				// string, so we handle that specially. Other types were quoted post-serialization.
 				var k reflect.Value
@@ -1201,6 +1429,9 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 					vprop = prop.MapValProp
 				}
 				if err := u.unmarshalValue(v, raw, vprop); err != nil {
+					if err == errIgnoredEnumName {
+						continue
+					}
 					return err
 				}
 				target.SetMapIndex(k, v)
@@ -1224,9 +1455,64 @@ func (u *Unmarshaler) unmarshalValue(target reflect.Value, inputValue json.RawMe
 		targetType.Kind() == reflect.Int32 || targetType.Kind() == reflect.Uint32 ||
 		targetType.Kind() == reflect.Float32 || targetType.Kind() == reflect.Float64
 	if isNum && strings.HasPrefix(string(inputValue), `"`) {
-		inputValue = inputValue[1 : len(inputValue)-1]
+		var number string
+		if err := json.Unmarshal(inputValue, &number); err != nil {
+			return err
+		}
+		if u.standard && strings.TrimSpace(number) != number {
+			return fmt.Errorf("whitespace in numeric string")
+		}
+		// Preserve the historical tolerance for whitespace inside numeric strings.
+		// The separate standard entrypoint validates the stricter contract.
+		number = strings.TrimSpace(number)
+		if isFloat {
+			if value, ok := nonFinite[strconv.Quote(number)]; ok {
+				target.SetFloat(value)
+				return nil
+			}
+		}
+		inputValue = json.RawMessage(number)
 	}
 
+	if string(inputValue) != "null" {
+		switch targetType.Kind() {
+		case reflect.Int32, reflect.Int64:
+			decimal, err := integerDecimal(string(inputValue))
+			if err != nil {
+				return err
+			}
+			n, err := strconv.ParseInt(decimal, 10, targetType.Bits())
+			if err != nil {
+				return err
+			}
+			if prop != nil && len(prop.ClosedEnum) > 0 && !prop.ClosedEnum[int32(n)] {
+				return fmt.Errorf("unknown value %d for closed enum %s", n, prop.Enum)
+			}
+			target.SetInt(n)
+			return nil
+		case reflect.Uint32, reflect.Uint64:
+			decimal, err := integerDecimal(string(inputValue))
+			if err != nil {
+				return err
+			}
+			n, err := strconv.ParseUint(decimal, 10, targetType.Bits())
+			if err != nil {
+				return err
+			}
+			target.SetUint(n)
+			return nil
+		}
+	}
+
+	if prop != nil && len(prop.ClosedEnum) > 0 && targetType.Kind() == reflect.Int32 {
+		var n int32
+		if err := json.Unmarshal(inputValue, &n); err != nil {
+			return err
+		}
+		if !prop.ClosedEnum[n] {
+			return fmt.Errorf("unknown value %d for closed enum %s", n, prop.Enum)
+		}
+	}
 	// Use the encoding/json for parsing other value types.
 	return json.Unmarshal(inputValue, target.Addr().Interface())
 }
@@ -1326,15 +1612,16 @@ func checkRequiredFields(pb proto.Message) error {
 	}
 
 	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
 		sfield := v.Type().Field(i)
-
-		if sfield.PkgPath != "" {
-			// blank PkgPath means the field is exported; skip if not exported
+		if strings.HasPrefix(sfield.Name, "XXX_") {
 			continue
 		}
-
-		if strings.HasPrefix(sfield.Name, "XXX_") {
+		if sfield.PkgPath != "" && sfield.Tag.Get("protobuf") == "" && sfield.Tag.Get("protobuf_oneof") == "" {
+			// Unrelated private implementation fields are not protobuf storage.
+			continue
+		}
+		field := storage.Field(v, i)
+		if !field.CanInterface() {
 			continue
 		}
 
@@ -1352,7 +1639,7 @@ func checkRequiredFields(pb proto.Message) error {
 			if v.Kind() != reflect.Struct || v.NumField() < 1 {
 				continue
 			}
-			field = v.Field(0)
+			field = storage.Field(v, 0)
 			sfield = v.Type().Field(0)
 		}
 

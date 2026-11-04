@@ -1,0 +1,66 @@
+{
+  "scope": "All .proto files delivered in the five pinned Go module archives; excludes other versions, omitted repository files and deployed workloads.",
+  "rows": [
+    {
+      "project": "prometheus",
+      "module": {
+        "Path": "github.com/prometheus/prometheus",
+        "Version": "v0.315.1",
+        "Sum": "h1:ZXaNKyUO5szJhhw7gKiP6b2jpx1QkS0S3CI1R1bPqIA=",
+        "GoModSum": "h1:6ISUXTjRxj9U2d8ssng8khR1b2dDJ+MpftZD190149I="
+      },
+      "schema_files_scanned": 4,
+      "schema_inventory_sha256": "4865bec88534a731cf7e28011b01761b089e18a7008a1274cb14dcabd546f7ae",
+      "message_set_option_occurrences": []
+    },
+    {
+      "project": "kubernetes",
+      "module": {
+        "Path": "k8s.io/apimachinery",
+        "Version": "v0.31.4",
+        "Sum": "h1:8xjE2C4CzhYVm9DGf60yohpNUh5AEBnPxCryPBECmlM=",
+        "GoModSum": "h1:rsPdaZJfTfLsNJSQzNHQvYoTmxhoOEofxtOsF3rtsMo="
+      },
+      "schema_files_scanned": 7,
+      "schema_inventory_sha256": "74cd3c8f1048d3cc6c58efa631aa006e89ad251a03657de8c9d2704c81325fbb",
+      "message_set_option_occurrences": []
+    },
+    {
+      "project": "kubernetes",
+      "module": {
+        "Path": "k8s.io/api",
+        "Version": "v0.31.4",
+        "Sum": "h1:I2QNzitPVsPeLQvexMEsj945QumYraqv9m74isPDKhM=",
+        "GoModSum": "h1:d+7vgXLvmcdT1BCo79VEgJxHHryww3V5np2OYTr6jdw="
+      },
+      "schema_files_scanned": 58,
+      "schema_inventory_sha256": "6612a32406e4eff76e949455164737fc399785b55df5dc31f5de7ece9142e1d0",
+      "message_set_option_occurrences": []
+    },
+    {
+      "project": "buildkit",
+      "module": {
+        "Path": "github.com/moby/buildkit",
+        "Version": "v0.12.5",
+        "Sum": "h1:RNHH1l3HDhYyZafr5EgstEu8aGNCwyfvMtrQDtjH9T0=",
+        "GoModSum": "h1:YGwjA2loqyiYfZeEo8FtI7z4x5XponAaIWsWcSjWwso="
+      },
+      "schema_files_scanned": 14,
+      "schema_inventory_sha256": "7ad2ef92d079596a280d8b68c67bd549be5c6536affd740a8dc1164d38ae4dc4",
+      "message_set_option_occurrences": []
+    },
+    {
+      "project": "cockroach",
+      "module": {
+        "Path": "github.com/cockroachdb/errors",
+        "Version": "v1.14.0",
+        "Sum": "h1:EfdVEJpN3z8rPMo43Yit59LxoiIa470fSXpZXuEs+ZI=",
+        "GoModSum": "h1:xRa70jZ9sNBQmISt5KmJmAD++E4dQHm89oCRiZGEdq0="
+      },
+      "schema_files_scanned": 10,
+      "schema_inventory_sha256": "e7f61dce3d414ca0275711c6ac5fbe74b222574cd66eec98b3ecf4fccdc4182a",
+      "message_set_option_occurrences": []
+    }
+  ],
+  "decision": "Preserve legacy MessageSet support. Defer modern ProtoReflect/HYBRID/OPAQUE MessageSet until a concrete downstream schema and workload require it."
+}

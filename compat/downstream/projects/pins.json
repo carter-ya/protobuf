@@ -1,0 +1,93 @@
+[
+  {
+    "name": "prometheus",
+    "modules": [
+      {
+        "Path": "github.com/prometheus/prometheus",
+        "Version": "v0.315.1",
+        "Sum": "h1:ZXaNKyUO5szJhhw7gKiP6b2jpx1QkS0S3CI1R1bPqIA=",
+        "GoModSum": "h1:6ISUXTjRxj9U2d8ssng8khR1b2dDJ+MpftZD190149I="
+      }
+    ],
+    "packages": [
+      "github.com/prometheus/prometheus/prompb/..."
+    ],
+    "regenerate": {
+      "backend": "gogofast",
+      "directory": "prompb",
+      "files": [
+        "types.proto",
+        "remote.proto",
+        "io/prometheus/write/v2/types.proto"
+      ],
+      "options": [
+        "plugins=grpc",
+        "Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types"
+      ]
+    }
+  },
+  {
+    "name": "kubernetes",
+    "modules": [
+      {
+        "Path": "k8s.io/apimachinery",
+        "Version": "v0.31.4",
+        "Sum": "h1:8xjE2C4CzhYVm9DGf60yohpNUh5AEBnPxCryPBECmlM=",
+        "GoModSum": "h1:rsPdaZJfTfLsNJSQzNHQvYoTmxhoOEofxtOsF3rtsMo="
+      },
+      {
+        "Path": "k8s.io/api",
+        "Version": "v0.31.4",
+        "Sum": "h1:I2QNzitPVsPeLQvexMEsj945QumYraqv9m74isPDKhM=",
+        "GoModSum": "h1:d+7vgXLvmcdT1BCo79VEgJxHHryww3V5np2OYTr6jdw="
+      }
+    ],
+    "packages": [
+      "k8s.io/apimachinery/pkg/api/resource",
+      "k8s.io/apimachinery/pkg/util/intstr",
+      "k8s.io/apimachinery/pkg/apis/meta/v1",
+      "k8s.io/apimachinery/pkg/runtime/serializer/protobuf",
+      "k8s.io/api/core/v1",
+      "k8s.io/api/apps/v1"
+    ],
+    "regenerate": null
+  },
+  {
+    "name": "buildkit",
+    "modules": [
+      {
+        "Path": "github.com/moby/buildkit",
+        "Version": "v0.12.5",
+        "Sum": "h1:RNHH1l3HDhYyZafr5EgstEu8aGNCwyfvMtrQDtjH9T0=",
+        "GoModSum": "h1:YGwjA2loqyiYfZeEo8FtI7z4x5XponAaIWsWcSjWwso="
+      }
+    ],
+    "packages": [
+      "github.com/moby/buildkit/solver/pb",
+      "github.com/moby/buildkit/util/apicaps"
+    ],
+    "regenerate": {
+      "backend": "gogofaster",
+      "directory": "solver/pb",
+      "files": [
+        "ops.proto"
+      ],
+      "options": []
+    }
+  },
+  {
+    "name": "cockroach",
+    "modules": [
+      {
+        "Path": "github.com/cockroachdb/errors",
+        "Version": "v1.14.0",
+        "Sum": "h1:EfdVEJpN3z8rPMo43Yit59LxoiIa470fSXpZXuEs+ZI=",
+        "GoModSum": "h1:xRa70jZ9sNBQmISt5KmJmAD++E4dQHm89oCRiZGEdq0="
+      }
+    ],
+    "packages": [
+      "github.com/cockroachdb/errors/..."
+    ],
+    "regenerate": null
+  }
+]

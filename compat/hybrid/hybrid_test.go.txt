@@ -1,0 +1,20 @@
+package consumer
+
+import (
+ "testing"
+ gogo "github.com/gogo/protobuf/proto"
+ pb "example.com/native/pb"
+)
+func TestHybridContract(t *testing.T) {
+ n:=new(pb.Node);n.SetPresentText("");if !n.HasPresentText(){t.Fatal("optional string setter presence")};n.ClearPresentText();n.SetPresent(0);n.SetPresentData(nil);n.SetData(nil);n.SetBlob(nil)
+ if !n.HasPresent()||!n.HasPresentData()||!n.HasBlob()||n.Data==nil||n.GetBlob()==nil{t.Fatal("nil/presence semantics",n)}
+ n.SetNumber(0);if !n.HasNumber()||n.WhichChoice()!=pb.Node_Number_case||n.WhichChoice().String()!="number"{t.Fatal("oneof case")}
+ n.ClearSelected();if !n.HasNumber(){t.Fatal("cleared unrelated member")};n.SetSelected(nil);if n.HasChoice(){t.Fatal("nil message setter")}
+ text:="";n=pb.Node_builder{Title:&text}.Build();if !n.HasTitle()||n.GetTitle()!=""{t.Fatal("string oneof builder presence")};n.SetTitle("next");if n.WhichChoice()!=pb.Node_Title_case{t.Fatal("string oneof setter")};n.ClearTitle();if n.HasChoice(){t.Fatal("string oneof clear")}
+ zero:=int32(0);values:=[]int32{1};scores:=map[string]int32{"x":2};child:=&pb.Node{Name:"child"}
+ b:=pb.Node_builder{Present:&zero,Values:values,Scores:scores,Number:gogo.Int32(0),Selected:child,PresentData:[]byte{}}.Build()
+ if b.Present!=&zero||b.GetSelected()!=child||b.WhichChoice()!=pb.Node_Selected_case||!b.HasPresentData(){t.Fatal("builder presence/oneof precedence")}
+ values[0]=3;scores["x"]=4;if b.Values[0]!=3||b.Scores["x"]!=4{t.Fatal("builder alias contract")}
+ b.ClearPresent();b.ClearPresentData();b.ClearChoice();if b.HasPresent()||b.HasPresentData()||b.HasChoice(){t.Fatal("clear")}
+ var nilNode *pb.Node;if nilNode.HasChoice()||nilNode.HasPresent()||nilNode.WhichChoice()!=pb.Node_Choice_not_set_case{t.Fatal("nil accessor")}
+}

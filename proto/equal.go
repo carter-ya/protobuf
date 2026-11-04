@@ -38,6 +38,7 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"time"
 )
 
 /*
@@ -100,7 +101,7 @@ func equalStruct(v1, v2 reflect.Value) bool {
 		if strings.HasPrefix(f.Name, "XXX_") {
 			continue
 		}
-		f1, f2 := v1.Field(i), v2.Field(i)
+		f1, f2 := generatedField(v1, i), generatedField(v2, i)
 		if f.Type.Kind() == reflect.Ptr {
 			if n1, n2 := f1.IsNil(), f2.IsNil(); n1 && n2 {
 				// both unset
@@ -147,6 +148,19 @@ func equalAny(v1, v2 reflect.Value, prop *Properties) bool {
 		m1, _ := v1.Interface().(Message)
 		m2, _ := v2.Interface().(Message)
 		return Equal(m1, m2)
+	}
+	if prop != nil && prop.Proto3Optional {
+		if prop.CustomType != "" {
+			b1, e1 := v1.Addr().Interface().(Marshaler).Marshal()
+			b2, e2 := v2.Addr().Interface().(Marshaler).Marshal()
+			return e1 == nil && e2 == nil && bytes.Equal(b1, b2)
+		}
+		if prop.StdTime {
+			return v1.Interface().(time.Time).Equal(v2.Interface().(time.Time))
+		}
+		if prop.WktPointer && v1.Kind() == reflect.Slice && v1.Len() == 0 && v2.Len() == 0 {
+			return true
+		}
 	}
 	switch v1.Kind() {
 	case reflect.Bool:
@@ -196,13 +210,13 @@ func equalAny(v1, v2 reflect.Value, prop *Properties) bool {
 
 			// Edge case: if this is in a proto3 message, a zero length
 			// bytes field is considered the zero value.
-			if prop != nil && prop.proto3 && v1.Len() == 0 && v2.Len() == 0 {
+			if prop != nil && prop.proto3 && !(prop.Proto3Optional || prop.ExplicitPresence) && v1.Len() == 0 && v2.Len() == 0 {
 				return true
 			}
 			if v1.IsNil() != v2.IsNil() {
 				return false
 			}
-			return bytes.Equal(v1.Interface().([]byte), v2.Interface().([]byte))
+			return bytes.Equal(v1.Bytes(), v2.Bytes())
 		}
 
 		if v1.Len() != v2.Len() {
@@ -215,7 +229,7 @@ func equalAny(v1, v2 reflect.Value, prop *Properties) bool {
 		}
 		return true
 	case reflect.String:
-		return v1.Interface().(string) == v2.Interface().(string)
+		return v1.String() == v2.String()
 	case reflect.Struct:
 		return equalStruct(v1, v2)
 	case reflect.Uint32, reflect.Uint64:

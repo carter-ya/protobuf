@@ -1,0 +1,36 @@
+package qualify
+
+import (
+	bridge "example.com/enum-prefix/bridge"
+	pb "example.com/enum-prefix/pb"
+	jsonstandard "github.com/gogo/protobuf/jsonpb/standard"
+	"github.com/gogo/protobuf/proto"
+	"testing"
+)
+
+func TestWireJSONNames(t *testing.T) {
+	if pb.PURPLE_OLD_NAME != pb.PURPLE_NEW_NAME || bridge.PURPLE_OLD_NAME != pb.PURPLE_NEW_NAME {
+		t.Fatal("migration alias lost across public import")
+	}
+	var got pb.Container
+	color := pb.COLOR_RED_NAME
+	got.Color = &color
+	wire, err := proto.Marshal(&got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded pb.Container
+	if err := proto.Unmarshal(wire, &decoded); err != nil || decoded.GetColor() != color {
+		t.Fatal("binary enum roundtrip", err)
+	}
+	if got.GetColor().String() != "COLOR_RED" {
+		t.Fatal("Go prefix changed proto enum spelling")
+	}
+	text, err := (&jsonstandard.Marshaler{}).MarshalToString(&got)
+	if err != nil || text != `{"color":"COLOR_RED"}` {
+		t.Fatal("JSON name changed", text, err)
+	}
+	if err := jsonstandard.UnmarshalString(`{"color":"COLOR_RED_ALIAS"}`, &decoded); err != nil || decoded.GetColor() != color {
+		t.Fatal("JSON proto alias changed", err)
+	}
+}

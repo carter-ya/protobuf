@@ -1,0 +1,99 @@
+package qualify
+
+import (
+	pb "example.com/gogo-required-merge/pb"
+	"github.com/gogo/protobuf/proto"
+	"testing"
+)
+
+const standard = STANDARD
+const editions = EDITIONS
+const checkedUTF8 = CHECKED_UTF8
+
+func field(n int, body []byte) []byte {
+	return append([]byte{byte(n<<3 | 2), byte(len(body))}, body...)
+}
+func join(parts ...[]byte) []byte {
+	var b []byte
+	for _, part := range parts {
+		b = append(b, part...)
+	}
+	return b
+}
+
+var a = []byte{8, 1}
+var bc = []byte{16, 2, 26, 0}
+var complete = []byte{8, 1, 16, 2, 26, 0}
+
+func decode(t *testing.T, input []byte) error {
+	t.Helper()
+	return proto.Unmarshal(input, new(pb.Record))
+}
+func TestRequiredFragments(t *testing.T) {
+	input := join(field(1, a), field(1, bc))
+	if err := decode(t, input); (err == nil) != standard {
+		t.Fatalf("standard=%v: %v", standard, err)
+	}
+	if !standard {
+		return
+	}
+	good := [][]byte{
+		input, join(field(4, a), field(4, bc)), join(field(4, a), []byte{40, 1}),
+		join(field(3, join(field(1, []byte("x")), field(2, a))), field(3, join(field(1, []byte("x")), field(2, complete)))),
+		field(3, join(field(1, []byte("x")), field(2, a), field(2, bc))),
+	}
+	if editions {
+		good = append(good, join([]byte{51}, a, []byte{52, 51}, bc, []byte{52}))
+	} else {
+		good = append(good, join(field(6, a), field(6, bc)))
+	}
+	for _, wire := range good {
+		if err := decode(t, wire); err != nil {
+			t.Fatalf("valid merged wire %x: %v", wire, err)
+		}
+	}
+	bad := [][]byte{field(1, a), join(field(2, a), field(2, bc)), field(3, field(1, []byte("x"))), join(field(1, []byte{26, 3, 'A'}), field(1, complete))}
+	if checkedUTF8 {
+		bad = append(bad, join(field(1, a), field(7, []byte{255}), field(1, bc), field(7, []byte("x"))))
+	}
+	if editions {
+		bad = append(bad, join([]byte{51}, complete, []byte{60}))
+	}
+	for _, wire := range bad {
+		if err := decode(t, wire); err == nil {
+			t.Fatalf("invalid merged wire accepted %x", wire)
+		}
+	}
+	var record pb.Record
+	if err := proto.Unmarshal(field(1, a), &record); err == nil {
+		t.Fatal("initial incomplete child accepted")
+	}
+	if err := proto.UnmarshalMerge(field(1, bc), &record); err != nil {
+		t.Fatal("later call completes child", err)
+	}
+	if err := proto.UnmarshalMerge(nil, &record); err != nil {
+		t.Fatal("valid prior child", err)
+	}
+	var leaf pb.Leaf
+	if err := proto.Unmarshal(a, &leaf); err == nil {
+		t.Fatal("initial incomplete root accepted")
+	}
+	if err := proto.UnmarshalMerge(bc, &leaf); err != nil {
+		t.Fatal("later call completes root", err)
+	}
+	if err := proto.UnmarshalMerge(nil, &leaf); err != nil {
+		t.Fatal("valid prior required root", err)
+	}
+	// The direct generated entrypoint must have the same logical boundary.
+	if direct, ok := interface{}(&record).(interface{ Unmarshal([]byte) error }); ok {
+		record.Reset()
+		if err := direct.Unmarshal(input); err != nil {
+			t.Fatal("direct decode", err)
+		}
+	}
+	var table proto.InternalMessageInfo
+	record.Reset()
+	if err := table.Unmarshal(&record, input); err != nil {
+		t.Fatal("table decode", err)
+	}
+}

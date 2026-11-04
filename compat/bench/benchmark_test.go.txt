@@ -1,0 +1,141 @@
+package bench
+
+import (
+	"fmt"
+	"testing"
+
+	pb "example.com/gogo-benchmark/pb"
+	"github.com/gogo/protobuf/proto"
+)
+
+const hasExtension = HAS_EXTENSION
+
+var bytesSink []byte
+var messageSink proto.Message
+var extensionSink interface{}
+
+READ_EXTENSION
+
+func unsigned(number uint64) []byte {
+	var output []byte
+	for number >= 128 {
+		output = append(output, byte(number)|128)
+		number >>= 7
+	}
+	return append(output, byte(number))
+}
+func item(number int, wire int, value []byte) []byte {
+	result := unsigned(uint64(number<<3 | wire))
+	if wire == 2 {
+		result = append(result, unsigned(uint64(len(value)))...)
+	}
+	return append(result, value...)
+}
+func input(size int) []byte {
+	data := make([]byte, size)
+	for i := range data {
+		data[i] = byte(i)
+	}
+	var result []byte
+	for _, field := range [][]byte{
+		item(1, 0, unsigned(123)), item(2, 2, []byte("benchmark")), item(3, 2, data),
+		item(4, 2, []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),
+		item(5, 2, []byte{8, 123, 16, 42}), item(7, 2, []byte{8, 11, 16, 22}),
+	} {
+		result = append(result, field...)
+	}
+	for i := 0; i < 8; i++ {
+		entry := append(item(1, 2, []byte(fmt.Sprintf("key%d", i))), item(2, 0, unsigned(uint64(i)))...)
+		result = append(result, item(6, 2, entry)...)
+	}
+	if hasExtension {
+		child := append([]byte{8, 123, 16, 42}, item(3, 2, data)...)
+		result = append(result, item(100, 2, child)...)
+	}
+	return result
+}
+func setup(b *testing.B, size int) ([]byte, *pb.Record) {
+	b.Helper()
+	wire := input(size)
+	message := new(pb.Record)
+	if err := proto.Unmarshal(wire, message); err != nil {
+		b.Fatal(err)
+	}
+	if message.GetCounter() != 123 || message.GetChild().GetA() != 123 || message.GetPayload().GetA() != 11 || message.GetPayload().GetB() != 22 || message.GetLabel() != "benchmark" || len(message.GetSamples()) != 10 || len(message.GetData()) != size || len(message.GetStates()) != 8 || message.GetStates()["key7"] != 7 {
+		b.Fatal("benchmark fixture lost data")
+	}
+	if hasExtension {
+		value, err := readExtension(message)
+		if err != nil {
+			b.Fatal(err)
+		}
+		child, ok := value.(*pb.Child)
+		if !ok || child.GetA() != 123 || child.GetB() != 42 || len(child.GetData()) != size {
+			b.Fatal("benchmark extension lost data")
+		}
+	}
+	// Return to encoded storage for the encode workload, matching decoder setup.
+	message.Reset()
+	if err := proto.Unmarshal(wire, message); err != nil {
+		b.Fatal(err)
+	}
+	return wire, message
+}
+func BenchmarkCodec(b *testing.B) {
+	for _, size := range []int{64, 4096} {
+		b.Run(fmt.Sprintf("bytes%d", size), func(b *testing.B) {
+			b.Run("Encode", func(b *testing.B) {
+				wire, message := setup(b, size)
+				b.SetBytes(int64(len(wire)))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					output, err := proto.Marshal(message)
+					if err != nil {
+						b.Fatal(err)
+					}
+					bytesSink = output
+				}
+				b.StopTimer()
+				b.ReportMetric(float64(proto.Size(message)), "wire-B")
+			})
+			b.Run("Decode", func(b *testing.B) {
+				wire, message := setup(b, size)
+				b.SetBytes(int64(len(wire)))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					next := new(pb.Record)
+					if err := proto.Unmarshal(wire, next); err != nil {
+						b.Fatal(err)
+					}
+					messageSink = next
+				}
+				b.StopTimer()
+				b.ReportMetric(float64(proto.Size(message)), "wire-B")
+			})
+			if hasExtension {
+				b.Run("DecodeReadExtension", func(b *testing.B) {
+					wire, message := setup(b, size)
+					b.SetBytes(int64(len(wire)))
+					b.ReportAllocs()
+					b.ResetTimer()
+					for i := 0; i < b.N; i++ {
+						next := new(pb.Record)
+						if err := proto.Unmarshal(wire, next); err != nil {
+							b.Fatal(err)
+						}
+						value, err := readExtension(next)
+						if err != nil {
+							b.Fatal(err)
+						}
+						extensionSink = value
+						messageSink = next
+					}
+					b.StopTimer()
+					b.ReportMetric(float64(proto.Size(message)), "wire-B")
+				})
+			}
+		})
+	}
+}

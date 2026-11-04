@@ -1,0 +1,48 @@
+syntax = "proto3";
+package compat.optional.mapping;
+option go_package = "example.com/optional-mappings/pb";
+import "gogoproto/gogo.proto";
+option (gogoproto.equal_all) = true;
+option (gogoproto.compare_all) = true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+enum State {
+  ZERO = 0;
+  ONE = 1;
+}
+message Sample {
+  optional double value_1 = 1
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Double"];
+  optional float value_2 = 2
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Float"];
+  optional int64 value_3 = 3
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Int64"];
+  optional uint64 value_4 = 4
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Uint64"];
+  optional int32 value_5 = 5
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Int32"];
+  optional fixed64 value_6 = 6
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Fixed64"];
+  optional fixed32 value_7 = 7
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Fixed32"];
+  optional bool value_8 = 8
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Bool"];
+  optional string value_9 = 9
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.String"];
+  optional bytes value_10 = 10
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Bytes"];
+  optional uint32 value_11 = 11
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Uint32"];
+  optional State value_12 = 12
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Enum"];
+  optional sfixed32 value_13 = 13
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Sfixed32"];
+  optional sfixed64 value_14 = 14
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Sfixed64"];
+  optional sint32 value_15 = 15
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Sint32"];
+  optional sint64 value_16 = 16
+      [(gogoproto.casttype) = "example.com/optional-mappings/types.Sint64"];
+}

@@ -1,0 +1,35 @@
+{
+  "upstream": "36.2",
+  "baseline_commit": "4ce24b7fb0c7bfb23efa1d12f49c58bc753d9944",
+  "binary_json": {
+    "tests": 5649,
+    "inventory_sha256": "49a5e8ae087e2c8a0df0f59add56e73b3c5f023b8dfb538f21cc5842980e0ed0",
+    "failures": [],
+    "variable_outcomes": [],
+    "skips": [
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidBytes.JsonOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      },
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidBytes.ProtobufOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      },
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidMap.Bytes.JsonOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      },
+      {
+        "test": "Required.EditionUnstable.ProtobufInput.ValidMap.Bytes.ProtobufOutput",
+        "reason": "Unstable future Edition is deliberately unsupported."
+      }
+    ]
+  },
+  "text": {
+    "tests": 909,
+    "inventory_sha256": "d3649c99da775f379416a2867047d0726bcf3adb1879f16e2fc3a38db58a4b85",
+    "failures": [],
+    "variable_outcomes": [],
+    "skips": []
+  }
+}

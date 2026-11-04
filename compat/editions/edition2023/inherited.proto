@@ -1,0 +1,15 @@
+edition = "2023";
+package compat.editions.v2023;
+option go_package = "github.com/gogo/protobuf/compat/editions/edition2023";
+import "compat/editions/edition2023/sample.proto";
+option features.utf8_validation = NONE;
+option features.message_encoding = DELIMITED;
+message Inherited {
+  string unchecked = 1;
+  Child delimited = 2;
+  map<string, Child> map_prefixed = 3;
+  message Nested {
+    string unchecked = 1;
+  }
+  Nested nested = 4;
+}

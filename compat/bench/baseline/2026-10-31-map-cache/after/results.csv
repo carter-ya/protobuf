@@ -1,0 +1,5 @@
+profile,backend,operation,generated_bytes,samples,ns/op,wire-B,B/op,allocs/op
+legacy-current,gogo,BenchmarkCodec/bytes64/Encode,6577,5,1173.0,183.0,1408.0,67.0
+legacy-current,gogo,BenchmarkCodec/bytes64/Decode,6577,5,854.1,183.0,976.0,41.0
+legacy-current,gogo,BenchmarkCodec/bytes4096/Encode,6577,5,1436.0,4216.0,6080.0,67.0
+legacy-current,gogo,BenchmarkCodec/bytes4096/Decode,6577,5,1084.0,4216.0,5008.0,41.0

@@ -131,6 +131,8 @@ func NewPlugin() *plugin {
 	return &plugin{}
 }
 
+func (p *plugin) SupportsEditions() bool { return true }
+
 func (p *plugin) Name() string {
 	return "populate"
 }
@@ -375,7 +377,7 @@ func (p *plugin) GenerateField(file *generator.FileDescriptor, message *generato
 				p.P(`this.`, fieldname, `[i] = `, val)
 				p.Out()
 				p.P(`}`)
-			} else if !gogoproto.IsNullable(field) || proto3 {
+			} else if !gogoproto.IsNullable(field) || (proto3 && !field.GetProto3Optional()) {
 				p.P(`this.`, fieldname, ` = `, val)
 			} else {
 				p.P(p.varGen.Next(), ` := `, val)
@@ -416,7 +418,7 @@ func (p *plugin) GenerateField(file *generator.FileDescriptor, message *generato
 				p.P(`this.`, fieldname, `[i] = `, val)
 				p.Out()
 				p.P(`}`)
-			} else if !gogoproto.IsNullable(field) || proto3 {
+			} else if !gogoproto.IsNullable(field) || (proto3 && !field.GetProto3Optional()) {
 				p.P(`this.`, fieldname, ` = `, val)
 			} else {
 				p.P(p.varGen.Next(), `:= `, val)
@@ -439,7 +441,7 @@ func (p *plugin) GenerateField(file *generator.FileDescriptor, message *generato
 				}
 				p.Out()
 				p.P(`}`)
-			} else if !gogoproto.IsNullable(field) || proto3 {
+			} else if !gogoproto.IsNullable(field) || (proto3 && !field.GetProto3Optional()) {
 				p.P(`this.`, fieldname, ` = `, value(typName, field.GetType()))
 				if negative(field.GetType()) {
 					p.P(`if r.Intn(2) == 0 {`)
@@ -578,7 +580,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 				if field.GetNumber() > maxFieldNumber {
 					maxFieldNumber = field.GetNumber()
 				}
-				oneof := field.OneofIndex != nil
+				oneof := field.IsRealOneof()
 				if !oneof {
 					if field.IsRequired() || (!gogoproto.IsNullable(field) && !field.IsRepeated()) || (proto3 && !field.IsMessage()) {
 						p.GenerateField(file, message, field)
@@ -679,7 +681,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 		//Generate NewPopulated functions for oneof fields
 		m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
 		for _, f := range m.Field {
-			oneof := f.OneofIndex != nil
+			oneof := f.IsRealOneof()
 			if !oneof {
 				continue
 			}
@@ -687,7 +689,10 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 			p.P(`func NewPopulated`, ccTypeName, `(r randy`, p.localName, `, easy bool) *`, ccTypeName, ` {`)
 			p.In()
 			p.P(`this := &`, ccTypeName, `{}`)
-			vanity.TurnOffNullableForNativeTypes(f)
+			if !file.IsEditions() || f.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
+				vanity.TurnOffNullableForNativeTypes(f)
+			vanity.TurnOffNullableForNativeOneof(f)
+			}
 			p.GenerateField(file, message, f)
 			p.P(`return this`)
 			p.Out()

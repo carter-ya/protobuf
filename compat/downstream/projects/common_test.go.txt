@@ -1,0 +1,100 @@
+package projects
+
+import (
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+	"reflect"
+	"testing"
+
+	"github.com/gogo/protobuf/proto"
+)
+
+func TestRealProjectMessages(t *testing.T) {
+	records := map[string]map[string]string{}
+	var peer map[string]map[string]string
+	if path := os.Getenv("PROJECT_COMPAT_PEER_REPORT"); path != "" {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(raw, &peer); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i, value := range samples() {
+		name := fmt.Sprintf("%d:%T", i, value)
+		wire, err := proto.Marshal(value)
+		if err != nil {
+			t.Fatalf("%s marshal: %v", name, err)
+		}
+		if proto.Size(value) != len(wire) {
+			t.Fatalf("%s size mismatch", name)
+		}
+		decoded := reflect.New(reflect.TypeOf(value).Elem()).Interface().(proto.Message)
+		if err := proto.Unmarshal(wire, decoded); err != nil || !same(value, decoded) {
+			t.Fatalf("%s binary roundtrip: %v", name, err)
+		}
+		text, err := marshalJSON(value)
+		if err != nil {
+			t.Fatalf("%s JSON marshal: %v", name, err)
+		}
+		decoded.Reset()
+		if err := unmarshalJSON(text, decoded); err != nil || !same(value, decoded) {
+			t.Fatalf("%s JSON roundtrip: %s: %v", name, text, err)
+		}
+		// JSON is normalized independently of map iteration order; semantic comparison
+		// is between original-runtime and fork runs, not between unrelated encoders.
+		var document interface{}
+		decoder := json.NewDecoder(bytes.NewBufferString(text))
+		decoder.UseNumber()
+		if err := decoder.Decode(&document); err != nil {
+			t.Fatal(err)
+		}
+		canonical, err := json.Marshal(document)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if peer != nil {
+			record, ok := peer[name]
+			if !ok {
+				t.Fatalf("peer omitted %s", name)
+			}
+			external, err := hex.DecodeString(record["wire"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded.Reset()
+			if err := proto.Unmarshal(external, decoded); err != nil || !same(value, decoded) {
+				t.Fatalf("%s peer wire mismatch: %v", name, err)
+			}
+		}
+		records[name] = map[string]string{"wire": hex.EncodeToString(wire), "size": fmt.Sprint(len(wire)), "json": string(canonical)}
+	}
+	raw, err := json.MarshalIndent(records, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path := os.Getenv("PROJECT_COMPAT_REPORT"); path != "" {
+		if err := os.WriteFile(path, append(raw, '\n'), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestProjectCloneAndMerge(t *testing.T) {
+	for _, value := range samples() {
+		checkHelpers(t, value, func() {
+			if !same(value, proto.Clone(value)) {
+				t.Fatalf("%T clone mismatch", value)
+			}
+			merged := reflect.New(reflect.TypeOf(value).Elem()).Interface().(proto.Message)
+			proto.Merge(merged, value)
+			if !same(value, merged) {
+				t.Fatalf("%T merge into empty mismatch", value)
+			}
+		})
+	}
+}
