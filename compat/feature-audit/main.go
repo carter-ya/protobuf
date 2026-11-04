@@ -136,8 +136,8 @@ func main() {
 				panic("feature lacks evidence: " + row.Name)
 			}
 			for _, path := range row.Evidence {
-				_, err := os.Stat(filepath.Join(os.Args[3], path))
-				must(err)
+				_, statErr := os.Stat(filepath.Join(os.Args[3], path))
+				must(statErr)
 			}
 			statuses[row.Status]++
 			if field.GetType() == d.FieldDescriptorProto_TYPE_ENUM {

@@ -38,8 +38,8 @@ func TestZeroValuePresence(t *testing.T) {
 				t.Fatalf("explicit zero lost: %x", b)
 			}
 			n := fresh(m)
-			if err := proto.Unmarshal(b, n); err != nil {
-				t.Fatal(err)
+			if reflectionDecodeErr := proto.Unmarshal(b, n); reflectionDecodeErr != nil {
+				t.Fatal(reflectionDecodeErr)
 			}
 			if field(n, "Value").IsNil() {
 				t.Fatal("zero decoded without presence")
@@ -92,8 +92,8 @@ func TestEveryScalarAndEmptyBytes(t *testing.T) {
 			t.Fatalf("%T Size mismatch", m)
 		}
 		n := fresh(m)
-		if err := proto.Unmarshal(b, n); err != nil {
-			t.Fatal(err)
+		if backendDecodeErr := proto.Unmarshal(b, n); backendDecodeErr != nil {
+			t.Fatal(backendDecodeErr)
 		}
 		if !proto.Equal(m, n) {
 			t.Fatalf("%T scalar zero presence lost", m)
@@ -106,8 +106,8 @@ func TestEveryScalarAndEmptyBytes(t *testing.T) {
 		}
 		text := proto.CompactTextString(m)
 		n = fresh(m)
-		if err := proto.UnmarshalText(text, n); err != nil {
-			t.Fatal(err)
+		if textDecodeErr := proto.UnmarshalText(text, n); textDecodeErr != nil {
+			t.Fatal(textDecodeErr)
 		}
 		if !proto.Equal(m, n) {
 			t.Fatalf("%T text round trip lost presence: %s", m, text)

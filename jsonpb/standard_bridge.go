@@ -137,9 +137,9 @@ func validateStandardJSON(raw []byte) error {
 		case '{':
 			keys := make(map[string]bool)
 			for decoder.More() {
-				key, err := decoder.Token()
-				if err != nil {
-					return err
+				key, entryTokenErr := decoder.Token()
+				if entryTokenErr != nil {
+					return entryTokenErr
 				}
 				name, ok := key.(string)
 				if !ok {
@@ -155,8 +155,8 @@ func validateStandardJSON(raw []byte) error {
 			}
 		case '[':
 			for decoder.More() {
-				if err := visit(depth + 1); err != nil {
-					return err
+				if nestedValueErr := visit(depth + 1); nestedValueErr != nil {
+					return nestedValueErr
 				}
 			}
 		default:

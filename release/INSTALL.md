@@ -1,6 +1,11 @@
 # Install the maintained fork
 
-The qualified published combination is stable root [v1.4.0](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0)
+This source prepares the `v1.4.1` root patch. The commands below target that
+version and become usable after its tag is published and verified. The latest
+verified identities remain in manifest.json until the post-publication update.
+The optional module stays RC2; no optional-module tag is changed.
+
+The earlier verified combination is stable root [v1.4.0](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0)
 from commit `057d06490a721bea0fceb39c5c088bc1ef3085e8`, and optional
 [reflect/v0.1.0-rc.2](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2)
 from commit `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. The optional modern module remains
@@ -18,8 +23,8 @@ replacements while preserving canonical imports:
 mkdir protobuf-tools
 cd protobuf-tools
 go mod init example.com/protobuf-tools
-go mod edit -require=github.com/gogo/protobuf@v1.4.0
-go mod edit -replace=github.com/gogo/protobuf=github.com/carter-ya/protobuf@v1.4.0
+go mod edit -require=github.com/gogo/protobuf@v1.4.1
+go mod edit -replace=github.com/gogo/protobuf=github.com/carter-ya/protobuf@v1.4.1
 go install -mod=mod github.com/gogo/protobuf/protoc-gen-gogo github.com/gogo/protobuf/protoc-gen-gogofast github.com/gogo/protobuf/protoc-gen-gogofaster github.com/gogo/protobuf/protoc-gen-gogoslick github.com/gogo/protobuf/protoc-gen-gogotypes
 ```
 
@@ -34,9 +39,9 @@ fetches archived upstream. The unversioned command above uses the tools graph.
 For Go 1.23+ applications, add both replacements:
 
 ```sh
-go mod edit -require=github.com/gogo/protobuf@v1.4.0
+go mod edit -require=github.com/gogo/protobuf@v1.4.1
 go mod edit -require=github.com/gogo/protobuf/reflect@v0.1.0-rc.2
-go mod edit -replace=github.com/gogo/protobuf=github.com/carter-ya/protobuf@v1.4.0
+go mod edit -replace=github.com/gogo/protobuf=github.com/carter-ya/protobuf@v1.4.1
 go mod edit -replace=github.com/gogo/protobuf/reflect=github.com/carter-ya/protobuf/reflect@v0.1.0-rc.2
 ```
 

@@ -158,8 +158,8 @@ func unmarshalMessageSet(buf []byte, exts interface{}) error {
 	}
 
 	ms := new(messageSet)
-	if err := Unmarshal(buf, ms); err != nil {
-		return err
+	if messageUnmarshalErr := Unmarshal(buf, ms); messageUnmarshalErr != nil {
+		return messageUnmarshalErr
 	}
 	for _, item := range ms.Item {
 		id := *item.TypeId

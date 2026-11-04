@@ -43,17 +43,17 @@ func TestEditionRuntimePresenceAndUTF8(t *testing.T) {
 	if dst.Explicit == nil || len(dst.Explicit) != 0 {
 		t.Fatal("merge lost explicit empty bytes")
 	}
-	if _, err := proto.Marshal(&editionMetadata{Checked: proto.String(string([]byte{255}))}); err == nil {
+	if _, marshalCheckedErr := proto.Marshal(&editionMetadata{Checked: proto.String(string([]byte{255}))}); marshalCheckedErr == nil {
 		t.Fatal("explicit string skipped UTF-8 validation")
 	}
-	if err := proto.Unmarshal([]byte{26, 1, 255}, new(editionMetadata)); err == nil {
+	if decodeCheckedErr := proto.Unmarshal([]byte{26, 1, 255}, new(editionMetadata)); decodeCheckedErr == nil {
 		t.Fatal("explicit string decode skipped UTF-8 validation")
 	}
-	if _, err := proto.Marshal(&editionMetadata{Unchecked: string([]byte{255})}); err != nil {
-		t.Fatal(err)
+	if _, marshalUncheckedErr := proto.Marshal(&editionMetadata{Unchecked: string([]byte{255})}); marshalUncheckedErr != nil {
+		t.Fatal(marshalUncheckedErr)
 	}
-	if err := proto.Unmarshal([]byte{34, 1, 255}, new(editionMetadata)); err != nil {
-		t.Fatal(err)
+	if decodeUncheckedErr := proto.Unmarshal([]byte{34, 1, 255}, new(editionMetadata)); decodeUncheckedErr != nil {
+		t.Fatal(decodeUncheckedErr)
 	}
 	j, err := (&jsonpb.Marshaler{EmitDefaults: true}).MarshalToString(new(editionMetadata))
 	if err != nil || strings.Contains(j, `"explicit"`) || strings.Contains(j, `"checked"`) {

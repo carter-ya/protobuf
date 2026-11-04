@@ -7,7 +7,13 @@ proto3 optional, Editions 2023–2026, standard JSON/text, gogo representations 
 remaining boundaries. Stable Protobuf 36.2 and the 37.0/Go 1.37 previews are
 qualified separately.
 
-The root runtime and generators are available as stable [**v1.4.0**](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0),
+This revision prepares root **v1.4.1**, fixing standard-map defaults and
+required validation, optional-mapping unknown-wire routing and packed enum
+allocation growth. The [installation examples](release/INSTALL.md) target that
+patch once its actual tag is verified. Published source/checksum records are
+updated separately on master after verification.
+
+The previously verified root runtime and generators are available as stable [**v1.4.0**](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0),
 from commit `057d06490a721bea0fceb39c5c088bc1ef3085e8`. The separately qualified optional module
 remains [**reflect/v0.1.0-rc.2**](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2),
 from commit `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. Native ProtoReflect, HYBRID,

@@ -62,16 +62,16 @@ func TestFieldMaskFormats(t *testing.T) {
 		t.Fatalf("%s %v", text, err)
 	}
 	var roundtrip types.FieldMask
-	if err := UnmarshalString(text, &roundtrip); err != nil || !proto.Equal(value, &roundtrip) {
-		t.Fatalf("%v %v", roundtrip, err)
+	if roundtripErr := UnmarshalString(text, &roundtrip); roundtripErr != nil || !proto.Equal(value, &roundtrip) {
+		t.Fatalf("%v %v", roundtrip, roundtripErr)
 	}
 	for _, path := range []string{"fooBar", "foo_3_bar", "foo__bar", "foo_", "", "foo,bar"} {
-		if _, err := (&Marshaler{}).MarshalToString(&types.FieldMask{Paths: []string{path}}); err == nil {
+		if _, encodeErr := (&Marshaler{}).MarshalToString(&types.FieldMask{Paths: []string{path}}); encodeErr == nil {
 			t.Fatal(path)
 		}
 	}
 	for _, text := range []string{`"foo_bar"`, `"foo,,bar"`, `null`, `{"paths":[]}`} {
-		if err := UnmarshalString(text, new(types.FieldMask)); err == nil {
+		if parseErr := UnmarshalString(text, new(types.FieldMask)); parseErr == nil {
 			t.Fatal(text)
 		}
 	}

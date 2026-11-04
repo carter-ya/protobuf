@@ -40,22 +40,22 @@ func normalized(path string) ([]byte, error) {
 				decodeErr = fmt.Errorf("unexpected descriptor literal")
 				return false
 			}
-			value, err := strconv.ParseUint(n.Value, 0, 8)
-			if err != nil {
-				decodeErr = err
+			value, parseErr := strconv.ParseUint(n.Value, 0, 8)
+			if parseErr != nil {
+				decodeErr = parseErr
 				return false
 			}
 			compressed = append(compressed, byte(value))
 		}
-		r, err := gzip.NewReader(bytes.NewReader(compressed))
-		if err != nil {
-			decodeErr = err
+		r, gzipErr := gzip.NewReader(bytes.NewReader(compressed))
+		if gzipErr != nil {
+			decodeErr = gzipErr
 			return false
 		}
-		raw, err := ioutil.ReadAll(r)
+		raw, gzipErr := ioutil.ReadAll(r)
 		r.Close()
-		if err != nil {
-			decodeErr = err
+		if gzipErr != nil {
+			decodeErr = gzipErr
 			return false
 		}
 		lit.Elts = nil

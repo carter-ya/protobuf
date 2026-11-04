@@ -74,8 +74,8 @@ func TestEditionExtensionsWithByteStorage(t *testing.T) {
 		t.Fatal("byte storage lost required fragments")
 	}
 	raw := append(encodeVarint(encodeVarint(nil, 105<<3|WireVarint), 1), encodeVarint(encodeVarint(nil, 105<<3|WireVarint), 2)...)
-	if err := Unmarshal(raw, &got); err != nil {
-		t.Fatal(err)
+	if strictDecodeErr := Unmarshal(raw, &got); strictDecodeErr != nil {
+		t.Fatal(strictDecodeErr)
 	}
 	value, err = GetExtension(&got, bytesRepeated)
 	if err != nil || len(value.([]int32)) != 2 {

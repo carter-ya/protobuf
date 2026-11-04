@@ -33,8 +33,8 @@ func TestEdition2024OptionsAndPresence(t *testing.T) {
 		t.Fatal(err)
 	}
 	file := new(d.FileDescriptorProto)
-	if err := proto.Unmarshal(decoded, file); err != nil {
-		t.Fatal(err)
+	if unmarshalErr := proto.Unmarshal(decoded, file); unmarshalErr != nil {
+		t.Fatal(unmarshalErr)
 	}
 	if file.GetEdition() != d.Edition_EDITION_2024 || len(file.OptionDependency) != 2 {
 		t.Fatalf("option imports lost: %+v", file.OptionDependency)

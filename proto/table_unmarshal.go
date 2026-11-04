@@ -368,8 +368,8 @@ func (u *unmarshalInfo) unmarshal(m pointer, b []byte) error {
 			if _, native := nativeEditionMessageExtension(extension); native {
 				occurrence := encodeVarint(nil, tag<<3|uint64(wire))
 				occurrence = append(occurrence, b0[:len(b0)-len(b)]...)
-				if _, err := decodeEditionMessageExtensionPartial(occurrence, extension, false); err != nil {
-					return err
+				if _, occurrenceErr := decodeEditionMessageExtensionPartial(occurrence, extension, false); occurrenceErr != nil {
+					return occurrenceErr
 				}
 			}
 		}

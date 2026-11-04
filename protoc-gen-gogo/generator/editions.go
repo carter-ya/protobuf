@@ -90,8 +90,8 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 		if options != nil && !reflectNilMessage(options) {
 			extensions, _ := proto.ExtensionDescs(options)
 			for _, e := range extensions {
-				if err := validateEditionOption(options, e); err != nil {
-					return fmt.Errorf("%s: %s: %v", file.GetName(), scope, err)
+				if optionErr := validateEditionOption(options, e); optionErr != nil {
+					return fmt.Errorf("%s: %s: %v", file.GetName(), scope, optionErr)
 				}
 			}
 		}
@@ -99,8 +99,8 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 			extensions, _ := proto.ExtensionDescs(features)
 			for _, e := range extensions {
 				if e.Field == 1002 {
-					if err := validateGoFeatures(features); err != nil {
-						return fmt.Errorf("%s: %s: %v", file.GetName(), scope, err)
+					if featuresErr := validateGoFeatures(features); featuresErr != nil {
+						return fmt.Errorf("%s: %s: %v", file.GetName(), scope, featuresErr)
 					}
 				}
 			}
@@ -110,8 +110,8 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 		}
 		return nil
 	}
-	if err := checkOptions(file.Options, file.GetOptions().GetFeatures(), file.GetName()); err != nil {
-		return nil, nil, err
+	if fileOptionErr := checkOptions(file.Options, file.GetOptions().GetFeatures(), file.GetName()); fileOptionErr != nil {
+		return nil, nil, fileOptionErr
 	}
 	out := &editionMetadata{apiLevels: make(map[*d.DescriptorProto]int32), fields: state.Fields, enums: enums, legacyJSON: make(map[*d.EnumDescriptorProto]bool), enumPrefixes: make(map[*d.EnumValueDescriptorProto]int32), optimize: make(map[*d.DescriptorProto]int32)}
 	fileLegacyJSON, err := enumLegacyJSON(file.GetOptions().GetFeatures(), false)
@@ -196,8 +196,8 @@ func prepareEdition(raw *d.FileDescriptorProto, enums map[string]editionEnum) (*
 				return err
 			}
 			out.apiLevels[m] = api
-			if err := checkOptions(m.Options, m.GetOptions().GetFeatures(), name); err != nil {
-				return err
+			if messageOptionErr := checkOptions(m.Options, m.GetOptions().GetFeatures(), name); messageOptionErr != nil {
+				return messageOptionErr
 			}
 			mode, err := optimizeFeature(m.GetOptions().GetFeatures(), inheritedOptimize)
 			if err != nil {

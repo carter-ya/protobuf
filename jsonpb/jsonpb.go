@@ -1033,9 +1033,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			}
 
 			if u.standard {
-				seconds, nanos, err := parseStandardDuration(unq)
-				if err != nil {
-					return err
+				seconds, nanos, standardDurationErr := parseStandardDuration(unq)
+				if standardDurationErr != nil {
+					return standardDurationErr
 				}
 				storage.Field(target, 0).SetInt(seconds)
 				storage.Field(target, 1).SetInt(nanos)
@@ -1059,9 +1059,9 @@ func (u *jsonDecoder) unmarshalValue(target reflect.Value, inputValue json.RawMe
 			}
 
 			if u.standard {
-				timestamp, err := parseStandardTimestamp(unq)
-				if err != nil {
-					return err
+				timestamp, standardTimestampErr := parseStandardTimestamp(unq)
+				if standardTimestampErr != nil {
+					return standardTimestampErr
 				}
 				storage.Field(target, 0).SetInt(timestamp.Seconds)
 				storage.Field(target, 1).SetInt(int64(timestamp.Nanos))

@@ -45,8 +45,8 @@ func MarshalTextStandardWithLimit(options *TextMarshaler, out io.Writer, message
 		options = new(TextMarshaler)
 	}
 	var buffer bytes.Buffer
-	if err := options.marshal(&buffer, message, true, printUnknown, limit); err != nil {
-		return err
+	if marshalErr := options.marshal(&buffer, message, true, printUnknown, limit); marshalErr != nil {
+		return marshalErr
 	}
 	_, err = out.Write(buffer.Bytes())
 	return err

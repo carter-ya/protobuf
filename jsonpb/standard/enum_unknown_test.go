@@ -85,8 +85,8 @@ func TestStandardJSONNestingBoundary(t *testing.T) {
 			t.Fatalf("depth %d: %v", depth, err)
 		}
 		legacy := new(types.Value)
-		if err := jsonpb.UnmarshalString(input, legacy); err != nil {
-			t.Fatalf("legacy depth %d changed: %v", depth, err)
+		if legacyErr := jsonpb.UnmarshalString(input, legacy); legacyErr != nil {
+			t.Fatalf("legacy depth %d changed: %v", depth, legacyErr)
 		}
 		_, err = (&Marshaler{}).MarshalToString(legacy)
 		if depth <= 100 && err != nil || depth > 100 && err == nil {

@@ -99,16 +99,16 @@ func TestEditionRequiredExtensionFragments(t *testing.T) {
 		t.Fatal("required fragments did not merge")
 	}
 	repeated := append(extensionWire(105, []byte{8, 1, 16, 2}), extensionWire(105, []byte{8, 3, 16, 4})...)
-	if err := Unmarshal(repeated, &got); err != nil {
-		t.Fatal(err)
+	if repeatedDecodeErr := Unmarshal(repeated, &got); repeatedDecodeErr != nil {
+		t.Fatal(repeatedDecodeErr)
 	}
 	value, err = GetExtension(&got, validationRepeated)
 	if err != nil || len(value.([]*extensionValidationRequired)) != 2 {
 		t.Fatalf("repeated extension changed: %v", err)
 	}
 	group := append(append(encodeVarint(nil, 106<<3|WireStartGroup), 8, 1), encodeVarint(nil, 106<<3|WireEndGroup)...)
-	if err := Unmarshal(group, &got); err != nil {
-		t.Fatal(err)
+	if groupDecodeErr := Unmarshal(group, &got); groupDecodeErr != nil {
+		t.Fatal(groupDecodeErr)
 	}
 	value, err = GetExtension(&got, validationGroup)
 	if err != nil || *value.(*extensionValidationPayload).A != 1 {
@@ -173,10 +173,10 @@ func TestEditionNestedRequiredExtensionFragments(t *testing.T) {
 	if err != nil || value.(*extensionValidationNested).Child.A == nil || value.(*extensionValidationNested).Child.B == nil {
 		t.Fatalf("nested merge lost fields: %v", err)
 	}
-	if err := SetExtension(&got, validationRequired, &extensionValidationRequired{A: Int32(1)}); err != nil {
-		t.Fatal(err)
+	if setRequiredErr := SetExtension(&got, validationRequired, &extensionValidationRequired{A: Int32(1)}); setRequiredErr != nil {
+		t.Fatal(setRequiredErr)
 	}
-	if err := UnmarshalMerge(extensionWire(104, []byte{16, 2}), &got); err == nil {
+	if mergeRequiredErr := UnmarshalMerge(extensionWire(104, []byte{16, 2}), &got); mergeRequiredErr == nil {
 		t.Fatal("invalid decoded prior value must return an encoding error")
 	}
 	value, err = GetExtension(&got, validationRequired)
