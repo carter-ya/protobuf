@@ -302,6 +302,13 @@ func (m *message) GetUnknown() protoreflect.RawFields {
 }
 func (m *message) SetUnknown(b protoreflect.RawFields) {
 	m.requireMutable()
+	if m.info.desc.ExtensionRanges().Len() == 0 {
+		if !b.IsValid() {
+			panic("gogoreflect: malformed unknown fields")
+		}
+		m.nativeField(m.info.unknown).SetBytes(b)
+		return
+	}
 	var regular []byte
 	extensionFields := make(map[int32][]byte)
 	registered := gogo.RegisteredExtensions(m.native())

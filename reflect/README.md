@@ -138,3 +138,15 @@ This RC retains the exact development runtime revision in go.mod for Edition
 2026 option/JSON semantics. The parent runtime has no V2 dependency. See the
 [dependency decision and promotion gates](../release/README.md#official-runtime-decision)
 before upgrading or attempting a downgrade to the stable reference.
+
+### Source fixes after RC2
+
+The current source avoids repeated unknown-buffer copies during closed-enum
+merge/discard decoding and ordinary unknown-field decoding without extension
+ranges. These fixes are not in the immutable published reflect RC2 module.
+RC2 may allocate disproportionately for inputs containing many such occurrences,
+including Merge+DiscardUnknown with a large existing unknown buffer. Bound input
+sizes and occurrence counts when using that RC with untrusted wire data, or use
+a separately qualified full source revision. Root v1.4.1 publication does not
+republish or silently change the optional module. A future optional-module
+release needs its own versioned installation qualification.

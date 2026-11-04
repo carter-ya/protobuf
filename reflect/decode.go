@@ -62,7 +62,10 @@ var nativeMethods = protoiface.Methods{
 			if enum != nil && enum.Enum() != nil && enum.Enum().IsClosed() {
 				var previous []byte
 				if options.DiscardUnknown {
-					previous = append([]byte(nil), m.GetUnknown()...)
+					// Native closed-enum decoding appends rejected values only
+					// to the regular unknown field, including for extensions.
+					// Retain its slice header; appending cannot change the prefix.
+					previous = m.nativeField(m.info.unknown).Bytes()
 				}
 				if fd.IsExtension() {
 					x := m.extension(fd)
@@ -76,7 +79,7 @@ var nativeMethods = protoiface.Methods{
 					err = nil
 				}
 				if options.DiscardUnknown {
-					m.SetUnknown(previous)
+					m.nativeField(m.info.unknown).SetBytes(previous)
 				}
 				if err != nil {
 					return out, err
@@ -94,6 +97,18 @@ type slowView struct{ protoreflect.Message }
 func (s slowView) ProtoReflect() protoreflect.Message   { return s }
 func (s slowView) Interface() protoreflect.ProtoMessage { return s }
 func (s slowView) ProtoMethods() *protoiface.Methods    { return nil }
+
+func (s slowView) SetUnknown(b protoreflect.RawFields) {
+	m := s.Message.(*message)
+	if m.info.desc.ExtensionRanges().Len() == 0 {
+		// The official decoder has already validated each occurrence. Keep
+		// its append buffer instead of revalidating the accumulated prefix.
+		m.requireMutable()
+		m.nativeField(m.info.unknown).SetBytes(b)
+		return
+	}
+	m.SetUnknown(b)
+}
 
 type extensionResolver interface {
 	FindExtensionByName(protoreflect.FullName) (protoreflect.ExtensionType, error)

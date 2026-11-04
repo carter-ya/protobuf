@@ -67,3 +67,12 @@ See COMPATIBILITY.md and release/SUPPORT.md for the complete boundaries and the
 reason the modern module stays RC. Existing RC1 and RC2 tags remain immutable.
 
 Actual tag installation evidence: [Go1.15/1.23/1.27 cold-cache consumer CI](https://github.com/carter-ya/protobuf/actions/runs/41800835625).
+
+## Optional-module source fixes after RC2
+
+This source also fixes two quadratic unknown-buffer allocation paths in the
+optional reflection decoder. The unchanged published reflect RC2 does not
+contain those fixes. They require a separately qualified optional-module
+release; the root stable tag does not republish the nested module. See the
+known source-fix boundary in reflect/README.md before using RC2 on untrusted
+wire input with many occurrences or large preexisting unknown buffers.
