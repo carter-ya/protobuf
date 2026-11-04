@@ -102,7 +102,7 @@ func UnmarshalOptionalStd(destination interface{}, data []byte) error {
 func makeOptionalStdUnmarshaler(fieldType reflect.Type) unmarshaler {
 	return func(data []byte, field pointer, wire int) ([]byte, error) {
 		if wire != WireBytes {
-			return nil, errInternalBadWireType
+			return data, errInternalBadWireType
 		}
 		length, n := decodeVarint(data)
 		if n == 0 {

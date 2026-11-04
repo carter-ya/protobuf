@@ -16,7 +16,7 @@ jobs:
         working-directory: gopath/src/github.com/gogo/protobuf
     strategy:
       matrix:
-        go_version: [1.15.x, 1.12.x]
+        go_version: ['1.15.15', '1.23.x']
         protobuf_version: [3.14.0, 3.0.2, 2.6.1]
       fail-fast: false
     steps:
@@ -38,18 +38,18 @@ jobs:
           PROTOBUF_VERSION: ${{ matrix.protobuf_version }}
         run: ./install-protobuf.sh
 
-      - name: Protoc version
-        run: PATH=$HOME/bin:$PATH protoc --version
-      - name: env
-        run: env && go env && pwd
-
-      - name: Build server all
+      - name: Record historical compiler
         run: |
-          export GOPATH="$GITHUB_WORKSPACE/gopath"
-          export GOBIN="$GOPATH/bin"
-          export PATH="$HOME/bin:$GOBIN:$PATH"
-          make buildserverall
-
+          echo "HISTORICAL_PROTOC=$HOME/bin/protoc" >> "$GITHUB_ENV"
+          "$HOME/bin/protoc" --version
+      - name: Install compiler for current descriptor sources
+        run: |
+          curl --fail --location --retry 3 https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip -o "$RUNNER_TEMP/current-protoc.zip"
+          unzip -q "$RUNNER_TEMP/current-protoc.zip" -d "$RUNNER_TEMP/current-protoc"
+          echo "CURRENT_PROTOC=$RUNNER_TEMP/current-protoc/bin/protoc" >> "$GITHUB_ENV"
+      - name: Verify all five backends with valid historical schemas
+        run: sh compat/historical/run.sh "$HISTORICAL_PROTOC"
+      - name: Full root tests, purego and static analysis
+        run: sh compat/historical/full-suite.sh "$CURRENT_PROTOC"
       - name: Diff check
-        if: matrix.protobuf_version == '3.14.0' && matrix.go_version == '1.15.x'
-        run: (! git status --porcelain | read || (git status; git diff; exit 1))
+        run: git diff --exit-code && test -z "$(git ls-files --others --exclude-standard)"

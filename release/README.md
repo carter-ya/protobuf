@@ -82,7 +82,7 @@ Primary references: [official Go module rules](https://go.dev/ref/mod),
    exercise legacy and native V2 consumers. Retain module graphs, zip sums,
    build identities and logs. A local-path replacement cannot qualify this gate.
 3. Prepare component release notes and a tag plan. In `root-stable-modern-rc`
-   mode the plan creates only `v1.4.0`; reflect RC2 is reused at its recorded
+   mode the plan creates only the selected root tag; reflect RC2 is reused at its recorded
    source and checksums. Qualify the candidate root with that published reflect
    in the four-project [remote downstream matrix](REMOTE.md). Actual publication is
    a separate action after this work is reviewed; do not create placeholder tags
@@ -106,3 +106,10 @@ Primary references: [official Go module rules](https://go.dev/ref/mod),
 The contract and remote gate belong in the ordinary PR/Stack workflow. A passing
 commit-based gate establishes remote packaging readiness; it is not evidence
 that unpublished candidate tags already exist or that post-tag verification ran.
+
+
+The current source candidate prepares root `v1.4.1` to fix two reviewed runtime
+boundaries: preserve unknown wrong-wire occurrences of optional standard
+mappings, and initialize omitted standard-text map enum values from their schema
+default. The v1.4.0 tag and all RC tags remain immutable. This candidate is not a
+new published version until its exact source and actual tag pass qualification.

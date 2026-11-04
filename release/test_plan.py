@@ -103,12 +103,12 @@ class PublicationPlanGuards(unittest.TestCase):
     def test_root_only_plan_and_published_verification(self):
         modules = plan.qualify(self.reports, self.manifest, self.digest, self.revision)
         result = plan.publication_plan(self.manifest, self.revision, self.reports, modules, [])
-        self.assertEqual(result['tags'], ['v1.4.0'])
+        self.assertEqual(result['tags'], [self.manifest['root']['tag']])
         self.assertEqual(set(result['reused_components']), {'reflect'})
         self.assertEqual(result['reused_components']['reflect']['revision'], self.manifest['published_pair']['revisions']['reflect'])
         self.assertEqual(result['commands_for_maintainer_review_only'], [
-            'git tag -a v1.4.0 ' + self.revision + ' -F release/STABLE-NOTES.md',
-            'git push --atomic origin refs/tags/v1.4.0'])
+            'git tag -a ' + self.manifest['root']['tag'] + ' ' + self.revision + ' -F release/STABLE-NOTES.md',
+            'git push --atomic origin refs/tags/' + self.manifest['root']['tag']])
         published = copy.deepcopy(self.reports)
         for report in published:
             report['published_version_mode'] = True

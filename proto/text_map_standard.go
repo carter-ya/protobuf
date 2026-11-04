@@ -1,6 +1,9 @@
 package proto
 
-import "reflect"
+import (
+	"reflect"
+	"strconv"
+)
 
 // Standard maps are repeated entry messages and accept both list and repeated
 // body notation. Keep the historical map parser independent of these rules.
@@ -65,6 +68,11 @@ func (p *textParser) readStandardMapEntry(dst reflect.Value, properties *Propert
 	}
 	key := reflect.New(dst.Type().Key()).Elem()
 	value := reflect.New(dst.Type().Elem()).Elem()
+	// Match binary decoding when a closed-enum map entry omits its value.
+	if prop := properties.MapValProp; prop.HasDefault && value.Kind() == reflect.Int32 && len(prop.ClosedEnum) > 0 {
+		defaultValue, _ := strconv.ParseInt(prop.Default, 10, 32)
+		value.SetInt(defaultValue)
+	}
 	keySeen, valueSeen := false, false
 	for {
 		token = p.next()

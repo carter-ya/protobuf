@@ -1,3 +1,16 @@
+# Prepared root v1.4.1 patch with existing reflect RC2
+
+This candidate fixes two confirmed runtime boundaries from the master review:
+optional standard mappings preserve unknown wrong-wire occurrences, and
+standard text maps initialize an omitted closed-enum value from its schema
+default. Targeted regressions reproduce both failures before the fix. Final
+publication requires the reviewed source, all CI and actual tag installation.
+The existing root v1.4.0 tag and every RC tag remain immutable; reflect RC2 keeps
+its original source, Go1.23 floor and fixed official-runtime dependency.
+
+The already verified v1.4.0 installation record below is historical evidence,
+not evidence that the v1.4.1 tag has been published.
+
 # Root v1.4.0 stable with existing reflect v0.1.0-rc.2
 
 Root v1.4.0 identifies `057d06490a721bea0fceb39c5c088bc1ef3085e8`. The existing optional reflect

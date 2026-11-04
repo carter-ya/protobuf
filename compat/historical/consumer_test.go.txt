@@ -1,0 +1,45 @@
+package consumer
+
+import (
+	"bytes"
+	pb "example.com/historical-consumer/pb"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
+	"strings"
+	"testing"
+)
+
+func TestHistoricalCompilerConsumer(t *testing.T) {
+	input := []byte{8, 7, 18, 3, 'a', 'b', 'c', 26, 2, 0, 255, 34, 3, 1, 2, 3, 42, 6, 'c', 'h', 'o', 'i', 'c', 'e'}
+	m := new(pb.Probe)
+	if err := proto.Unmarshal(input, m); err != nil {
+		t.Fatal(err)
+	}
+	if m.GetValue() != 7 || m.GetLabel() != "abc" || !bytes.Equal(m.GetData(), []byte{0, 255}) || m.GetName() != "choice" || len(m.GetNumbers()) != 3 {
+		t.Fatalf("legacy values changed: %v", m)
+	}
+	wire, err := proto.Marshal(m)
+	if err != nil || proto.Size(m) != len(wire) {
+		t.Fatal("marshal/size", err)
+	}
+	out := new(pb.Probe)
+	if err = proto.Unmarshal(wire, out); err != nil || !proto.Equal(m, out) {
+		t.Fatal("wire roundtrip", err)
+	}
+	clone := proto.Clone(m).(*pb.Probe)
+	if !proto.Equal(m, clone) {
+		t.Fatal("clone differs")
+	}
+	clone.GetData()[0] = 9
+	if m.GetData()[0] != 0 {
+		t.Fatal("clone shares byte storage")
+	}
+	text, err := (&jsonpb.Marshaler{}).MarshalToString(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded := new(pb.Probe)
+	if err = jsonpb.Unmarshal(strings.NewReader(text), decoded); err != nil || !proto.Equal(m, decoded) {
+		t.Fatal("JSON roundtrip", err)
+	}
+}

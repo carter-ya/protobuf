@@ -1,0 +1,13 @@
+syntax = "proto2";
+package compat.historical;
+option go_package = "example.com/historical-consumer/pb";
+message Probe {
+  optional int32 value = 1;
+  optional string label = 2;
+  optional bytes data = 3;
+  repeated uint32 numbers = 4 [packed = true];
+  oneof choice {
+    string name = 5;
+    int64 id = 6;
+  }
+}

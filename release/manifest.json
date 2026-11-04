@@ -5,8 +5,8 @@
   "trunk": "master",
   "root": {
     "module": "github.com/gogo/protobuf",
-    "version": "v1.4.0",
-    "tag": "v1.4.0",
+    "version": "v1.4.1",
+    "tag": "v1.4.1",
     "go": "1.15"
   },
   "reflect": {
