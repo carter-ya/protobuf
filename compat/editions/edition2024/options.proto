@@ -1,0 +1,7 @@
+syntax = "proto2";
+package compat.editions.options;
+import "google/protobuf/descriptor.proto";
+extend google.protobuf.FieldOptions {
+  optional string runtime_note = 50001;
+  optional string source_note = 50002 [retention = RETENTION_SOURCE];
+}

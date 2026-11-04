@@ -1,0 +1,93 @@
+package main
+
+import (
+	"encoding/binary"
+	msg "example.com/native-conformance/pb/alltypes"
+	pb "example.com/native-conformance/pb/protocol"
+	"fmt"
+	gogo "github.com/gogo/protobuf/proto"
+	live "github.com/gogo/protobuf/reflect"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/prototext"
+	v2 "google.golang.org/protobuf/proto"
+	"io"
+	"os"
+)
+
+func handle(req *pb.ConformanceRequest) (res *pb.ConformanceResponse) {
+	defer func() {
+		if e := recover(); e != nil {
+			res = &pb.ConformanceResponse{Result: &pb.ConformanceResponse_RuntimeError{RuntimeError: fmt.Sprint(e)}}
+		}
+	}()
+	if req.MessageType == "conformance.FailureSet" {
+		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_ProtobufPayload{ProtobufPayload: []byte{}}}
+	}
+	if req.MessageType != "protobuf_test_messages.proto3.TestAllTypesProto3" {
+		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_Skipped{Skipped: "outside native proto3 profile"}}
+	}
+	n := new(msg.TestAllTypesProto3)
+	r, e := live.NewRegistry(n)
+	if e != nil {
+		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_RuntimeError{RuntimeError: e.Error()}}
+	}
+	switch x := req.Payload.(type) {
+	case *pb.ConformanceRequest_ProtobufPayload:
+		e = (v2.UnmarshalOptions{Resolver: r}).Unmarshal(x.ProtobufPayload, n)
+	case *pb.ConformanceRequest_JsonPayload:
+		e = (protojson.UnmarshalOptions{Resolver: r, DiscardUnknown: req.TestCategory == pb.TestCategory_JSON_IGNORE_UNKNOWN_PARSING_TEST}).Unmarshal([]byte(x.JsonPayload), n)
+	case *pb.ConformanceRequest_TextPayload:
+		e = (prototext.UnmarshalOptions{Resolver: r}).Unmarshal([]byte(x.TextPayload), n)
+	default:
+		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_RuntimeError{RuntimeError: "unsupported input"}}
+	}
+	if e != nil {
+		return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_ParseError{ParseError: e.Error()}}
+	}
+	switch req.RequestedOutputFormat {
+	case pb.WireFormat_PROTOBUF:
+		b, e := v2.Marshal(n)
+		if e == nil {
+			return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_ProtobufPayload{ProtobufPayload: b}}
+		}
+	case pb.WireFormat_JSON:
+		b, e := (protojson.MarshalOptions{Resolver: r}).Marshal(n)
+		if e == nil {
+			return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_JsonPayload{JsonPayload: string(b)}}
+		}
+	case pb.WireFormat_TEXT_FORMAT:
+		b, e := (prototext.MarshalOptions{Resolver: r, EmitUnknown: req.PrintUnknownFields}).Marshal(n)
+		if e == nil {
+			return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_TextPayload{TextPayload: string(b)}}
+		}
+	}
+	return &pb.ConformanceResponse{Result: &pb.ConformanceResponse_SerializeError{SerializeError: "serialize failed"}}
+}
+func main() {
+	for {
+		var size uint32
+		if e := binary.Read(os.Stdin, binary.LittleEndian, &size); e == io.EOF {
+			return
+		} else if e != nil || size > 64<<20 {
+			panic("invalid input frame")
+		}
+		data := make([]byte, size)
+		if _, e := io.ReadFull(os.Stdin, data); e != nil {
+			panic(e)
+		}
+		req := new(pb.ConformanceRequest)
+		if e := gogo.Unmarshal(data, req); e != nil {
+			panic(e)
+		}
+		out, e := gogo.Marshal(handle(req))
+		if e != nil {
+			panic(e)
+		}
+		if e = binary.Write(os.Stdout, binary.LittleEndian, uint32(len(out))); e != nil {
+			panic(e)
+		}
+		if _, e = os.Stdout.Write(out); e != nil {
+			panic(e)
+		}
+	}
+}

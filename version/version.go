@@ -45,32 +45,79 @@ func Get() string {
 	return versions[1]
 }
 
-func parseVersion(version string) (int, error) {
+func parseVersion(version string) ([3]int, error) {
+	var result [3]int
 	versions := strings.Split(version, ".")
-	if len(versions) != 3 {
-		return 0, fmt.Errorf("version does not have 3 numbers separated by dots: %s", version)
+	if len(versions) != 2 && len(versions) != 3 {
+		return result, fmt.Errorf("version must have 2 or 3 numbers separated by dots: %s", version)
 	}
-	n := 0
-	for _, v := range versions {
+	for index, v := range versions {
+		if v == "" || strings.IndexFunc(v, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+			return result, fmt.Errorf("invalid version component %q", v)
+		}
 		i, err := strconv.Atoi(v)
 		if err != nil {
-			return 0, err
+			return result, err
 		}
-		n = n*10 + i
+		result[index] = i
 	}
-	return n, nil
+	return result, nil
+}
+
+type compilerVersion struct {
+	numbers    [3]int
+	prerelease bool
+	candidate  int
+}
+
+func parseCompilerVersion(input string) (compilerVersion, error) {
+	var result compilerVersion
+	core := input
+	if index := strings.IndexByte(input, '-'); index >= 0 {
+		core = input[:index]
+		suffix := strings.TrimPrefix(input[index:], "-rc")
+		if suffix == input[index:] {
+			return result, fmt.Errorf("unsupported compiler prerelease %q", input)
+		}
+		suffix = strings.TrimPrefix(suffix, "-")
+		if suffix == "" || strings.IndexFunc(suffix, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+			return result, fmt.Errorf("invalid release candidate %q", input)
+		}
+		candidate, err := strconv.Atoi(suffix)
+		if err != nil {
+			return result, err
+		}
+		result.prerelease = true
+		result.candidate = candidate
+	}
+	numbers, err := parseVersion(core)
+	result.numbers = numbers
+	return result, err
 }
 
 func less(this, that string) bool {
-	thisNum, err := parseVersion(this)
+	minimum, err := parseCompilerVersion(this)
 	if err != nil {
 		panic(err)
 	}
-	thatNum, err := parseVersion(that)
+	actual, err := parseCompilerVersion(that)
 	if err != nil {
 		panic(err)
 	}
-	return thisNum <= thatNum
+	for i := range minimum.numbers {
+		if minimum.numbers[i] != actual.numbers[i] {
+			return minimum.numbers[i] < actual.numbers[i]
+		}
+	}
+	// A release candidate satisfies older requirements, but not the final
+	// release of its own version. Candidate numbers compare numerically.
+	if minimum.prerelease != actual.prerelease {
+		return minimum.prerelease
+	}
+	if minimum.prerelease {
+		return minimum.candidate <= actual.candidate
+	}
+	return true
 }
 
 func AtLeast(v string) bool {

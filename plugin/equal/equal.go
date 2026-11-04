@@ -176,6 +176,8 @@ func NewPlugin() *plugin {
 	return &plugin{}
 }
 
+func (p *plugin) SupportsEditions() bool { return true }
+
 func (p *plugin) Name() string {
 	return "equal"
 }
@@ -287,7 +289,7 @@ func (p *plugin) generateMsgNullAndTypeCheck(ccTypeName string, verbose bool) {
 }
 
 func (p *plugin) generateField(file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto, verbose bool) {
-	proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
+	proto3 := p.FieldProto3Value(file, field, gogoproto.IsProto3(file.FileDescriptorProto))
 	fieldname := p.GetOneOfFieldName(message, field)
 	repeated := field.IsRepeated()
 	ctype := gogoproto.IsCustomType(field)
@@ -303,7 +305,13 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 		gogoproto.IsStdString(field))
 	isBytes := gogoproto.IsStdBytes(field)
 	isTimestamp := gogoproto.IsStdTime(field)
-	// oneof := field.OneofIndex != nil
+	// Optional mappings must reject mismatched presence before calling a
+	// value receiver or dereferencing a mapped bytes pointer.
+	missing := ""
+	if field.GetProto3Optional() {
+		missing = "this." + fieldname + " == nil || "
+	}
+	// oneof := field.IsRealOneof()
 	if !repeated {
 		if ctype || isTimestamp {
 			if nullable {
@@ -319,7 +327,7 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				p.Out()
 				p.P(`}`)
 				p.Out()
-				p.P(`} else if !this.`, fieldname, `.Equal(*that1.`, fieldname, `) {`)
+				p.P(`} else if `, missing, `!this.`, fieldname, `.Equal(*that1.`, fieldname, `) {`)
 			} else {
 				p.P(`if !this.`, fieldname, `.Equal(that1.`, fieldname, `) {`)
 			}
@@ -359,7 +367,7 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 				p.Out()
 				p.P(`}`)
 				p.Out()
-				p.P(`} else if !`, p.bytesPkg.Use(), `.Equal(*this.`, fieldname, `, *that1.`, fieldname, `) {`)
+				p.P(`} else if `, missing, `!`, p.bytesPkg.Use(), `.Equal(*this.`, fieldname, `, *that1.`, fieldname, `) {`)
 			} else {
 				p.P(`if !`, p.bytesPkg.Use(), `.Equal(this.`, fieldname, `, that1.`, fieldname, `) {`)
 			}
@@ -379,7 +387,11 @@ func (p *plugin) generateField(file *generator.FileDescriptor, message *generato
 					p.P(`if !this.`, fieldname, `.Equal(&that1.`, fieldname, `) {`)
 				}
 			} else if field.IsBytes() {
-				p.P(`if !`, p.bytesPkg.Use(), `.Equal(this.`, fieldname, `, that1.`, fieldname, `) {`)
+				presence := ""
+				if field.GetProto3Optional() || (file.IsEditions() && p.FieldHasPresence(file, field)) {
+					presence = "(this." + fieldname + " == nil) != (that1." + fieldname + " == nil) || "
+				}
+				p.P(`if `, presence, `!`, p.bytesPkg.Use(), `.Equal(this.`, fieldname, `, that1.`, fieldname, `) {`)
 			} else if field.IsString() {
 				if nullable && !proto3 {
 					p.generateNullableField(fieldname, verbose)
@@ -538,7 +550,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 	oneofs := make(map[string]struct{})
 
 	for _, field := range message.Field {
-		oneof := field.OneofIndex != nil
+		oneof := field.IsRealOneof()
 		if oneof {
 			fieldname := p.GetFieldName(message, field)
 			if _, ok := oneofs[fieldname]; ok {
@@ -663,7 +675,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 	//Generate Equal methods for oneof fields
 	m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
 	for _, field := range m.Field {
-		oneof := field.OneofIndex != nil
+		oneof := field.IsRealOneof()
 		if !oneof {
 			continue
 		}
@@ -676,7 +688,10 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 		p.In()
 
 		p.generateMsgNullAndTypeCheck(ccTypeName, verbose)
-		vanity.TurnOffNullableForNativeTypes(field)
+		if !file.IsEditions() || field.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
+			vanity.TurnOffNullableForNativeTypes(field)
+			vanity.TurnOffNullableForNativeOneof(field)
+		}
 		p.generateField(file, message, field, verbose)
 
 		if verbose {

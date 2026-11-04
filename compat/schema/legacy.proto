@@ -1,0 +1,14 @@
+syntax = "proto3";
+package compat.legacy;
+option go_package = "example.com/gogo-legacy/reflection";
+message Probe {
+  int32 value = 1;
+  string label = 2;
+  bytes data = 3;
+  repeated int32 numbers = 4;
+  map<string, int32> counts = 5;
+  oneof choice {
+    string name = 6;
+    int64 id = 7;
+  }
+}

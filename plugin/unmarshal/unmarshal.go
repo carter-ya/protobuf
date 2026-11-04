@@ -188,12 +188,14 @@ import (
 type unmarshal struct {
 	*generator.Generator
 	generator.PluginImports
-	atleastOne bool
-	ioPkg      generator.Single
-	mathPkg    generator.Single
-	typesPkg   generator.Single
-	binaryPkg  generator.Single
-	localName  string
+	atleastOne  bool
+	ioPkg       generator.Single
+	mathPkg     generator.Single
+	typesPkg    generator.Single
+	binaryPkg   generator.Single
+	localName   string
+	editions    bool
+	currentFile *generator.FileDescriptor
 }
 
 func NewUnmarshal() *unmarshal {
@@ -222,6 +224,9 @@ func (p *unmarshal) decodeVarint(varName string, typName string) {
 	p.Out()
 	p.P(`}`)
 	p.P(`b := dAtA[iNdEx]`)
+	if p.editions {
+		p.P(`if shift == 63 && b > 1 { return ErrIntOverflow` + p.localName + ` }`)
+	}
 	p.P(`iNdEx++`)
 	p.P(varName, ` |= `, typName, `(b&0x7F) << shift`)
 	p.P(`if b < 0x80 {`)
@@ -335,6 +340,12 @@ func (p *unmarshal) declareMapField(varName string, nullable bool, customType bo
 }
 
 func (p *unmarshal) mapField(varName string, customType bool, field *descriptor.FieldDescriptorProto) {
+	if p.editions {
+		switch field.GetType() {
+		case descriptor.FieldDescriptorProto_TYPE_INT64, descriptor.FieldDescriptorProto_TYPE_UINT64, descriptor.FieldDescriptorProto_TYPE_INT32, descriptor.FieldDescriptorProto_TYPE_UINT32, descriptor.FieldDescriptorProto_TYPE_ENUM:
+			p.P(varName, " = 0")
+		}
+	}
 	switch field.GetType() {
 	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
 		p.P(`var `, varName, `temp uint64`)
@@ -380,6 +391,9 @@ func (p *unmarshal) mapField(varName string, customType bool, field *descriptor.
 		p.P(`}`)
 		cast, _ := p.GoType(nil, field)
 		cast = strings.Replace(cast, "*", "", 1)
+		if p.editions && p.FieldRequiresUTF8(p.currentFile, field) {
+			p.P("if !", p.NewImport("unicode/utf8").Use(), ".Valid(dAtA[iNdEx:postStringIndex", varName, "]) { return fmt.Errorf(\"proto: invalid UTF-8 in map\") }")
+		}
 		p.P(varName, ` = `, cast, `(dAtA[iNdEx:postStringIndex`, varName, `])`)
 		p.P(`iNdEx = postStringIndex`, varName)
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
@@ -427,7 +441,11 @@ func (p *unmarshal) mapField(varName string, customType bool, field *descriptor.
 		} else {
 			desc := p.ObjectNamed(field.GetTypeName())
 			msgname := p.TypeName(desc)
-			p.P(varName, ` = &`, msgname, `{}`)
+			if p.editions {
+				p.P("if ", varName, " == nil { ", varName, " = &", msgname, "{} }")
+			} else {
+				p.P(varName, ` = &`, msgname, `{}`)
+			}
 			p.P(`if err := `, varName, `.Unmarshal(`, buf, `); err != nil {`)
 		}
 		p.In()
@@ -500,10 +518,11 @@ func (p *unmarshal) noStarOrSliceType(msg *generator.Descriptor, field *descript
 }
 
 func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descriptor, field *descriptor.FieldDescriptorProto, fieldname string, proto3 bool) {
+	proto3 = p.FieldProto3Value(file, field, proto3)
 	repeated := field.IsRepeated()
 	nullable := gogoproto.IsNullable(field)
 	typ := p.noStarOrSliceType(msg, field)
-	oneof := field.OneofIndex != nil
+	oneof := field.IsRealOneof()
 	switch *field.Type {
 	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
 		p.P(`var v uint64`)
@@ -652,6 +671,9 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 		p.P(`return `, p.ioPkg.Use(), `.ErrUnexpectedEOF`)
 		p.Out()
 		p.P(`}`)
+		if file.IsEditions() && p.FieldRequiresUTF8(file, field) {
+			p.P("if !", p.NewImport("unicode/utf8").Use(), ".Valid(dAtA[iNdEx:postIndex]) { return fmt.Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+		}
 		if oneof {
 			p.P(`m.`, fieldname, ` = &`, p.OneOfTypeName(msg, field), `{`, typ, `(dAtA[iNdEx:postIndex])}`)
 		} else if repeated {
@@ -664,7 +686,27 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 		}
 		p.P(`iNdEx = postIndex`)
 	case descriptor.FieldDescriptorProto_TYPE_GROUP:
-		panic(fmt.Errorf("unmarshaler does not support group %v", fieldname))
+		if !file.IsEditions() {
+			panic(fmt.Errorf("unmarshaler does not support group %v", fieldname))
+		}
+		msgname := p.TypeName(p.ObjectNamed(field.GetTypeName()))
+		p.P("body, consumed, err := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".EditionGroupBody(dAtA[preIndex:])")
+		p.P("if err != nil { return err }")
+		if oneof {
+			wrapper := p.OneOfTypeName(msg, field)
+			member := p.GetOneOfFieldName(msg, field)
+			p.P("v := &", msgname, "{}")
+			p.P("if previous, ok := m.", fieldname, ".(*", wrapper, "); ok && previous != nil && previous.", member, " != nil { v = previous.", member, " }")
+			p.P("if err := v.Unmarshal(body); err != nil { return err }")
+			p.P("m.", fieldname, " = &", wrapper, "{v}")
+		} else if repeated {
+			p.P("v := &", msgname, "{}; if err := v.Unmarshal(body); err != nil { return err }")
+			p.P("m.", fieldname, " = append(m.", fieldname, ", v)")
+		} else {
+			p.P("if m.", fieldname, " == nil { m.", fieldname, " = &", msgname, "{} }")
+			p.P("if err := m.", fieldname, ".Unmarshal(body); err != nil { return err }")
+		}
+		p.P("iNdEx = preIndex + consumed")
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 		desc := p.ObjectNamed(field.GetTypeName())
 		msgname := p.TypeName(desc)
@@ -778,6 +820,9 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 				}
 			} else {
 				p.P(`v := &`, msgname, `{}`)
+				if file.IsEditions() || p.MergeOneofMessage(field) {
+					p.P("if previous, ok := m.", fieldname, ".(*", p.OneOfTypeName(msg, field), "); ok && previous != nil && previous.", p.GetOneOfFieldName(msg, field), " != nil { v = previous.", p.GetOneOfFieldName(msg, field), " }")
+				}
 				p.P(`if err := v.Unmarshal(`, buf, `); err != nil {`)
 			}
 			p.In()
@@ -817,6 +862,9 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			p.Out()
 			p.P(`}`)
 
+			if file.IsEditions() {
+				p.P("outerData, outerLength := dAtA, l; dAtA = dAtA[:postIndex]; l = postIndex")
+			}
 			p.declareMapField("mapkey", false, false, m.KeyAliasField)
 			p.declareMapField("mapvalue", nullable, gogoproto.IsCustomType(field), m.ValueAliasField)
 			p.P(`for iNdEx < postIndex {`)
@@ -825,20 +873,35 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			p.P(`entryPreIndex := iNdEx`)
 			p.P(`var wire uint64`)
 			p.decodeVarint("wire", "uint64")
+			if file.IsEditions() {
+				p.P(`if iNdEx-entryPreIndex > 5 || wire >> 3 == 0 || wire >> 3 > 536870911 { return fmt.Errorf("proto: invalid Editions tag") }`)
+			}
 			p.P(`fieldNum := int32(wire >> 3)`)
 
-			p.P(`if fieldNum == 1 {`)
+			if file.IsEditions() {
+				p.P("if fieldNum == 1 && wire & 7 == ", strconv.Itoa(m.KeyAliasField.WireType()), " {")
+			} else {
+				p.P(`if fieldNum == 1 {`)
+			}
 			p.In()
 			p.mapField("mapkey", false, m.KeyAliasField)
 			p.Out()
-			p.P(`} else if fieldNum == 2 {`)
+			if file.IsEditions() {
+				p.P("} else if fieldNum == 2 && wire & 7 == ", strconv.Itoa(m.ValueAliasField.WireType()), " {")
+			} else {
+				p.P(`} else if fieldNum == 2 {`)
+			}
 			p.In()
 			p.mapField("mapvalue", gogoproto.IsCustomType(field), m.ValueAliasField)
 			p.Out()
 			p.P(`} else {`)
 			p.In()
 			p.P(`iNdEx = entryPreIndex`)
-			p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+			if file.IsEditions() {
+				p.P("skippy, err := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".EditionFieldSize(dAtA[iNdEx:])")
+			} else {
+				p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+			}
 			p.P(`if err != nil {`)
 			p.In()
 			p.P(`return err`)
@@ -876,6 +939,9 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 				v = `((` + valuegoAliasTyp + `)(` + v + `))`
 			}
 
+			if file.IsEditions() {
+				p.P("dAtA, l = outerData, outerLength")
+			}
 			p.P(s, ` = `, v)
 		} else if repeated {
 			if gogoproto.IsStdTime(field) {
@@ -1027,6 +1093,8 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			p.P(`return err`)
 			p.Out()
 			p.P(`}`)
+		} else if field.GetProto3Optional() && gogoproto.IsStdType(field) {
+			p.P("if err := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".UnmarshalOptionalStd(&m.", fieldname, ", dAtA[iNdEx:postIndex]); err != nil { return err }")
 		} else if nullable {
 			p.P(`if m.`, fieldname, ` == nil {`)
 			p.In()
@@ -1214,6 +1282,10 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 		}
 	case descriptor.FieldDescriptorProto_TYPE_ENUM:
 		typName := p.TypeName(p.ObjectNamed(field.GetTypeName()))
+		if field.GetProto3Optional() && gogoproto.IsCastType(field) {
+			typName, _ = p.GoType(nil, field)
+			typName = strings.TrimPrefix(typName, "*")
+		}
 		if oneof {
 			p.P(`var v `, typName)
 			p.decodeVarint("v", typName)
@@ -1297,6 +1369,8 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 }
 
 func (p *unmarshal) Generate(file *generator.FileDescriptor) {
+	p.editions = file.IsEditions()
+	p.currentFile = file
 	proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
 	p.PluginImports = generator.NewPluginImports(p.Generator)
 	p.atleastOne = false
@@ -1322,6 +1396,15 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			continue
 		}
 		p.atleastOne = true
+		if p.UseTableCodec(message) || p.EnforceClosedEnums(file) || p.MergeRequiredFields(message) || (file.IsEditions() && p.NeedsDeferredEditionExtensions(message)) {
+			// The shared codec preserves per-occurrence wire checks while
+			// checking required and extension completeness after the outer graph merges.
+			p.P("func (m *", ccTypeName, ") Unmarshal(dAtA []byte) error {")
+			p.P("var info ", protoPkg.Use(), ".InternalMessageInfo")
+			p.P("return info.Unmarshal(m, dAtA)")
+			p.P("}")
+			continue
+		}
 
 		// build a map required field_id -> bitmask offset
 		rfMap := make(map[int32]uint)
@@ -1334,8 +1417,49 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		}
 		rfCount := len(rfMap)
 
+		closed := make(map[uint64][]int32)
+		if file.IsEditions() {
+			for _, field := range message.Field {
+				enumField := field
+				if p.IsMap(field) {
+					enumField = p.GoMapType(nil, field).ValueAliasField
+				}
+				if values := p.FieldClosedEnumValues(file, enumField); len(values) > 0 {
+					closed[uint64(field.GetNumber())] = values
+				}
+			}
+		}
+		filterName := "editionEnums" + p.localName + ccTypeName
+		if len(closed) > 0 {
+			p.P("var ", filterName, " = map[uint64]*", protoPkg.Use(), ".EditionEnumFilter{")
+			for _, field := range message.Field {
+				if values := closed[uint64(field.GetNumber())]; len(values) > 0 {
+					parts := make([]string, len(values))
+					for i, n := range values {
+						parts[i] = strconv.FormatInt(int64(n), 10)
+					}
+					if p.IsMap(field) {
+						key := p.GoMapType(nil, field).KeyAliasField
+						p.P(strconv.Itoa(int(field.GetNumber())), ": ", protoPkg.Use(), ".NewEditionMapEnumFilter([]int32{", strings.Join(parts, ","), "}, ", p.FieldRequiresUTF8(file, key), "),")
+					} else {
+						p.P(strconv.Itoa(int(field.GetNumber())), ": ", protoPkg.Use(), ".NewEditionEnumFilter([]int32{", strings.Join(parts, ","), "}, ", p.IsMap(field), ", ", field.IsRepeated() && !p.IsMap(field), "),")
+					}
+				}
+			}
+			p.P("}")
+		}
 		p.P(`func (m *`, ccTypeName, `) Unmarshal(dAtA []byte) error {`)
 		p.In()
+		if file.IsEditions() && message.DescriptorProto.HasExtension() {
+			p.P("extensionData, extensionUnknown, extensionErr := ", protoPkg.Use(), ".FilterEditionExtensions(dAtA, m)")
+			p.P("if extensionErr != nil { return extensionErr }; dAtA = extensionData; m.XXX_unrecognized = append(m.XXX_unrecognized, extensionUnknown...)")
+		}
+		if len(closed) > 0 {
+			p.P("filtered, unknown, err := ", protoPkg.Use(), ".FilterEditionEnums(dAtA, ", filterName, ")")
+			p.P("if err != nil { return err }")
+			p.P("dAtA = filtered")
+			p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, unknown...)")
+		}
 		if rfCount > 0 {
 			p.P(`var hasFields [`, strconv.Itoa(1+(rfCount-1)/64), `]uint64`)
 		}
@@ -1346,6 +1470,9 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		p.P(`preIndex := iNdEx`)
 		p.P(`var wire uint64`)
 		p.decodeVarint("wire", "uint64")
+		if file.IsEditions() {
+			p.P(`if iNdEx-preIndex > 5 || wire >> 3 > 536870911 { return fmt.Errorf("proto: invalid Editions tag") }`)
+		}
 		p.P(`fieldNum := int32(wire >> 3)`)
 		if len(message.Field) > 0 || !message.IsGroup() {
 			p.P(`wireType := int(wire & 0x7)`)
@@ -1367,13 +1494,16 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		for _, field := range message.Field {
 			fieldname := p.GetFieldName(message, field)
 			errFieldname := fieldname
-			if field.OneofIndex != nil {
+			if field.IsRealOneof() {
 				errFieldname = p.GetOneOfFieldName(message, field)
 			}
 			possiblyPacked := field.IsScalar() && field.IsRepeated()
 			p.P(`case `, strconv.Itoa(int(field.GetNumber())), `:`)
 			p.In()
 			wireType := field.WireType()
+			if file.IsEditions() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP {
+				wireType = proto.WireStartGroup
+			}
 			if possiblyPacked {
 				p.P(`if wireType == `, strconv.Itoa(wireType), `{`)
 				p.In()
@@ -1399,6 +1529,13 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.P(`return `, p.ioPkg.Use(), `.ErrUnexpectedEOF`)
 				p.Out()
 				p.P(`}`)
+
+				if file.IsEditions() {
+					// Element decoders use l and dAtA for their bounds checks.
+					// A packed element must not consume the following field.
+					p.P(`outerData, outerLength := dAtA, l`)
+					p.P(`dAtA = dAtA[:postIndex]; l = postIndex`)
+				}
 
 				p.P(`var elementCount int`)
 				switch *field.Type {
@@ -1432,19 +1569,47 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.field(file, message, field, fieldname, false)
 				p.Out()
 				p.P(`}`)
+				if file.IsEditions() {
+					p.P(`dAtA, l = outerData, outerLength`)
+				}
 				p.Out()
 				p.P(`} else {`)
 				p.In()
-				p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				if file.IsEditions() {
+					p.P("size, err := ", protoPkg.Use(), ".EditionFieldSize(dAtA[preIndex:])")
+					p.P("if err != nil { return err }")
+					p.P("iNdEx = preIndex + size")
+					p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[preIndex:iNdEx]...)")
+					p.P("continue")
+				} else {
+					p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				}
 				p.Out()
 				p.P(`}`)
 			} else {
 				p.P(`if wireType != `, strconv.Itoa(wireType), `{`)
 				p.In()
-				p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				if file.IsEditions() || p.MergeOneofMessage(field) {
+					p.P("size, err := ", protoPkg.Use(), ".EditionFieldSize(dAtA[preIndex:])")
+					p.P("if err != nil { return err }")
+					p.P("iNdEx = preIndex + size")
+					if gogoproto.HasUnrecognized(file.FileDescriptorProto, message.DescriptorProto) {
+						p.P("m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[preIndex:iNdEx]...)")
+					}
+					p.P("continue")
+				} else {
+					p.P(`return ` + fmtPkg.Use() + `.Errorf("proto: wrong wireType = %d for field ` + errFieldname + `", wireType)`)
+				}
 				p.Out()
 				p.P(`}`)
 				p.field(file, message, field, fieldname, proto3)
+				if field.GetProto3Optional() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_STRING {
+					value := "*m." + fieldname
+					if gogoproto.IsCastType(field) {
+						value = "string(" + value + ")"
+					}
+					p.P("if !", p.NewImport("unicode/utf8").Use(), ".ValidString(", value, ") { return ", fmtPkg.Use(), ".Errorf(\"proto: invalid UTF-8 in ", field.GetName(), "\") }")
+				}
 			}
 
 			if field.IsRequired() {
@@ -1465,20 +1630,30 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			}
 			p.P(`if `, strings.Join(c, "||"), `{`)
 			p.In()
-			p.P(`var sizeOfWire int`)
-			p.P(`for {`)
-			p.In()
-			p.P(`sizeOfWire++`)
-			p.P(`wire >>= 7`)
-			p.P(`if wire == 0 {`)
-			p.In()
-			p.P(`break`)
-			p.Out()
-			p.P(`}`)
-			p.Out()
-			p.P(`}`)
-			p.P(`iNdEx-=sizeOfWire`)
-			p.P(`skippy, err := skip`, p.localName+`(dAtA[iNdEx:])`)
+			if file.IsEditions() {
+				// preIndex records the consumed tag bytes, including a valid
+				// non-minimal varint representation.
+				p.P(`iNdEx = preIndex`)
+			} else {
+				p.P(`var sizeOfWire int`)
+				p.P(`for {`)
+				p.In()
+				p.P(`sizeOfWire++`)
+				p.P(`wire >>= 7`)
+				p.P(`if wire == 0 {`)
+				p.In()
+				p.P(`break`)
+				p.Out()
+				p.P(`}`)
+				p.Out()
+				p.P(`}`)
+				p.P(`iNdEx-=sizeOfWire`)
+			}
+			if file.IsEditions() {
+				p.P("skippy, err := ", protoPkg.Use(), ".EditionFieldSize(dAtA[iNdEx:])")
+			} else {
+				p.P(`skippy, err := skip`, p.localName+`(dAtA[iNdEx:])`)
+			}
 			p.P(`if err != nil {`)
 			p.In()
 			p.P(`return err`)
@@ -1494,14 +1669,22 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			p.P(`return `, p.ioPkg.Use(), `.ErrUnexpectedEOF`)
 			p.Out()
 			p.P(`}`)
-			p.P(protoPkg.Use(), `.AppendExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy])`)
+			if file.IsEditions() {
+				p.P(`if err := `, protoPkg.Use(), `.AppendEditionExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy]); err != nil { return err }`)
+			} else {
+				p.P(protoPkg.Use(), `.AppendExtension(m, int32(fieldNum), dAtA[iNdEx:iNdEx+skippy])`)
+			}
 			p.P(`iNdEx += skippy`)
 			p.Out()
 			p.P(`} else {`)
 			p.In()
 		}
 		p.P(`iNdEx=preIndex`)
-		p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+		if file.IsEditions() {
+			p.P("skippy, err := ", p.NewImport("github.com/gogo/protobuf/proto").Use(), ".EditionFieldSize(dAtA[iNdEx:])")
+		} else {
+			p.P(`skippy, err := skip`, p.localName, `(dAtA[iNdEx:])`)
+		}
 		p.P(`if err != nil {`)
 		p.In()
 		p.P(`return err`)
@@ -1557,7 +1740,11 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 		p.P(`return ` + p.ioPkg.Use() + `.ErrUnexpectedEOF`)
 		p.Out()
 		p.P(`}`)
-		p.P(`return nil`)
+		if file.IsEditions() && message.DescriptorProto.HasExtension() {
+			p.P(`return `, protoPkg.Use(), `.ValidateEditionMessageExtensions(m)`)
+		} else {
+			p.P(`return nil`)
+		}
 		p.Out()
 		p.P(`}`)
 	}

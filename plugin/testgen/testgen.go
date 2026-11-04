@@ -235,6 +235,9 @@ func (p *plugin) Name() string {
 	return "testgen"
 }
 
+// SupportsProto3Optional uses the presence-aware helper generators.
+func (p *plugin) SupportsProto3Optional() bool { return true }
+
 func (p *plugin) Init(g *generator.Generator) {
 	p.Generator = g
 	p.tests = make([]TestPlugin, 0, len(testplugins))

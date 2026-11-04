@@ -1,0 +1,25 @@
+package consumer
+
+import (
+ "testing"
+ "reflect"
+ gogo "github.com/gogo/protobuf/proto"
+ live "github.com/gogo/protobuf/reflect"
+ pb "example.com/native/pb"
+ v2 "google.golang.org/protobuf/proto"
+ "google.golang.org/protobuf/encoding/protojson"
+ "google.golang.org/protobuf/encoding/prototext"
+ "google.golang.org/protobuf/reflect/protoreflect"
+ "google.golang.org/protobuf/testing/prototest"
+)
+func TestNativeReflection(t *testing.T) {
+ n:=&pb.Node{Count:7,Name:"native",Child:&pb.Node{Count:3},Values:[]int32{1,2},Nodes:map[string]*pb.Node{"x":{Name:"child"}},Present:gogo.Int32(0)}
+ wrapped,e:=live.Wrap(n);if e!=nil||wrapped!=n{t.Fatal("native identity",e)}
+ m:=n.ProtoReflect();fd:=m.Descriptor().Fields().ByName("count");m.Set(fd,protoreflect.ValueOfInt32(11));if n.Count!=11{t.Fatal("not live")};n.Count=13;if m.Get(fd).Int()!=13{t.Fatal("Go mutation not live")}
+ for _,format:=range []string{"binary","json","text"}{target:=new(pb.Node);var err error;switch format{case "binary":var b []byte;b,err=gogo.Marshal(n);if err==nil{err=v2.Unmarshal(b,target)};case "json":var b []byte;b,err=protojson.Marshal(n);if err==nil{err=protojson.Unmarshal(b,target)};case "text":var b []byte;b,err=prototext.Marshal(n);if err==nil{err=prototext.Unmarshal(b,target)}};if err!=nil||!gogo.Equal(n,target){t.Fatal(format,err,target)}}
+ clone:=v2.Clone(n);if _,ok:=clone.(*pb.Node);!ok||!v2.Equal(n,clone){t.Fatal("native clone type/values")}
+ wire,e:=v2.Marshal(n);if e!=nil{t.Fatal(e)};old:=new(pb.Node);if e=gogo.Unmarshal(wire,old);e!=nil||!gogo.Equal(n,old){t.Fatal("native crossdecode",e)}
+ _,hasSet:=reflect.TypeOf(n).MethodByName("SetCount");if hasSet!=HYBRID{t.Fatal("unexpected API selection")}
+ prototest.Message{}.Test(t,m.Type());prototest.Message{}.Test(t,new(pb.Cold).ProtoReflect().Type())
+ nilSelected:=&pb.Node{Choice:&pb.Node_Selected{}};nilSelected.ProtoReflect().Mutable(m.Descriptor().Fields().ByName("selected")).Message().Set(fd,protoreflect.ValueOfInt32(17));if nilSelected.GetSelected().Count!=17{t.Fatal("nil oneof payload")}
+}

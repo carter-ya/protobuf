@@ -1,0 +1,127 @@
+# Modern conformance baseline
+
+This gate runs the actual binary/JSON and text suites from upstream Protobuf
+36.2, including proto2, proto3, the equivalent Edition 2023 schemas and the
+Edition-specific DELIMITED cases. The protocol and test schemas are generated
+without edits in a disposable module; they are not runtime dependencies.
+
+Build the runner with Python 3.12, CMake, Ninja and a C++ compiler:
+
+```
+python3 compat/conformance/build-runner.py /tmp/gogo-conformance
+```
+
+The release archive is pinned by SHA-256. Dependency versions come from that
+release's CMake configuration. The executable entrypoint is replaced:
+upstream's combined main short-circuits after a failed binary/JSON suite, which
+would hide the text suite. A CMake alias makes the pinned dependency check accept
+the static JsonCpp target. The upstream suite implementations remain unmodified.
+CI pins Ubuntu 24.04 and caches the executable under a key containing the
+platform, entrypoint and build script. JsonCpp and Protobuf are linked statically,
+so the cached runner does not depend on libraries left in the build directory.
+A startup probe rejects broken cache entries and rebuilds them before testing.
+
+With protoc 36.2 on PATH, run:
+
+```
+PROTOBUF_CONFORMANCE_SOURCE=/tmp/gogo-conformance/protobuf-36.2 \
+PROTOBUF_CONFORMANCE_RUNNER=/tmp/gogo-conformance/bin/conformance_test_runner \
+CONFORMANCE_OUTPUT=/tmp/gogo-conformance-report sh compat/check-conformance.sh
+```
+
+A missing executable is an error. Both suites enforce recommended tests too.
+`report.json` separates required/recommended failures by syntax; full runner logs
+are uploaded by CI. The inventories contain 5,649 binary/JSON cases and 909 text
+cases. This baseline is a regression gate, not a claim of full conformance.
+
+A02 removes 64 stable binary/JSON failures through compatible integer, base64
+and escaped-enum parsing improvements. The remaining limitations stay explicit.
+
+`failures.json` enumerates every remaining historical stable failure with its observed
+reason and follow-up area. New failures, new skips, missing tests and runner
+crashes fail the gate. An improvement must remove its baseline entry.
+
+There are two explicit exceptions, also listed by exact test name:
+
+* Four upstream unstable-future-Edition cases are deliberately skipped. They are
+  outside the supported Edition range; no stable-Edition case is skipped.
+* Sixteen legacy JSON oneof/null cases can either pass or fail: the historical
+  parser iterates over oneof members in random map order. The gate reports their
+  actual outcome without allowing any other case to fluctuate. A03's separate
+  standard JSON entrypoint will remove this ambiguity for standard-mode users;
+  the legacy default is preserved for compatibility.
+
+The binary and text failures outside A01–A04 remain explicit work for subsequent
+runtime conformance upgrades. No tests are wildcarded or silently added to a
+failure list during CI. The existing historical conformance directory is kept
+for old workflows; this gate does not depend on it.
+
+A03 adds an independent standard-mode run and `failures-standard.json`. Its
+inventory is the same, but no variable outcomes are permitted. The legacy
+baseline remains separate so adopting standard rules does not silently change
+old callers. The report directories identify the entrypoint explicitly.
+
+B05 fixes message-oneof merging only for explicit Editions metadata. Six exact
+Editions_Proto2/Proto3 binary/JSON failures are removed from each baseline.
+Historical proto2/proto3 oneof behavior and text baselines are unchanged.
+
+The table sint32 decoder now truncates an incoming varint to 32 bits before
+ZigZag decoding, matching the existing Buffer codec, generated codecs and the
+upstream reference. Sixty exact binary/JSON failures are removed from each
+baseline; the standard entrypoint has 54 remaining binary/JSON failures and
+223 text failures. Pointer/scalar, packed/unpacked and map key/value regressions
+also run with purego. Canonical 32-bit inputs retain their previous results.
+
+Reflection decoding also rejects invalid/overlong field keys and mismatched
+outer or nested group tags, including unknown fields and map entries. Matching
+groups retain their payload and legal maximum field numbers remain accepted.
+Group scanning uses an iterative stack with the same 10,000-group limit as the
+existing Editions fast helper. Twenty more exact binary/JSON failures are
+removed from both baselines (34 standard binary/JSON failures remain).
+
+Standard JSON's configured unknown-name handling now omits enum fields,
+collection elements and map entries rather than inventing zero/presence; ignored
+oneof enum names do not conflict with a real selection. Its explicit 100-container
+JSON limit rejects the recommended deep-WKT cases. Twenty-six standard-only
+binary/JSON failures are removed (8 remain); legacy JSON results are unchanged.
+
+Registered string extensions carrying UTF-8-checking metadata are validated
+when the enclosing message is parsed, including repeated strings and extensions
+registered after a type's first use. Wrong-wire checked strings remain unknown
+fields. UTF8_NONE and historical extension tags retain their prior behavior.
+The corresponding Editions failure is removed from both inventories; standard
+binary/JSON now has 7 failures (text still has 223).
+
+Standard-mode text requests now use `textpb/standard`; legacy-mode text keeps
+`proto`'s original entrypoints. Standard float grammar/range/negative-zero,
+closed-enum, UTF-8 and unknown-field handling removes 125 text failures (98 remain). The
+legacy text baseline remains at 223; binary/JSON remains at 7 standard failures.
+
+The standard text Unicode-escape follow-up rejects surrogate code points before
+Go rune conversion, removing 32 more failures and leaving 66 standard text cases.
+Legacy parsing retains its historical replacement behavior.
+
+Descriptor-backed reserved-name skipping removes another 40 standard text cases.
+The standard text inventory now contains 26 failures; legacy entrypoints do not
+consult this metadata and retain their previous unknown-name behavior.
+
+Expanded Any URL character mode and percent validation remove 8 further standard
+text failures. The remaining 18 text records concern group names.
+
+Schema-based group names remove the final 18 standard text records: all 909
+pinned Protobuf 36.2 text cases pass without skips. Seven binary/JSON failures
+and four future-Edition skips remain separate; this is not full compatibility
+qualification of all gogo representations or arbitrary text inputs.
+
+Ordinary submessage-encoded MessageSet input removes one binary failure from both
+profiles. Standard mode now has six binary/JSON failures (legacy oneof-message
+merge semantics) and no text failures. The four future-Edition skips remain.
+
+The standard profile now generates its own testee with the explicit
+`merge_oneof_messages=true` parameter. Its last six binary/JSON records pass;
+all 5,649 binary/JSON cases have no failures (four future-Edition skips), and
+all 909 text cases pass without skips. Legacy generation and inventory remain
+separate. Standard generation also enables `merge_required_fields=true` so
+ordinary required children are checked after all surviving fragments merge.
+This suite result does not qualify every gogo representation, imported
+decoder policy or resource boundary.

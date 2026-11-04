@@ -105,7 +105,7 @@ func mergeStruct(out, in reflect.Value) {
 		if strings.HasPrefix(f.Name, "XXX_") {
 			continue
 		}
-		mergeAny(out.Field(i), in.Field(i), false, sprop.Prop[i])
+		mergeAny(generatedField(out, i), generatedField(in, i), false, sprop.Prop[i])
 	}
 
 	if emIn, ok := in.Addr().Interface().(extensionsBytes); ok {
@@ -147,6 +147,43 @@ func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
 			}
 		}
 		return
+	}
+	if prop != nil && prop.Proto3Optional && in.Kind() == reflect.Ptr && !in.IsNil() {
+		if prop.WktPointer {
+			copy := reflect.New(in.Type().Elem())
+			if in.Elem().Kind() == reflect.Slice {
+				if !in.Elem().IsNil() {
+					copy.Elem().SetBytes(append([]byte{}, in.Elem().Bytes()...))
+				}
+			} else {
+				copy.Elem().Set(in.Elem())
+			}
+			out.Set(copy)
+			return
+		}
+		if prop.StdTime {
+			// time.Time has private state; copying its Go value preserves the
+			// timestamp instead of recursively merging its implementation fields.
+			copy := reflect.New(in.Type().Elem())
+			copy.Elem().Set(in.Elem())
+			out.Set(copy)
+			return
+		}
+		if prop.CustomType != "" {
+			// A custom value is opaque bytes, not a message to merge field by
+			// field. Decode into a fresh value so explicit empty input clears it
+			// and mutable/private custom state is copied through its own codec.
+			data, err := in.Interface().(Marshaler).Marshal()
+			if err != nil {
+				panic("proto: cloning optional custom value: " + err.Error())
+			}
+			copy := reflect.New(in.Type().Elem())
+			if err := copy.Interface().(Unmarshaler).Unmarshal(append([]byte{}, data...)); err != nil {
+				panic("proto: cloning optional custom value: " + err.Error())
+			}
+			out.Set(copy)
+			return
+		}
 	}
 	switch in.Kind() {
 	case reflect.Bool, reflect.Float32, reflect.Float64, reflect.Int32, reflect.Int64,
@@ -207,7 +244,7 @@ func mergeAny(out, in reflect.Value, viaPtr bool, prop *Properties) {
 			// Edge case: if this is in a proto3 message, a zero length
 			// bytes field is considered the zero value, and should not
 			// be merged.
-			if prop != nil && prop.proto3 && in.Len() == 0 {
+			if prop != nil && prop.proto3 && !(prop.Proto3Optional || prop.ExplicitPresence) && in.Len() == 0 {
 				return
 			}
 

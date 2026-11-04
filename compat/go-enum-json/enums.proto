@@ -1,0 +1,28 @@
+edition = "2023";
+package qualification.enumjson;
+import option "google/protobuf/go_features.proto";
+option go_package = "example.com/go-enum-json/pb";
+option features.(pb.go).api_level = API_OPEN;
+// FILE_LEGACY_JSON
+
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_ONE = 1;
+}
+enum ExplicitOn {
+  option features.(pb.go).legacy_unmarshal_json_enum = true;
+  EXPLICIT_ON_UNSPECIFIED = 0;
+  EXPLICIT_ON_ONE = 1;
+}
+enum ExplicitOff {
+  option features.(pb.go).legacy_unmarshal_json_enum = false;
+  EXPLICIT_OFF_UNSPECIFIED = 0;
+  EXPLICIT_OFF_ONE = 1;
+}
+message Container {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    STATE_ONE = 1;
+  }
+  Mode mode = 1;
+}

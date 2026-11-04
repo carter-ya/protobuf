@@ -1,0 +1,24 @@
+goos: darwin
+goarch: arm64
+pkg: example.com/gogo-benchmark
+cpu: Apple M5 Max
+BenchmarkCodec/bytes64/Encode  	  293830	       411.6 ns/op	 621.92 MB/s	       256.0 wire-B	     368 B/op	       2 allocs/op
+BenchmarkCodec/bytes64/Encode  	  309464	       399.9 ns/op	 640.12 MB/s	       256.0 wire-B	     368 B/op	       2 allocs/op
+BenchmarkCodec/bytes64/Encode  	  322071	       412.6 ns/op	 620.49 MB/s	       256.0 wire-B	     368 B/op	       2 allocs/op
+BenchmarkCodec/bytes64/Decode  	   68079	      1745 ns/op	 146.73 MB/s	       256.0 wire-B	    1594 B/op	      31 allocs/op
+BenchmarkCodec/bytes64/Decode  	   68697	      1739 ns/op	 147.18 MB/s	       256.0 wire-B	    1594 B/op	      31 allocs/op
+BenchmarkCodec/bytes64/Decode  	   68730	      1727 ns/op	 148.26 MB/s	       256.0 wire-B	    1594 B/op	      31 allocs/op
+BenchmarkCodec/bytes64/DecodeReadExtension         	   49346	      2411 ns/op	 106.17 MB/s	       256.0 wire-B	    1824 B/op	      36 allocs/op
+BenchmarkCodec/bytes64/DecodeReadExtension         	   49888	      2437 ns/op	 105.05 MB/s	       256.0 wire-B	    1824 B/op	      36 allocs/op
+BenchmarkCodec/bytes64/DecodeReadExtension         	   49424	      2425 ns/op	 105.55 MB/s	       256.0 wire-B	    1824 B/op	      36 allocs/op
+BenchmarkCodec/bytes4096/Encode                    	  156130	       805.1 ns/op	10337.50 MB/s	      8323 wire-B	    9584 B/op	       2 allocs/op
+BenchmarkCodec/bytes4096/Encode                    	  149392	       797.5 ns/op	10436.50 MB/s	      8323 wire-B	    9584 B/op	       2 allocs/op
+BenchmarkCodec/bytes4096/Encode                    	  152926	       807.2 ns/op	10310.60 MB/s	      8323 wire-B	    9584 B/op	       2 allocs/op
+BenchmarkCodec/bytes4096/Decode                    	   45453	      2630 ns/op	3164.55 MB/s	      8323 wire-B	   19226 B/op	      31 allocs/op
+BenchmarkCodec/bytes4096/Decode                    	   46231	      2652 ns/op	3138.63 MB/s	      8323 wire-B	   19226 B/op	      31 allocs/op
+BenchmarkCodec/bytes4096/Decode                    	   46034	      2619 ns/op	3178.17 MB/s	      8323 wire-B	   19226 B/op	      31 allocs/op
+BenchmarkCodec/bytes4096/DecodeReadExtension       	   31683	      3810 ns/op	2184.34 MB/s	      8323 wire-B	   28272 B/op	      36 allocs/op
+BenchmarkCodec/bytes4096/DecodeReadExtension       	   31173	      3874 ns/op	2148.58 MB/s	      8323 wire-B	   28272 B/op	      36 allocs/op
+BenchmarkCodec/bytes4096/DecodeReadExtension       	   31208	      3893 ns/op	2138.10 MB/s	      8323 wire-B	   28272 B/op	      36 allocs/op
+PASS
+ok  	example.com/gogo-benchmark	3.072s

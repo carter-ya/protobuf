@@ -1,0 +1,43 @@
+package required_test
+
+import (
+ "fmt"
+ "reflect"
+ "testing"
+ "github.com/gogo/protobuf/proto"
+ IMPORTS
+)
+func wire(count,missing,value int)[]byte{
+ var data []byte
+ for i:=1;i<=count;i++{if i==missing{continue};number:=i;if i==count{number=4096};data=append(data,proto.EncodeVarint(uint64(number<<3))...);data=append(data,byte(value))}
+ return data
+}
+func empty(sample proto.Message)proto.Message{return reflect.New(reflect.TypeOf(sample).Elem()).Interface().(proto.Message)}
+func TestRequiredBoundaries(t *testing.T){
+ for _,tc:=range []struct{count int;value,outer proto.Message}{CASES}{
+  t.Run(fmt.Sprintf("%T",tc.value),func(t *testing.T){
+   if err:=proto.Unmarshal(wire(tc.count,0,0),tc.value);err!=nil{t.Fatal(err)}
+   if _,err:=proto.Marshal(tc.value);err!=nil{t.Fatal(err)}
+   for _,missing:=range []int{1,tc.count,64,65,128,129}{
+    if missing>tc.count{continue}
+    next:=empty(tc.value)
+    if err:=proto.Unmarshal(wire(tc.count,missing,0),next);err==nil{t.Fatalf("missing field %d was accepted",missing)}
+    if _,err:=proto.Marshal(next);err==nil{t.Fatalf("marshal missing %d accepted",missing)}
+   }
+   // Explicit Merge combines partial values without weakening final checks.
+   left,right:=empty(tc.value),empty(tc.value)
+   proto.Unmarshal(wire(tc.count,tc.count,0),left)
+   proto.Unmarshal(wire(tc.count,1,1),right)
+   proto.Merge(left,right)
+   bytes,err:=proto.Marshal(left);if err!=nil{t.Fatal(err)}
+   if err:=proto.Unmarshal(bytes,empty(left));err!=nil{t.Fatal(err)}
+   // Repeated occurrences of a singular submessage merge into the same value.
+   var nested []byte
+   for _,value:=range []int{0,1}{part:=wire(tc.count,0,value);nested=append(nested,10);nested=append(nested,proto.EncodeVarint(uint64(len(part)))...);nested=append(nested,part...)}
+   if err:=proto.Unmarshal(nested,tc.outer);err!=nil{t.Fatal(err)}
+   got:=reflect.ValueOf(tc.outer).Elem().FieldByName("Value").Interface().(proto.Message)
+   expected:=empty(tc.value);proto.Unmarshal(wire(tc.count,0,1),expected)
+   if !proto.Equal(got,expected){t.Fatal("nested merge differs")}
+  })
+ }
+}

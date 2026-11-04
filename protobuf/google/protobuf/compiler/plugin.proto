@@ -93,6 +93,7 @@ message CodeGeneratorRequest {
   // The version number of protocol compiler.
   optional Version compiler_version = 3;
 
+  repeated FileDescriptorProto source_file_descriptors = 17;
 }
 
 // The plugin writes an encoded CodeGeneratorResponse to stdout.
@@ -106,6 +107,16 @@ message CodeGeneratorResponse {
   // unparseable -- should be reported by writing a message to stderr and
   // exiting with a non-zero status code.
   optional string error = 1;
+
+  enum Feature {
+    FEATURE_NONE = 0;
+    FEATURE_PROTO3_OPTIONAL = 1;
+
+    FEATURE_SUPPORTS_EDITIONS = 2;
+  }
+  // Capability declaration only; a generator must implement and test a
+  // feature before setting its bit in a response.
+  optional uint64 supported_features = 2;
 
   // Represents a single generated file.
   message File {
@@ -163,6 +174,11 @@ message CodeGeneratorResponse {
 
     // The file contents.
     optional string content = 15;
+
+    optional GeneratedCodeInfo generated_code_info = 16;
   }
   repeated File file = 15;
+
+  optional int32 minimum_edition = 3;
+  optional int32 maximum_edition = 4;
 }

@@ -1,0 +1,7 @@
+syntax = "proto2";
+package qualification.prefixuse;
+option go_package = "example.com/enum-prefix/use";
+import "enums.proto";
+message Consumer {
+  optional qualification.prefix.Color color = 1 [default = COLOR_RED];
+}

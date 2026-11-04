@@ -1,12 +1,28 @@
-[GoGo Protobuf is Deprecated](https://twitter.com/awalterschulze/status/1584553056100057088)
+# Protocol Buffers for Go with Gadgets
 
-# [[Deprecated](https://twitter.com/awalterschulze/status/1584553056100057088)] Protocol Buffers for Go with Gadgets
+This maintenance fork continues original gogo/protobuf v1.3.2 while preserving
+its module path, generated APIs and Go 1.15 runtime support. See the
+[current compatibility and migration matrix](compat/SUPPORT.md) for qualified
+proto3 optional, Editions 2023–2026, standard JSON/text, gogo representations and
+remaining boundaries. Stable Protobuf 36.2 and the 37.0/Go 1.37 previews are
+qualified separately.
 
-<a href="https://www.youtube.com/watch?v=HTIltI0NuNg&list=PLYwF9EIrl42T3ml_ANaNifOuTQtLxaZgQ&index=3" target="_blank">
- <img src="https://img.youtube.com/vi/HTIltI0NuNg/maxres1.jpg" alt="Watch the video" width="480" border="10" />
-</a>
+The root runtime and generators are available as stable [**v1.4.0**](https://github.com/carter-ya/protobuf/releases/tag/v1.4.0),
+from commit `057d06490a721bea0fceb39c5c088bc1ef3085e8`. The separately qualified optional module
+remains [**reflect/v0.1.0-rc.2**](https://github.com/carter-ya/protobuf/releases/tag/reflect/v0.1.0-rc.2),
+from commit `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. Native ProtoReflect, HYBRID,
+OPAQUE and HYBRID `protoopaque` builds use that optional RC module and its pinned
+official runtime. Existing RC1/RC2 tags remain immutable.
+Use the [maintained-fork installation guide](release/INSTALL.md),
+[stable release notes](release/STABLE-NOTES.md), and [release/dependency policy](release/README.md).
+Original import paths stay unchanged; a direct versioned `go install` using the
+fork's repository path is not supported. Native ProtoReflect/HYBRID/OPAQUE is opt-in;
+its Go 1.23 module has a separately pinned official runtime dependency.
 
-[![Build Status](https://github.com/gogo/protobuf/workflows/Continuous%20Integration/badge.svg)](https://github.com/gogo/protobuf/actions)
+The [original ownership discussion](https://github.com/gogo/protobuf/issues/691)
+and the upstream project documentation below are retained for historical context.
+
+[![Compatibility](https://github.com/carter-ya/protobuf/actions/workflows/compatibility.yml/badge.svg?branch=master)](https://github.com/carter-ya/protobuf/actions/workflows/compatibility.yml)
 [![GoDoc](https://godoc.org/github.com/gogo/protobuf?status.svg)](http://godoc.org/github.com/gogo/protobuf)
 
 gogoprotobuf is a fork of <a href="https://github.com/golang/protobuf">golang/protobuf</a> with extra code generation features.
@@ -23,9 +39,9 @@ This code generation is used to achieve:
 Keeping track of how up to date gogoprotobuf is relative to golang/protobuf is done in this
 <a href="https://github.com/gogo/protobuf/issues/191">issue</a>
 
-## Release v1.3.0
+## Historical upstream release v1.3.0
 
-The project has updated to release v1.3.0. Check out the release notes <a href="https://github.com/gogo/protobuf/releases/tag/v1.3.0">here</a>.
+The upstream project announced release v1.3.0. Check out the release notes <a href="https://github.com/gogo/protobuf/releases/tag/v1.3.0">here</a>.
 
 With this new release comes a new internal library version. This means any newly generated *pb.go files generated with the v1.3.0 library will not be compatible with the old library version (v1.2.1). However, current *pb.go files (generated with v1.2.1) should still work with the new library.
 
@@ -83,7 +99,7 @@ Please let us know if you are using gogoprotobuf by posting on our <a href="http
   - <a href="https://jbrandhorst.com/post/gogoproto/">So you want to use GoGo Protobuf - Johan Brandhorst</a>
   - <a href="https://jbrandhorst.com/post/grpc-errors/">Advanced gRPC Error Usage - Johan Brandhorst</a>
   - <a href="https://www.udemy.com/grpc-golang/?couponCode=GITHUB10">gRPC Golang Course on Udemy - Stephane Maarek</a>
-  
+
 ## Preparing for GopherCon UK 2022
 
 <a href="https://www.youtube.com/watch?v=8kL7_KTsIoc" target="_blank">

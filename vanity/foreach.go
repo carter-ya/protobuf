@@ -123,3 +123,6 @@ func ForEachEnum(msgs []*descriptor.DescriptorProto, f func(field *descriptor.En
 		ForEachEnum(msg.NestedType, f)
 	}
 }
+
+// NotEditions preserves historical-only frontend transformations.
+func NotEditions(file *descriptor.FileDescriptorProto) bool { return file.GetSyntax() != "editions" }

@@ -1,0 +1,39 @@
+edition = "2024";
+package liveedition;
+option go_package = "example.com/native/pb";
+import option "google/protobuf/go_features.proto";
+// JSON_IMPORT
+option features.enforce_naming_style = STYLE_LEGACY;
+option features.(pb.go).api_level = API_HYBRID;
+enum State {
+  option features.enum_type = CLOSED;
+  ZERO = 0;
+  ONE = 1;  // JSON_VALUE
+}
+message Child {
+  string name = 1;
+}
+message Open {
+  option features.(pb.go).api_level = API_OPEN;
+  int32 value = 1;
+}
+message Outer {
+  option features.(pb.go).api_level = API_OPEN;
+  message Nested {
+    option features.(pb.go).api_level = API_HYBRID;
+    int32 value = 1;
+  }
+}
+message Sample {
+  int32 count = 1;
+  bytes data = 2;
+  Child child = 3;
+  repeated int32 values = 4;
+  map<string, Child> nodes = 5;
+  State state = 6;
+  oneof choice {
+    int32 number = 7;
+    Child selected = 8;
+  }
+  Open legacy = 9;
+}

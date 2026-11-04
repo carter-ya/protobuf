@@ -1,0 +1,76 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
+)
+
+func main() {
+	if len(os.Args) != 4 {
+		panic("usage: audit stable.pb preview.pb report.json")
+	}
+	sets := make([]*descriptorpb.FileDescriptorSet, 2)
+	for i, path := range os.Args[1:3] {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			panic(err)
+		}
+		sets[i] = new(descriptorpb.FileDescriptorSet)
+		if err := proto.Unmarshal(raw, sets[i]); err != nil {
+			panic(err)
+		}
+	}
+	before := make(map[string]*descriptorpb.FileDescriptorProto)
+	for _, file := range sets[0].File {
+		if before[file.GetName()] != nil {
+			panic("duplicate stable file")
+		}
+		before[file.GetName()] = file
+	}
+	if len(before) != len(sets[1].File) {
+		panic("official schema file inventory changed")
+	}
+	changes := []map[string]string{}
+	seen := make(map[string]bool)
+	for _, file := range sets[1].File {
+		name := file.GetName()
+		original := before[name]
+		if original == nil || seen[name] {
+			panic("official schema file inventory changed")
+		}
+		seen[name] = true
+		normalized := proto.Clone(file).(*descriptorpb.FileDescriptorProto)
+		if name == "google/protobuf/json_enumvalue_options.proto" || name == "google/protobuf/json_options.proto" {
+			if original.GetOptions().GoPackage != nil || file.GetOptions().GetGoPackage() != "google.golang.org/protobuf/types/jsonoptionspb" {
+				panic("unexpected json_enumvalue_options Go package delta")
+			}
+			normalized.Options.GoPackage = nil
+			changes = append(changes, map[string]string{"file": name, "field": "options.go_package", "before": "<absent>", "after": file.GetOptions().GetGoPackage()})
+		}
+		if !proto.Equal(original, normalized) {
+			if err := os.WriteFile(os.Args[3]+".before.txt", []byte(prototext.Format(original)), 0644); err != nil {
+				panic(err)
+			}
+			if err := os.WriteFile(os.Args[3]+".after.txt", []byte(prototext.Format(normalized)), 0644); err != nil {
+				panic(err)
+			}
+			panic(fmt.Sprintf("unreviewed schema delta in %s", name))
+		}
+	}
+	if len(changes) != 2 {
+		panic("reviewed preview schema delta missing")
+	}
+	report := map[string]interface{}{"equivalent_after_reviewed_delta": true, "reviewed_changes": changes, "files": len(before)}
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(os.Args[3], append(data, '\n'), 0644); err != nil {
+		panic(err)
+	}
+}

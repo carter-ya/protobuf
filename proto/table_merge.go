@@ -198,6 +198,17 @@ func (mi *mergeInfo) computeMergeInfo() {
 			}
 		}
 
+		if prop := props.Prop[i]; (!unsafeAllowed && (prop.CastType != "" || namedScalarMergeType(f.Type))) || (prop.Proto3Optional && (prop.CustomType != "" || prop.StdTime || prop.StdDuration || prop.WktPointer)) {
+			// Preserve named types for pure-Go legacy/optional values and use complete-value
+			// copy operations required by optional custom/std mappings.
+			fieldType := f.Type
+			mfi.merge = func(dst, src pointer) {
+				mergeAny(dst.asPointerTo(fieldType).Elem(), src.asPointerTo(fieldType).Elem(), false, prop)
+			}
+			mi.fields = append(mi.fields, mfi)
+			continue
+		}
+
 		// Unwrap tf to get at its most basic type.
 		var isPointer, isSlice bool
 		if tf.Kind() == reflect.Slice && tf.Elem().Kind() != reflect.Uint8 {
@@ -494,7 +505,7 @@ func (mi *mergeInfo) computeMergeInfo() {
 				}
 			}
 		case reflect.Slice:
-			isProto3 := props.Prop[i].proto3
+			isProto3 := props.Prop[i].proto3 && !(props.Prop[i].Proto3Optional || props.Prop[i].ExplicitPresence)
 			switch {
 			case isPointer:
 				panic("bad pointer in byte slice case in " + tf.Name())
@@ -530,6 +541,16 @@ func (mi *mergeInfo) computeMergeInfo() {
 			}
 		case reflect.Struct:
 			switch {
+			case tf == timeType && !isSlice && !isPointer:
+				// Native Go time values are atomic. Recursing into their private
+				// state panics in purego and can mix two timestamps in unsafe mode.
+				fieldType := f.Type
+				mfi.merge = func(dst, src pointer) {
+					value := src.asPointerTo(fieldType).Elem()
+					if !value.IsZero() {
+						dst.asPointerTo(fieldType).Elem().Set(value)
+					}
+				}
 			case isSlice && !isPointer: // E.g. []pb.T
 				mergeInfo := getMergeInfo(tf)
 				zero := reflect.Zero(tf)
@@ -673,4 +694,18 @@ func (mi *mergeInfo) computeMergeInfo() {
 	}
 
 	atomic.StoreInt32(&mi.initialized, 1)
+}
+
+// Pure-Go typed accessors require built-in scalar types. Older generated structs
+// can use defined scalar types even without a casttype tag (for example Kubernetes).
+func namedScalarMergeType(t reflect.Type) bool {
+	switch t.Kind() {
+	case reflect.Ptr:
+		return namedScalarMergeType(t.Elem())
+	case reflect.Slice:
+		return t.PkgPath() != "" || namedScalarMergeType(t.Elem())
+	case reflect.Bool, reflect.Int32, reflect.Int64, reflect.Uint8, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.String:
+		return t.PkgPath() != ""
+	}
+	return false
 }

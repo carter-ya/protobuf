@@ -97,6 +97,7 @@ func IsWktPtr(field *google_protobuf.FieldDescriptorProto) bool {
 }
 
 func NeedsNilCheck(proto3 bool, field *google_protobuf.FieldDescriptorProto) bool {
+	proto3 = proto3 && !field.GetProto3Optional()
 	nullable := IsNullable(field)
 	if field.IsMessage() || IsCustomType(field) {
 		return nullable

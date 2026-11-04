@@ -83,11 +83,15 @@ func (t *token) String() string {
 }
 
 type textParser struct {
-	s            string // remaining input
-	done         bool   // whether the parsing is finished (success or error)
-	backed       bool   // whether back() was called
-	offset, line int
-	cur          token
+	s              string // remaining input
+	done           bool   // whether the parsing is finished (success or error)
+	backed         bool   // whether back() was called
+	offset, line   int
+	cur            token
+	standard       bool
+	nameContext    bool // standard extension name or expanded Any URL
+	depth          int
+	recursionLimit int
 }
 
 func newTextParser(s string) *textParser {
@@ -138,7 +142,7 @@ func isQuote(c byte) bool {
 
 func (p *textParser) skipWhitespace() {
 	i := 0
-	for i < len(p.s) && (isWhitespace(p.s[i]) || p.s[i] == '#') {
+	for i < len(p.s) && (isWhitespace(p.s[i]) || p.standard && (p.s[i] == '\v' || p.s[i] == '\f') || p.s[i] == '#') {
 		if p.s[i] == '#' {
 			// comment; skip to end of line or input
 			for i < len(p.s) && p.s[i] != '\n' {
@@ -171,6 +175,15 @@ func (p *textParser) advance() {
 	p.cur.err = nil
 	p.cur.offset, p.cur.line = p.offset, p.line
 	p.cur.unquoted = ""
+	if p.standard && p.nameContext && standardURLChar(p.s[0]) {
+		i := 1
+		for i < len(p.s) && standardURLChar(p.s[i]) {
+			i++
+		}
+		p.cur.value, p.s = p.s[:i], p.s[i:]
+		p.offset += i
+		return
+	}
 	switch p.s[0] {
 	case '<', '>', '{', '}', ':', '[', ']', ';', ',', '/':
 		// Single symbol
@@ -189,7 +202,7 @@ func (p *textParser) advance() {
 			p.errorf("unmatched quote")
 			return
 		}
-		unq, err := unquoteC(p.s[1:i], rune(p.s[0]))
+		unq, err := unquoteCWithPolicy(p.s[1:i], rune(p.s[0]), p.standard)
 		if err != nil {
 			p.errorf("invalid quoted string %s: %v", p.s[0:i+1], err)
 			return
@@ -215,9 +228,22 @@ var (
 )
 
 func unquoteC(s string, quote rune) (string, error) {
+	return unquoteCWithPolicy(s, quote, false)
+}
+
+func unquoteCWithPolicy(s string, quote rune, standard bool) (string, error) {
+	if standard {
+		if !utf8.ValidString(s) {
+			return "", errBadUTF8
+		}
+		if strings.IndexByte(s, 0) >= 0 {
+			return "", fmt.Errorf("literal NUL must be escaped")
+		}
+	}
 	// This is based on C++'s tokenizer.cc.
 	// Despite its name, this is *not* parsing C syntax.
-	// For instance, "\0" is an invalid quoted string.
+	// Historical callers require full-width byte escapes. Standard mode
+	// accepts the variable-width octal and hexadecimal forms.
 
 	// Avoid allocation in trivial cases.
 	simple := true
@@ -247,7 +273,7 @@ func unquoteC(s string, quote rune) (string, error) {
 			continue
 		}
 
-		ch, tail, err := unescape(s)
+		ch, tail, err := unescapeWithPolicy(s, standard)
 		if err != nil {
 			return "", err
 		}
@@ -258,6 +284,10 @@ func unquoteC(s string, quote rune) (string, error) {
 }
 
 func unescape(s string) (ch string, tail string, err error) {
+	return unescapeWithPolicy(s, false)
+}
+
+func unescapeWithPolicy(s string, standard bool) (ch string, tail string, err error) {
 	r, n := utf8.DecodeRuneInString(s)
 	if r == utf8.RuneError && n == 1 {
 		return "", "", errBadUTF8
@@ -283,21 +313,39 @@ func unescape(s string) (ch string, tail string, err error) {
 	case '\'', '"', '\\':
 		return string(r), s, nil
 	case '0', '1', '2', '3', '4', '5', '6', '7':
-		if len(s) < 2 {
+		digits := 2
+		if standard {
+			digits = 0
+			for digits < 2 && digits < len(s) && s[digits] >= '0' && s[digits] <= '7' {
+				digits++
+			}
+		} else if len(s) < 2 {
 			return "", "", fmt.Errorf(`\%c requires 2 following digits`, r)
 		}
-		ss := string(r) + s[:2]
-		s = s[2:]
+		ss := string(r) + s[:digits]
+		s = s[digits:]
 		i, err := strconv.ParseUint(ss, 8, 8)
 		if err != nil {
 			return "", "", fmt.Errorf(`\%s contains non-octal digits`, ss)
 		}
 		return string([]byte{byte(i)}), s, nil
 	case 'x', 'X', 'u', 'U':
+		if standard && r == 'X' {
+			return "", "", fmt.Errorf(`unknown escape \X`)
+		}
 		var n int
 		switch r {
 		case 'x', 'X':
 			n = 2
+			if standard {
+				n = 0
+				for n < 2 && n < len(s) && textHexDigit(s[n]) {
+					n++
+				}
+				if n == 0 {
+					return "", "", fmt.Errorf(`\x requires at least one hex digit`)
+				}
+			}
 		case 'u':
 			n = 4
 		case 'U':
@@ -315,7 +363,9 @@ func unescape(s string) (ch string, tail string, err error) {
 		if r == 'x' || r == 'X' {
 			return string([]byte{byte(i)}), s, nil
 		}
-		if i > utf8.MaxRune {
+		// Text Unicode escapes encode scalar values, never UTF-16 surrogate
+		// halves. Check before conversion, which would replace them with U+FFFD.
+		if i > utf8.MaxRune || (standard && i >= 0xD800 && i <= 0xDFFF) {
 			return "", "", fmt.Errorf(`\%c%s is not a valid Unicode code point`, r, ss)
 		}
 		return string(rune(i)), s, nil
@@ -404,6 +454,11 @@ func (p *textParser) checkForColon(props *Properties, typ reflect.Type) *ParseEr
 		return tok.err
 	}
 	if tok.value != ":" {
+		if props.Proto3Optional && props.WktPointer {
+			// Mapped strings and bytes are still wrapper messages.
+			p.back()
+			return nil
+		}
 		// Colon is optional when the field is a group or message.
 		needColon := true
 		switch props.Wire {
@@ -439,8 +494,25 @@ func (p *textParser) checkForColon(props *Properties, typ reflect.Type) *ParseEr
 }
 
 func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
+	if p.standard {
+		if sv.Kind() != reflect.Struct {
+			return p.errorf("standard text requires a struct message")
+		}
+		if p.depth >= p.recursionLimit {
+			return p.errorf("standard text nesting exceeds limit %d", p.recursionLimit)
+		}
+		p.depth++
+		defer func() { p.depth-- }()
+	}
 	st := sv.Type()
 	sprops := GetProperties(st)
+	var schema *textSchema
+	if p.standard {
+		schema = standardTextSchema(st)
+		if schema.err != nil {
+			return p.errorf("invalid text schema for %v: %v", st, schema.err)
+		}
+	}
 	reqCount := sprops.reqCount
 	var reqFieldErr error
 	fieldSet := make(map[string]bool)
@@ -469,6 +541,9 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 			}
 
 			if s := strings.LastIndex(extName, "/"); s >= 0 {
+				if p.standard && !isAny(sv) {
+					return p.errorf("expanded Any URL in non-Any message %v", st)
+				}
 				// If it contains a slash, it's an Any type URL.
 				messageName := extName[s+1:]
 				mt := MessageType(messageName)
@@ -509,8 +584,12 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 				if fieldSet["value"] {
 					return p.errorf(anyRepeatedlyUnpacked, "value")
 				}
-				sv.FieldByName("TypeUrl").SetString(extName)
-				sv.FieldByName("Value").SetBytes(b)
+				typeURL, value, ok := anyStorageFields(sv)
+				if !ok {
+					return p.errorf("invalid google.protobuf.Any message")
+				}
+				typeURL.SetString(extName)
+				value.SetBytes(b)
 				fieldSet["type_url"] = true
 				fieldSet["value"] = true
 				continue
@@ -533,6 +612,13 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 			props.Parse(desc.Tag)
 
 			typ := reflect.TypeOf(desc.ExtensionType)
+			if p.standard {
+				fieldType := typ
+				if desc.repeated() {
+					fieldType = typ.Elem()
+				}
+				props.Init(fieldType, desc.Name, desc.Tag, nil)
+			}
 			if err := p.checkForColon(props, typ); err != nil {
 				return err
 			}
@@ -575,16 +661,34 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 
 		// This is a normal, non-extension field.
 		name := tok.value
+		if schema != nil && schema.reserved[name] {
+			if err := p.skipReservedField(0); err != nil {
+				return err
+			}
+			continue
+		}
 		var dst reflect.Value
 		fi, props, ok := structFieldByName(sprops, name)
+		oop := sprops.OneofTypes[name]
+		if schema != nil {
+			if tag, found := schema.tagsByName[name]; found {
+				fi, props, oop = textPropertyByTag(sprops, tag)
+				ok = fi >= 0
+				if props != nil {
+					name = props.OrigName // aliases share the same singular-field key
+				}
+			} else if props != nil && schema.groupNames[props.Tag] != "" {
+				ok, oop = false, nil // historical Go tag spelling is not a schema alias
+			}
+		}
 		if ok {
-			dst = sv.Field(fi)
-		} else if oop, ok := sprops.OneofTypes[name]; ok {
+			dst = generatedField(sv, fi)
+		} else if oop != nil {
 			// It is a oneof.
 			props = oop.Prop
 			nv := reflect.New(oop.Type.Elem())
 			dst = nv.Elem().Field(0)
-			field := sv.Field(oop.Field)
+			field := generatedField(sv, oop.Field)
 			if !field.IsNil() {
 				return p.errorf("field '%s' would overwrite already parsed oneof '%s'", name, sv.Type().Field(oop.Field).Name)
 			}
@@ -595,6 +699,12 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 		}
 
 		if dst.Kind() == reflect.Map {
+			if p.standard {
+				if err := p.readStandardMap(dst, props); err != nil {
+					return err
+				}
+				continue
+			}
 			// Consume any colon.
 			if err := p.checkForColon(props, dst.Type()); err != nil {
 				return err
@@ -663,7 +773,11 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 		}
 
 		// Check that it's not already set if it's not a repeated field.
-		if !props.Repeated && fieldSet[name] {
+		fieldKey := name
+		if schema != nil && schema.groupNames[props.Tag] != "" {
+			fieldKey = fmt.Sprintf("#group:%d", props.Tag)
+		}
+		if !props.Repeated && fieldSet[fieldKey] {
 			return p.errorf("non-repeated field %q was repeated", name)
 		}
 
@@ -672,7 +786,7 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 		}
 
 		// Parse into the field.
-		fieldSet[name] = true
+		fieldSet[fieldKey] = true
 		if err := p.readAny(dst, props); err != nil {
 			if _, ok := err.(*RequiredNotSetError); !ok {
 				return err
@@ -698,6 +812,8 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) error {
 // consumeExtName consumes extension name or expanded Any type URL and the
 // following ']'. It returns the name or URL consumed.
 func (p *textParser) consumeExtName() (string, error) {
+	p.nameContext = p.standard
+	defer func() { p.nameContext = false }()
 	tok := p.next()
 	if tok.err != nil {
 		return "", tok.err
@@ -705,6 +821,9 @@ func (p *textParser) consumeExtName() (string, error) {
 
 	// If extension name or type url is quoted, it's a single token.
 	if len(tok.value) > 2 && isQuote(tok.value[0]) && tok.value[len(tok.value)-1] == tok.value[0] {
+		if p.standard {
+			return "", p.errorf("standard extension names and Any URLs must be unquoted")
+		}
 		name, err := unquoteC(tok.value[1:len(tok.value)-1], rune(tok.value[0]))
 		if err != nil {
 			return "", err
@@ -724,7 +843,11 @@ func (p *textParser) consumeExtName() (string, error) {
 			return "", p.errorf("unclosed type_url or extension name")
 		}
 	}
-	return strings.Join(parts, ""), nil
+	name := strings.Join(parts, "")
+	if p.standard && !validStandardTextName(name) {
+		return "", p.errorf("invalid type URL or extension name %q", name)
+	}
+	return name, nil
 }
 
 // consumeOptionalSeparator consumes an optional semicolon or comma.
@@ -741,12 +864,40 @@ func (p *textParser) consumeOptionalSeparator() error {
 }
 
 func (p *textParser) readAny(v reflect.Value, props *Properties) error {
+	if props.Proto3Optional && props.WktPointer {
+		// Parse the declared wrapper structure before assigning its scalar
+		// value. A fresh wrapper preserves presence even for an empty body.
+		message, err := optionalStdMessage(reflect.Zero(v.Type().Elem()).Interface())
+		if err != nil {
+			return err
+		}
+		wrapper := reflect.ValueOf(message).Elem()
+		propsCopy := *props
+		propsCopy.WktPointer = false
+		if err := p.readAny(wrapper, &propsCopy); err != nil {
+			return err
+		}
+		v.Set(wrapper.Field(0).Addr())
+		return nil
+	}
 	tok := p.next()
 	if tok.err != nil {
 		return tok.err
 	}
 	if tok.value == "" {
 		return p.errorf("unexpected EOF")
+	}
+	if p.standard && strings.HasPrefix(tok.value, "+") {
+		return p.errorf("leading '+' is not permitted")
+	}
+	if p.standard && tok.value == "-" {
+		sign := tok.value
+		tok = p.next()
+		if tok.err != nil {
+			return tok.err
+		}
+		tok.value = sign + tok.value
+		// tok points at p.cur, so pointer recursion retains the joined sign.
 	}
 	if len(props.CustomType) > 0 {
 		if props.Repeated {
@@ -879,6 +1030,16 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		// Repeated field.
 		if tok.value == "[" {
 			// Repeated field with list notation, like [1,2,3].
+			if p.standard {
+				next := p.next()
+				if next.err != nil {
+					return next.err
+				}
+				if next.value == "]" {
+					return nil
+				}
+				p.back()
+			}
 			for {
 				fv.Set(reflect.Append(fv, reflect.New(at.Elem()).Elem()))
 				err := p.readAny(fv.Index(fv.Len()-1), props)
@@ -912,7 +1073,21 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 			fv.SetBool(false)
 			return nil
 		}
+		if p.standard && standardTextInteger(tok.value, false) {
+			if number, err := strconv.ParseUint(tok.value, 0, 64); err == nil && number <= 1 {
+				fv.SetBool(number == 1)
+				return nil
+			}
+		}
 	case reflect.Float32, reflect.Float64:
+		if p.standard {
+			f, err := parseStandardTextFloat(tok.value, fv.Type().Bits())
+			if err != nil {
+				return p.errorf("invalid %v: %v", v.Type(), tok.value)
+			}
+			fv.SetFloat(f)
+			return nil
+		}
 		v := tok.value
 		// Ignore 'f' for compatibility with output generated by C++, but don't
 		// remove 'f' when the value is "-inf" or "inf".
@@ -924,17 +1099,20 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 			return nil
 		}
 	case reflect.Int8:
-		if x, err := strconv.ParseInt(tok.value, 0, 8); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 8); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
 			fv.SetInt(x)
 			return nil
 		}
 	case reflect.Int16:
-		if x, err := strconv.ParseInt(tok.value, 0, 16); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 16); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
 			fv.SetInt(x)
 			return nil
 		}
 	case reflect.Int32:
-		if x, err := strconv.ParseInt(tok.value, 0, 32); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 32); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
+			if len(props.ClosedEnum) > 0 && !props.ClosedEnum[int32(x)] || p.standard && !knownTextEnumNumber(props, int32(x)) {
+				return p.errorf("unknown value %d for closed enum %s", x, props.Enum)
+			}
 			fv.SetInt(x)
 			return nil
 		}
@@ -953,7 +1131,7 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		fv.SetInt(int64(x))
 		return nil
 	case reflect.Int64:
-		if x, err := strconv.ParseInt(tok.value, 0, 64); err == nil {
+		if x, err := strconv.ParseInt(tok.value, 0, 64); err == nil && (!p.standard || standardTextInteger(tok.value, true)) {
 			fv.SetInt(x)
 			return nil
 		}
@@ -965,6 +1143,9 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		return p.readAny(fv.Elem(), props)
 	case reflect.String:
 		if tok.value[0] == '"' || tok.value[0] == '\'' {
+			if p.standard && props.proto3 && !props.UTF8None && !utf8.ValidString(tok.unquoted) {
+				return p.errorf("invalid UTF-8 string")
+			}
 			fv.SetString(tok.unquoted)
 			return nil
 		}
@@ -981,22 +1162,22 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) error {
 		// TODO: Handle nested messages which implement encoding.TextUnmarshaler.
 		return p.readStruct(fv, terminator)
 	case reflect.Uint8:
-		if x, err := strconv.ParseUint(tok.value, 0, 8); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 8); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(x)
 			return nil
 		}
 	case reflect.Uint16:
-		if x, err := strconv.ParseUint(tok.value, 0, 16); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 16); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(x)
 			return nil
 		}
 	case reflect.Uint32:
-		if x, err := strconv.ParseUint(tok.value, 0, 32); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 32); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(uint64(x))
 			return nil
 		}
 	case reflect.Uint64:
-		if x, err := strconv.ParseUint(tok.value, 0, 64); err == nil {
+		if x, err := strconv.ParseUint(tok.value, 0, 64); err == nil && (!p.standard || standardTextInteger(tok.value, false)) {
 			fv.SetUint(x)
 			return nil
 		}

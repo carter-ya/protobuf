@@ -1,0 +1,4 @@
+syntax = "proto2";
+package qualification.prefixbridge;
+option go_package = "example.com/enum-prefix/bridge";
+import public "enums.proto";

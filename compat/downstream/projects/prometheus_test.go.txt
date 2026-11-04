@@ -1,0 +1,19 @@
+package projects
+
+import (
+	"github.com/gogo/protobuf/proto"
+	"github.com/prometheus/prometheus/prompb"
+	writev2 "github.com/prometheus/prometheus/prompb/io/prometheus/write/v2"
+	"testing"
+)
+
+func samples() []proto.Message {
+	return []proto.Message{
+		&prompb.WriteRequest{Timeseries: []prompb.TimeSeries{{Labels: []prompb.Label{{Name: "__name__", Value: "cpu"}}, Samples: []prompb.Sample{{Value: 1.25, Timestamp: 1700000000000}}, Histograms: []prompb.Histogram{{Count: &prompb.Histogram_CountInt{CountInt: 2}, ZeroCount: &prompb.Histogram_ZeroCountInt{ZeroCountInt: 1}, PositiveSpans: []prompb.BucketSpan{{Offset: 0, Length: 2}}, PositiveDeltas: []int64{1, 1}}}}}},
+		&writev2.Request{Symbols: []string{"", "__name__", "cpu"}, Timeseries: []writev2.TimeSeries{{LabelsRefs: []uint32{1, 2}, Samples: []writev2.Sample{{Value: 1.25, Timestamp: 1700000000000}}}}},
+	}
+}
+
+func same(a, b proto.Message) bool { return proto.Equal(a, b) }
+
+func checkHelpers(t *testing.T, value proto.Message, check func()) { t.Helper(); check() }

@@ -204,6 +204,9 @@ func (p *size) std(field *descriptor.FieldDescriptorProto, name string) (string,
 	if gogoproto.IsNullable(field) {
 		ptr = "*"
 	}
+	if field.GetProto3Optional() && gogoproto.IsStdType(field) {
+		return p.NewImport("github.com/gogo/protobuf/proto").Use() + ".SizeOfOptionalStd(" + ptr + name + ")", true
+	}
 	if gogoproto.IsStdTime(field) {
 		return p.typesPkg.Use() + `.SizeOfStdTime(` + ptr + name + `)`, true
 	} else if gogoproto.IsStdDuration(field) {
@@ -231,7 +234,15 @@ func (p *size) std(field *descriptor.FieldDescriptorProto, name string) (string,
 }
 
 func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, message *generator.Descriptor, field *descriptor.FieldDescriptorProto, sizeName string) {
+	proto3 = p.FieldProto3Value(file, field, proto3)
 	fieldname := p.GetOneOfFieldName(message, field)
+	if file.IsEditions() && field.IsRealOneof() && (field.IsMessage() || field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP) {
+		minimum := keySize(field.GetNumber(), proto.WireBytes) + 1
+		if field.GetType() == descriptor.FieldDescriptorProto_TYPE_GROUP {
+			minimum = 2 * keySize(field.GetNumber(), proto.WireStartGroup)
+		}
+		p.P("if m.", fieldname, " == nil { return ", strconv.Itoa(minimum), " }")
+	}
 	nullable := gogoproto.IsNullable(field)
 	repeated := field.IsRepeated()
 	doNilCheck := gogoproto.NeedsNilCheck(proto3, field)
@@ -259,7 +270,11 @@ func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, messag
 		} else if repeated {
 			p.P(`n+=`, strconv.Itoa(key+8), `*len(m.`, fieldname, `)`)
 		} else if proto3 {
-			p.P(`if m.`, fieldname, ` != 0 {`)
+			if file.IsEditions() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_DOUBLE {
+				p.P(`if `, p.NewImport("math").Use(), `.Float64bits(float64(m.`, fieldname, `)) != 0 {`)
+			} else {
+				p.P(`if m.`, fieldname, ` != 0 {`)
+			}
 			p.In()
 			p.P(`n+=`, strconv.Itoa(key+8))
 			p.Out()
@@ -277,7 +292,11 @@ func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, messag
 		} else if repeated {
 			p.P(`n+=`, strconv.Itoa(key+4), `*len(m.`, fieldname, `)`)
 		} else if proto3 {
-			p.P(`if m.`, fieldname, ` != 0 {`)
+			if file.IsEditions() && field.GetType() == descriptor.FieldDescriptorProto_TYPE_FLOAT {
+				p.P(`if `, p.NewImport("math").Use(), `.Float32bits(float32(m.`, fieldname, `)) != 0 {`)
+			} else {
+				p.P(`if m.`, fieldname, ` != 0 {`)
+			}
 			p.In()
 			p.P(`n+=`, strconv.Itoa(key+4))
 			p.Out()
@@ -356,7 +375,14 @@ func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, messag
 			p.P(`n+=`, strconv.Itoa(key), `+l+sov`, p.localName, `(uint64(l))`)
 		}
 	case descriptor.FieldDescriptorProto_TYPE_GROUP:
-		panic(fmt.Errorf("size does not support group %v", fieldname))
+		if !file.IsEditions() {
+			panic(fmt.Errorf("size does not support group %v", fieldname))
+		}
+		if repeated {
+			p.P("for _, value := range m.", fieldname, " { n += ", strconv.Itoa(2*key), " + value.", sizeName, "() }")
+		} else {
+			p.P("n += ", strconv.Itoa(2*key), " + m.", fieldname, ".", sizeName, "()")
+		}
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 		if p.IsMap(field) {
 			m := p.GoMapType(nil, field)
@@ -605,66 +631,11 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 		}
 		p.atleastOne = true
 		ccTypeName := generator.CamelCaseSlice(message.TypeName())
-		p.P(`func (m *`, ccTypeName, `) `, sizeName, `() (n int) {`)
-		p.In()
-		p.P(`if m == nil {`)
-		p.In()
-		p.P(`return 0`)
-		p.Out()
-		p.P(`}`)
-		p.P(`var l int`)
-		p.P(`_ = l`)
-		oneofs := make(map[string]struct{})
-		for _, field := range message.Field {
-			oneof := field.OneofIndex != nil
-			if !oneof {
-				proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
-				p.generateField(proto3, file, message, field, sizeName)
-			} else {
-				fieldname := p.GetFieldName(message, field)
-				if _, ok := oneofs[fieldname]; ok {
-					continue
-				} else {
-					oneofs[fieldname] = struct{}{}
-				}
-				p.P(`if m.`, fieldname, ` != nil {`)
-				p.In()
-				p.P(`n+=m.`, fieldname, `.`, sizeName, `()`)
-				p.Out()
-				p.P(`}`)
-			}
-		}
-		if message.DescriptorProto.HasExtension() {
-			if gogoproto.HasExtensionsMap(file.FileDescriptorProto, message.DescriptorProto) {
-				p.P(`n += `, protoPkg.Use(), `.SizeOfInternalExtension(m)`)
-			} else {
-				p.P(`if m.XXX_extensions != nil {`)
-				p.In()
-				p.P(`n+=len(m.XXX_extensions)`)
-				p.Out()
-				p.P(`}`)
-			}
-		}
-		if gogoproto.HasUnrecognized(file.FileDescriptorProto, message.DescriptorProto) {
-			p.P(`if m.XXX_unrecognized != nil {`)
-			p.In()
-			p.P(`n+=len(m.XXX_unrecognized)`)
-			p.Out()
-			p.P(`}`)
-		}
-		p.P(`return n`)
-		p.Out()
-		p.P(`}`)
-		p.P()
-
-		//Generate Size methods for oneof fields
-		m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
-		for _, f := range m.Field {
-			oneof := f.OneofIndex != nil
-			if !oneof {
-				continue
-			}
-			ccTypeName := p.OneOfTypeName(message, f)
+		if p.UseTableCodec(message) {
+			p.P("func (m *", ccTypeName, ") ", sizeName, "() int {")
+			p.P("return xxx_messageInfo_", ccTypeName, ".Size(m)")
+			p.P("}")
+		} else {
 			p.P(`func (m *`, ccTypeName, `) `, sizeName, `() (n int) {`)
 			p.In()
 			p.P(`if m == nil {`)
@@ -674,7 +645,83 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 			p.P(`}`)
 			p.P(`var l int`)
 			p.P(`_ = l`)
-			vanity.TurnOffNullableForNativeTypes(f)
+			oneofs := make(map[string]struct{})
+			for _, field := range message.Field {
+				oneof := field.IsRealOneof()
+				if !oneof {
+					proto3 := gogoproto.IsProto3(file.FileDescriptorProto)
+					p.generateField(proto3, file, message, field, sizeName)
+				} else {
+					fieldname := p.GetFieldName(message, field)
+					if _, ok := oneofs[fieldname]; ok {
+						continue
+					} else {
+						oneofs[fieldname] = struct{}{}
+					}
+					p.P(`if m.`, fieldname, ` != nil {`)
+					p.In()
+					p.P(`n+=m.`, fieldname, `.`, sizeName, `()`)
+					p.Out()
+					p.P(`}`)
+				}
+			}
+			if message.DescriptorProto.HasExtension() {
+				if gogoproto.HasExtensionsMap(file.FileDescriptorProto, message.DescriptorProto) {
+					p.P(`n += `, protoPkg.Use(), `.SizeOfInternalExtension(m)`)
+				} else {
+					p.P(`if m.XXX_extensions != nil {`)
+					p.In()
+					p.P(`n+=len(m.XXX_extensions)`)
+					p.Out()
+					p.P(`}`)
+				}
+			}
+			if gogoproto.HasUnrecognized(file.FileDescriptorProto, message.DescriptorProto) {
+				p.P(`if m.XXX_unrecognized != nil {`)
+				p.In()
+				p.P(`n+=len(m.XXX_unrecognized)`)
+				p.Out()
+				p.P(`}`)
+			}
+			p.P(`return n`)
+			p.Out()
+			p.P(`}`)
+			p.P()
+
+		}
+		//Generate Size methods for oneof fields
+		m := proto.Clone(message.DescriptorProto).(*descriptor.DescriptorProto)
+		for index, field := range m.Field {
+			p.CopyFieldSemantics(file, message.Field[index], field)
+		}
+		for _, f := range m.Field {
+			oneof := f.IsRealOneof()
+			if !oneof {
+				continue
+			}
+			ccTypeName := p.OneOfTypeName(message, f)
+			if p.UseTableCodec(message) {
+				owner := generator.CamelCaseSlice(message.TypeName())
+				p.P("func (m *", ccTypeName, ") ", sizeName, "() int {")
+				p.P("if m == nil {return 0}")
+				p.P("parent := &", owner, "{", p.GetFieldName(message, f), ": m}")
+				p.P("return parent.", sizeName, "()")
+				p.P("}")
+				continue
+			}
+			p.P(`func (m *`, ccTypeName, `) `, sizeName, `() (n int) {`)
+			p.In()
+			p.P(`if m == nil {`)
+			p.In()
+			p.P(`return 0`)
+			p.Out()
+			p.P(`}`)
+			p.P(`var l int`)
+			p.P(`_ = l`)
+			if !file.IsEditions() || f.GetType() != descriptor.FieldDescriptorProto_TYPE_GROUP {
+				vanity.TurnOffNullableForNativeTypes(f)
+				vanity.TurnOffNullableForNativeOneof(f)
+			}
 			p.generateField(false, file, message, f, sizeName)
 			p.P(`return n`)
 			p.Out()

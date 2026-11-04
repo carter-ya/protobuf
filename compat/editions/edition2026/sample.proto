@@ -1,0 +1,16 @@
+edition = "2026";
+package compat.editions.v2026;
+option go_package = "github.com/gogo/protobuf/compat/editions/edition2026";
+import option "google/protobuf/json_enumvalue_options.proto";
+enum Status {
+  option allow_alias = true;
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1 [(pb.enumvalue.json).string = "ok\"line\n雪"];
+  STATUS_ALIAS = 1 [(pb.enumvalue.json).string = "ok\"line\n雪"];
+  STATUS_EMPTY = 2 [(pb.enumvalue.json).string = ""];
+}
+message Sample {
+  Status status = 1;
+  repeated Status statuses = 2;
+  map<string, Status> values = 3;
+}

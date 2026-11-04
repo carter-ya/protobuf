@@ -1,0 +1,193 @@
+package consumer_test
+import (
+ "bytes"
+ "math"
+ "os/exec"
+ "reflect"
+ "testing"
+ pb "example.com/gogo-fast/pb"
+ "github.com/gogo/protobuf/jsonpb/standard"
+ "github.com/gogo/protobuf/proto"
+)
+type reflectionSample pb.Sample
+func(m *reflectionSample)Reset(){*m=reflectionSample{}}
+func(m *reflectionSample)String()string{return proto.CompactTextString(m)}
+func(*reflectionSample)ProtoMessage(){}
+func(m *reflectionSample)Descriptor()([]byte,[]int){return (*pb.Sample)(m).Descriptor()}
+func encode(field int,body []byte)[]byte{data:=proto.EncodeVarint(uint64(field<<3|2));data=append(data,proto.EncodeVarint(uint64(len(body)))...);return append(data,body...)}
+func scalar(field int,value uint64)[]byte{return append(proto.EncodeVarint(uint64(field<<3)),proto.EncodeVarint(value)...)}
+func TestScalarCodecs(t *testing.T){
+ state:=pb.State(-1)
+ full:=&pb.Sample{DoubleValue:proto.Float64(-1.5),FloatValue:proto.Float32(1.25),Int64Value:proto.Int64(math.MinInt64),Uint64Value:proto.Uint64(math.MaxUint64),Int32Value:proto.Int32(math.MinInt32),Fixed64Value:proto.Uint64(math.MaxUint64),Fixed32Value:proto.Uint32(math.MaxUint32),BoolValue:proto.Bool(false),Verify:proto.String(""),Data:[]byte{},Uint32Value:proto.Uint32(0),State:&state,Sfixed32Value:proto.Int32(math.MinInt32),Sfixed64Value:proto.Int64(math.MinInt64),Sint32Value:proto.Int32(math.MinInt32),Sint64Value:proto.Int64(math.MinInt64),Raw:proto.String(string([]byte{255})),Labels:[]string{"","雪"},States:[]pb.State{0,1,-1},Opens:[]pb.OpenState{0,9,1},Zigzags:[]int32{0,-1,math.MinInt32,math.MaxInt32},Fixeds:[]uint64{0,math.MaxUint64},Chunks:[][]byte{{},{1,2}}}
+ for _,value:=range []*pb.Sample{new(pb.Sample),{Data:[]byte{}},{Int32Value:proto.Int32(0)},{ImplicitValue:0},full}{
+  expected,err:=proto.Marshal((*reflectionSample)(value));if err!=nil{t.Fatal(err)}
+  actual,err:=proto.Marshal(value);if err!=nil||!bytes.Equal(expected,actual){t.Fatalf("wire mismatch: %x %x %v",expected,actual,err)}
+  if proto.Size(value)!=len(actual){t.Fatal("size differs")}
+  if FAST {codec,ok:=interface{}(value).(interface{Marshal()([]byte,error);Unmarshal([]byte)error;Size()int});if !ok{t.Fatal("no generated fast methods")};data,err:=codec.Marshal();if err!=nil||codec.Size()!=len(data)||!bytes.Equal(data,expected){t.Fatalf("direct fast differs: %x %v",data,err)}}
+  command:=exec.Command("protoc","-I.","--decode=compat.fast.Sample","scalars.proto");command.Stdin=bytes.NewReader(actual)
+  text,err:=command.CombinedOutput();if err!=nil{t.Fatalf("official decode: %s %v",text,err)}
+  command=exec.Command("protoc","-I.","--encode=compat.fast.Sample","scalars.proto");command.Stdin=bytes.NewReader(text)
+  oracle,err:=command.Output();if err!=nil{t.Fatalf("official encode: %v",err)}
+  var official pb.Sample;if err:=proto.Unmarshal(oracle,&official);err!=nil||!proto.Equal(value,&official){t.Fatalf("official roundtrip: %v",err)}
+  var back pb.Sample
+  if err:=proto.Unmarshal(actual,&back);err!=nil||!proto.Equal(value,&back){t.Fatalf("roundtrip: %v %v",value,err)}
+ }
+ explicit:=&pb.Sample{Int32Value:proto.Int32(0),Data:[]byte{}}
+ text,err:=(&standard.Marshaler{}).MarshalToString(explicit);if err!=nil{t.Fatal(err)}
+ var back pb.Sample
+ if err:=standard.UnmarshalString(text,&back);err!=nil||back.Int32Value==nil||back.Data==nil{t.Fatalf("JSON presence: %s %v",text,err)}
+}
+func TestScalarValidation(t *testing.T){
+ bad:=string([]byte{255})
+ for _,value:=range []*pb.Sample{{Verify:&bad},{Labels:[]string{bad}},{ImplicitLabel:bad}}{if _,err:=proto.Marshal(value);err==nil{t.Fatal("invalid UTF-8 accepted")}}
+ for _,field:=range []int{9,19,25}{if err:=proto.Unmarshal(encode(field,[]byte{255}),new(pb.Sample));err==nil{t.Fatalf("invalid UTF-8 decoded at %d",field)}}
+ var raw pb.Sample
+ if err:=proto.Unmarshal(encode(18,[]byte{255}),&raw);err!=nil||raw.Raw==nil||*raw.Raw!=bad{t.Fatalf("UTF8 NONE: %v",err)}
+ if err:=proto.Unmarshal(nil,new(pb.Required));err==nil{t.Fatal("missing required accepted")}
+}
+func TestClosedEnumsAndUnknowns(t *testing.T){
+ input:=scalar(12,9)
+ input=append(input,encode(20,append([]byte{0,9},proto.EncodeVarint(math.MaxUint64)...))...)
+ input=append(input,encode(12,[]byte{0,1})...) // singular wrong-wire packed data remains wholly unknown
+ input=append(input,scalar(21,9)...)
+ input=append(input,scalar(100,7)...)
+ var value pb.Sample
+ var reflected reflectionSample
+ if err:=proto.Unmarshal(input,&value);err!=nil{t.Fatal(err)}
+ if err:=proto.Unmarshal(input,&reflected);err!=nil{t.Fatal(err)}
+ if value.State!=nil||!reflect.DeepEqual(value.States,[]pb.State{0,-1})||!reflect.DeepEqual(value.Opens,[]pb.OpenState{9}){t.Fatalf("closed enum routing: %v",value)}
+ actual,_:=proto.Marshal(&value);expected,_:=proto.Marshal(&reflected)
+ if !bytes.Equal(actual,expected){t.Fatalf("unknown values differ: %x %x",actual,expected)}
+ // Every ordinary scalar's wrong-wire form is retained as unknown.
+ for _,field:=range []int{1,2,3,5,9,10,17,18,25}{
+  var data []byte
+  if field==9||field==10||field==18||field==25{data=scalar(field,1)}else{data=encode(field,[]byte{1})}
+  if err:=proto.Unmarshal(data,new(pb.Sample));err!=nil{t.Fatalf("wrong-wire field %d: %v",field,err)}
+ }
+}
+
+func TestMalformedFastInput(t *testing.T){
+ if !FAST{return}
+ for _,data:=range [][]byte{{0},{8},{15},{12},{11,20},{26,2,1},{24,128,128,128,128,128,128,128,128,128,2},{128,128,128,128,128,1,0},{162,1,1,128}}{if err:=proto.Unmarshal(data,new(pb.Sample));err==nil{t.Fatalf("accepted %x",data)}}
+}
+
+type reflectionPacked pb.Packed
+func(m *reflectionPacked)Reset(){*m=reflectionPacked{}}
+func(m *reflectionPacked)String()string{return proto.CompactTextString(m)}
+func(*reflectionPacked)ProtoMessage(){}
+func(m *reflectionPacked)Descriptor()([]byte,[]int){return (*pb.Packed)(m).Descriptor()}
+
+func TestPackedPayloadBoundary(t *testing.T){
+ // A one-byte fixed32 payload used to consume the entire following wire fragment.
+ data:=[]byte{0x12,0x01,0x01,0x18,0x01,0x00}
+ var value pb.Packed
+ if err:=proto.Unmarshal(data,&value);err==nil{t.Fatalf("incomplete fixed32 accepted: %v",&value)}
+ command:=exec.Command("protoc","-I.","--decode=compat.fast.Packed","scalars.proto")
+ command.Stdin=bytes.NewReader(data)
+ if out,err:=command.CombinedOutput();err==nil{t.Fatalf("official decoder accepted regression input: %s",out)}
+}
+
+func TestPackedScalarPayloadBounds(t *testing.T){
+ cases:=[]struct{name string;number,width,wire int}{
+  {"double",1,8,1},{"fixed32",2,4,5},{"int64",3,0,0},{"uint64",4,0,0},
+  {"int32",5,0,0},{"fixed64",6,8,1},{"float",7,4,5},{"bool",8,0,0},
+  {"uint32",9,0,0},{"open_enum",10,0,0},{"sfixed32",11,4,5},
+  {"sfixed64",12,8,1},{"sint32",13,0,0},{"expanded_sint64",14,0,0},
+ }
+ for _,c:=range cases{t.Run(c.name,func(t *testing.T){
+  var incomplete [][]byte
+  valid:=[]byte{1,0}
+  unpacked:=[]byte{1}
+  if c.width!=0{
+   valid=make([]byte,c.width)
+   unpacked=valid
+   for n:=1;n<c.width;n++{incomplete=append(incomplete,make([]byte,n))}
+  }else{incomplete=[][]byte{{0x80}}}
+  suffixes:=[][]byte{nil,scalar(20,7),bytes.Repeat([]byte{8,1},8)}
+  for _,prefix:=range [][]byte{nil,valid}{for _,fragment:=range incomplete{for _,suffix:=range suffixes{
+   payload:=append(append([]byte{},prefix...),fragment...)
+   data:=append(encode(c.number,payload),suffix...)
+   var expected reflectionPacked
+   if err:=proto.Unmarshal(data,&expected);err==nil{t.Fatalf("reflection accepted malformed packed input %x",data)}
+   var actual pb.Packed
+   if err:=proto.Unmarshal(data,&actual);err==nil{t.Fatalf("accepted packed element outside payload: %x: %v",data,&actual)}
+  }}}
+  // Empty/nonempty and repeated packed segments must restore the outer bounds.
+  // A decoder configured for EXPANDED must also accept packed wire input.
+  one:=append(proto.EncodeVarint(uint64(c.number<<3|c.wire)),unpacked...)
+  validInputs:=[][]byte{
+   append(encode(c.number,nil),scalar(20,7)...),
+   append(encode(c.number,valid),scalar(20,7)...),
+   append(append(encode(c.number,valid),scalar(20,7)...),encode(c.number,valid)...),
+   append(append(one,encode(c.number,valid)...),scalar(20,7)...),
+   append(append(encode(c.number,valid),scalar(20,7)...),scalar(100,11)...),
+  }
+  for _,data:=range validInputs{
+   var actual pb.Packed;var expected reflectionPacked
+   if err:=proto.Unmarshal(data,&actual);err!=nil{t.Fatalf("valid packed input %x: %v",data,err)}
+   if err:=proto.Unmarshal(data,&expected);err!=nil{t.Fatal(err)}
+   if actual.GetFollowing()!=7||!proto.Equal(&actual,(*pb.Packed)(&expected)){t.Fatalf("packed/following values differ: %x: %v / %v",data,&actual,&expected)}
+  }
+ })}
+}
+
+type reflectionFloatingPoint pb.FloatingPoint
+func(m *reflectionFloatingPoint)Reset(){*m=reflectionFloatingPoint{}}
+func(m *reflectionFloatingPoint)String()string{return proto.CompactTextString(m)}
+func(*reflectionFloatingPoint)ProtoMessage(){}
+func(m *reflectionFloatingPoint)Descriptor()([]byte,[]int){return (*pb.FloatingPoint)(m).Descriptor()}
+
+func TestFloatingPointSignedZero(t *testing.T){
+ cases:=[]struct{name string;double uint64;single uint32}{
+  {"positive_zero",0,0},
+  {"negative_double_zero",1<<63,0},
+  {"negative_float_zero",0,1<<31},
+  {"negative_zeros",1<<63,1<<31},
+  {"positive_subnormal",1,1},
+  {"negative_subnormal",1<<63|1,1<<31|1},
+  {"max_finite",0x7fefffffffffffff,0x7f7fffff},
+  {"positive_infinity",0x7ff0000000000000,0x7f800000},
+  {"negative_infinity",0xfff0000000000000,0xff800000},
+  {"nan_payload",0x7ff8000000000042,0x7fc00042},
+ }
+ for _,c:=range cases{t.Run(c.name,func(t *testing.T){
+  value:=&pb.FloatingPoint{ImplicitDouble:math.Float64frombits(c.double),ImplicitFloat:math.Float32frombits(c.single)}
+  expected,err:=proto.Marshal((*reflectionFloatingPoint)(value));if err!=nil{t.Fatal(err)}
+  actual,err:=proto.Marshal(value)
+  if err!=nil||!bytes.Equal(actual,expected){t.Fatalf("float wire differs: fast=%x reflection=%x err=%v",actual,expected,err)}
+  if proto.Size(value)!=len(expected){t.Fatalf("float size=%d want=%d",proto.Size(value),len(expected))}
+  var back pb.FloatingPoint
+  if err:=proto.Unmarshal(actual,&back);err!=nil{t.Fatal(err)}
+  if math.Float64bits(back.ImplicitDouble)!=c.double||math.Float32bits(back.ImplicitFloat)!=c.single{t.Fatalf("float bits lost: %016x/%08x want %016x/%08x",math.Float64bits(back.ImplicitDouble),math.Float32bits(back.ImplicitFloat),c.double,c.single)}
+  if FAST{
+   codec,ok:=interface{}(value).(interface{MarshalTo([]byte)(int,error);MarshalToSizedBuffer([]byte)(int,error);Size()int});if !ok{t.Fatal("fast float methods missing")}
+   if codec.Size()!=len(expected){t.Fatal("direct float size differs")}
+   start:=make([]byte,len(expected)+3);n,err:=codec.MarshalTo(start)
+   if err!=nil||n!=len(expected)||!bytes.Equal(start[:n],expected){t.Fatalf("MarshalTo differs: %x %v",start,err)}
+   end:=make([]byte,len(expected)+3);n,err=codec.MarshalToSizedBuffer(end)
+   if err!=nil||n!=len(expected)||!bytes.Equal(end[len(end)-n:],expected){t.Fatalf("sized buffer differs: %x %v",end,err)}
+  }
+  // Text format canonicalizes NaN payloads; compare those through binary paths.
+  if !math.IsNaN(value.ImplicitDouble)&&!math.IsNaN(float64(value.ImplicitFloat)){
+   command:=exec.Command("protoc","-I.","--decode=compat.fast.FloatingPoint","scalars.proto");command.Stdin=bytes.NewReader(actual)
+   text,err:=command.CombinedOutput();if err!=nil{t.Fatalf("official float decode: %s %v",text,err)}
+   command=exec.Command("protoc","-I.","--encode=compat.fast.FloatingPoint","scalars.proto");command.Stdin=bytes.NewReader(text)
+   wire,err:=command.Output();if err!=nil{t.Fatalf("official float encode: %v",err)}
+   if err:=proto.Unmarshal(wire,&back);err!=nil{t.Fatal(err)}
+   if math.Float64bits(back.ImplicitDouble)!=c.double||math.Float32bits(back.ImplicitFloat)!=c.single{t.Fatalf("official float bits differ: %x",wire)}
+  }
+ })}
+}
+
+func TestFloatingPointExplicitAndRepeatedZeros(t *testing.T){
+ negativeDouble:=math.Float64frombits(1<<63);negativeFloat:=math.Float32frombits(1<<31)
+ for _,negative:=range []bool{false,true}{
+  double,single:=float64(0),float32(0);if negative{double,single=negativeDouble,negativeFloat}
+  value:=&pb.FloatingPoint{ExplicitDouble:&double,ExplicitFloat:&single,Doubles:[]float64{0,negativeDouble},Floats:[]float32{0,negativeFloat}}
+  expected,err:=proto.Marshal((*reflectionFloatingPoint)(value));if err!=nil{t.Fatal(err)}
+  actual,err:=proto.Marshal(value);if err!=nil||!bytes.Equal(actual,expected)||proto.Size(value)!=len(expected){t.Fatalf("explicit/repeated zero wire differs: %x / %x %v",actual,expected,err)}
+  var back pb.FloatingPoint;if err:=proto.Unmarshal(actual,&back);err!=nil{t.Fatal(err)}
+  if back.ExplicitDouble==nil||back.ExplicitFloat==nil||math.Float64bits(*back.ExplicitDouble)!=math.Float64bits(double)||math.Float32bits(*back.ExplicitFloat)!=math.Float32bits(single){t.Fatal("explicit zero presence/sign lost")}
+  if len(back.Doubles)!=2||len(back.Floats)!=2||math.Float64bits(back.Doubles[0])!=0||math.Float64bits(back.Doubles[1])!=1<<63||math.Float32bits(back.Floats[0])!=0||math.Float32bits(back.Floats[1])!=1<<31{t.Fatal("repeated zero bits lost")}
+ }
+}

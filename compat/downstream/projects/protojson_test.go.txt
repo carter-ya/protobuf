@@ -1,0 +1,13 @@
+package projects
+
+import (
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
+)
+
+func marshalJSON(value proto.Message) (string, error) {
+	return (&jsonpb.Marshaler{OrigName: true, EnumsAsInts: true}).MarshalToString(value)
+}
+func unmarshalJSON(text string, value proto.Message) error {
+	return jsonpb.UnmarshalString(text, value)
+}

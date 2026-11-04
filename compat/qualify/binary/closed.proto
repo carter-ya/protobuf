@@ -1,0 +1,70 @@
+edition = "2023";
+
+package qualification.closed;
+
+option features.enum_type = CLOSED;
+
+message Payload {
+  int32 a = 1;
+  int32 b = 2;
+  string text = 3;
+}
+
+message RequiredPayload {
+  int32 a = 1 [features.field_presence = LEGACY_REQUIRED];
+  int32 b = 2 [features.field_presence = LEGACY_REQUIRED];
+}
+
+message RequiredContainer {
+  RequiredPayload child = 1;
+  string text = 2;
+  map<string, RequiredPayload> children = 3;
+}
+
+enum State {
+  ZERO = 0;
+  ONE = 1;
+  NEGATIVE = -1;
+}
+
+message Record {
+  int32 explicit_value = 1;
+  int32 implicit_value = 2 [features.field_presence = IMPLICIT];
+  State state = 3;
+  repeated State states = 4;
+  map<string, State> state_map = 5;
+  Payload payload = 6;
+  Payload delimited = 7 [features.message_encoding = DELIMITED];
+  oneof choice {
+    Payload message = 8;
+    State enum = 9;
+    int32 scalar = 10;
+    Record recursive_message = 17;
+  }
+  repeated int32 unpacked = 11 [features.repeated_field_encoding = EXPANDED];
+  repeated Payload children = 12;
+  string text = 13;
+  bytes data = 14;
+  map<string, Payload> messages = 15;
+  map<string, Record> recursive_messages = 16;
+  Record recursive_child = 18;
+  RequiredPayload required_child = 19;
+  extensions 100 to 199;
+}
+
+extend Record {
+  Payload extension_payload = 100;
+  string extension_text = 101;
+  State extension_state = 102;
+  repeated State extension_states = 103;
+  RequiredPayload extension_required = 104;
+  repeated RequiredPayload extension_required_list = 105;
+  Payload extension_group = 106 [features.message_encoding = DELIMITED];
+  RequiredContainer extension_nested_required = 110;
+  Record extension_recursive = 112;
+}
+
+message Envelope {
+  Record child = 1;
+  Record group_child = 2 [features.message_encoding = DELIMITED];
+}
