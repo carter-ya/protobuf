@@ -51,7 +51,7 @@ applicable CI successful. Source-checkout success alone does not establish a
 versioned or cross-revision package pairing.
 
 S04 prepared the root stable contract, origin-aware evidence and reviewable
-publication plan. The separately authorized root v1.4.0 tag has now passed
+publication plan. The separately authorized root v1.4.1 tag has now passed
 published-version installation with the existing reflect RC2. Future stable
 publication remains an explicit maintainer action with the same verification. This decision leaves MessageSet and representation
 boundaries unchanged and makes no new OPAQUE memory/lazy-decoding claim.

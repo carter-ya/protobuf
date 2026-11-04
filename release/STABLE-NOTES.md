@@ -1,79 +1,72 @@
-# Prepared root v1.4.1 patch with existing reflect RC2
+# Root v1.4.1 stable with existing reflect v0.1.0-rc.2
 
-This candidate fixes two confirmed runtime boundaries from the master review:
-optional standard mappings preserve unknown wrong-wire occurrences, and
-standard text maps initialize an omitted closed-enum value from its schema
-default. Packed closed-enum decoding keeps the remaining input separately to
-avoid quadratic copying; omitted map message values enforce required fields. Targeted regressions reproduce both failures before the fix. Final
-publication requires the reviewed source, all CI and actual tag installation.
-The existing root v1.4.0 tag and every RC tag remain immutable; reflect RC2 keeps
-its original source, Go1.23 floor and fixed official-runtime dependency.
+Root v1.4.1 identifies `58ec58f77b1c65d9805d60502df5b6476f08dd4e`. The optional reflect RC2
+remains at `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. The exact remote combination passed
+published-version cold-cache installation on Go1.15, Go1.23 and Go1.27.
+See [installation](INSTALL.md) and the independent component identities in
+manifest.json. The existing v1.4.0 and RC tags were preserved.
 
-The already verified v1.4.0 installation record below is historical evidence,
-not evidence that the v1.4.1 tag has been published.
+## Patch fixes
 
-# Root v1.4.0 stable with existing reflect v0.1.0-rc.2
+- Optional standard time/duration/wrapper mappings preserve unknown wrong-wire
+  occurrences so later fields are decoded normally.
+- Standard text maps use the schema enum default when the value is omitted.
+- Packed closed-enum unknown filtering avoids quadratic copies of the input
+  tail and preserves subsequent fields, including extensions.
+- Omitted map message values enforce required fields while preserving the
+  existing nil representation for messages without required fields.
 
-Root v1.4.0 identifies `057d06490a721bea0fceb39c5c088bc1ef3085e8`. The existing optional reflect
-RC2 remains at `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`. These tags deliberately have
-separate sources. The root stable tag passed published-version cold-cache
-installation on Go1.15, Go1.23 and Go1.27 with the unchanged optional RC module.
-See [installation](INSTALL.md) and the per-component identities in manifest.json.
+The master integration also restores historical protoc 2.6.1/3.0.2/3.14.0
+consumer checks at the supported Go1.15 minimum and on Go1.23. Full maintained
+suites use the pinned current compiler, which can parse Editions metadata.
 
 ## Versions and support
 
-- Root runtime and five generators: stable `v1.4.0`, canonical module
-  `github.com/gogo/protobuf`, minimum Go 1.15, no official V2 dependency.
-  Remote zip sum: `h1:BSo4PqFoTb+H4vFKDz9/+kD0Xl4g60KGDWGuo2Vy46o=`;
+- Root runtime and all five generators: stable `v1.4.1`, canonical module
+  `github.com/gogo/protobuf`, minimum Go1.15, no official V2 dependency.
+  Remote zip sum: `h1:k443S0iIz3TDJ0wGRjvy+OAH851lhl1XzOsFD7tkfIc=`;
   go.mod sum: `h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=`.
-- Optional modern module: reuse the already published `reflect/v0.1.0-rc.2`,
-  canonical module `github.com/gogo/protobuf/reflect`, minimum Go 1.23.
-  Its original source remains `3af6d45fd9dbe0ff1249afa246a44caf995b29a1`.
-  It retains minimum root `v1.4.0-rc.2`; the stable root satisfies it.
-  The remote module zip sum is
-  `h1:L1WsD3DuZ/mO7X5G8y2IkSVLuXSNP9gkduYcwIawUSg=` and go.mod sum is
-  `h1:QH+77kHBTGQyhwF0lJjcePKNNHD1CcuySLbuRU+ZtLs=`.
-- Modern runtime pin: `google.golang.org/protobuf v1.36.13-0.20261007182434-0c373ff94f29`, with exact checksums in
-  `manifest.json`. The modern module remains a prerelease. This root promotion
-  neither republishes it nor changes its dependency/support policy.
+- Optional modern module: unchanged `reflect/v0.1.0-rc.2`, canonical module
+  `github.com/gogo/protobuf/reflect`, minimum Go1.23 and minimum root
+  `v1.4.0-rc.2`. The stable patch satisfies that minimum.
+  Zip sum: `h1:L1WsD3DuZ/mO7X5G8y2IkSVLuXSNP9gkduYcwIawUSg=`;
+  go.mod sum: `h1:QH+77kHBTGQyhwF0lJjcePKNNHD1CcuySLbuRU+ZtLs=`.
+- The optional module retains `google.golang.org/protobuf`
+  `v1.36.13-0.20261007182434-0c373ff94f29` with exact checksums in
+  manifest.json. Root publication does not promote or republish that RC.
 
-Canonical imports remain unchanged. Applications select remote fork module
-replacements and retain go.sum, as in INSTALL.md; use v1.4.0 for the root
-require/replacement and keep the reflect RC2 replacement.
-Generator installation uses the canonical unversioned package from that tools
-module, not an unsupported versioned install against a replacement directive.
+## Qualification and boundaries
 
-## Qualified scope and boundaries
+Actual tag installation passed ten legacy cases on Go1.15 and 105 cases each
+on Go1.23 and Go1.27, including five generators, default/purego/race,
+OPEN/HYBRID/OPAQUE, protoopaque, Edition2026 and the stable-runtime negative
+control. Reports verify full tag origins and remote zip/go.mod sums.
+[Actual stable-tag consumer CI](https://github.com/carter-ya/protobuf/actions/runs/41822549164).
 
-Root v1.4.0 includes the additive compatibility and generator work documented
-in the published RC2 notes and the later maintenance branch. Existing projects
-retain the old default API and layout. Modern OPEN reflection, HYBRID and OPAQUE
-are opt-in and require the separately qualified RC module/runtime combination.
-OPAQUE and HYBRID protoopaque builds retain the published ownership/storage
-contract; no memory-saving or lazy-decoding claim is added.
+Pinned Prometheus, Kubernetes API/apimachinery, BuildKit and CockroachDB errors
+packages are qualified with original/fork controls, frozen/supported regenerated
+bindings, default/purego/race and bidirectional wire exchange. This is selected
+package qualification, not whole-product deployment certification.
 
-The independent combination passed ten Go1.15 legacy cases and 105 modern
-cases on each of Go1.23 and Go1.27, including the exact stable-runtime negative
-control. Full compatibility/conformance CI and the four pinned real-project
-matrices are required for promotion; published-version CI reports record the
-actual versions, source revisions and checksums. The selected packages include
-Prometheus,
-Kubernetes API/apimachinery, BuildKit and CockroachDB errors; this is not a
-whole-product certification.
+Old default APIs and layouts remain compatible. Modern native reflection,
+HYBRID and OPAQUE are opt-in and require the optional RC. OPAQUE requires moving
+direct field access to accessors/builders. Native pointer storage and eager
+decoding remain; no memory-saving or lazy-decoding claim is added.
 
-Legacy MessageSet remains supported. Modern live reflection rejects MessageSet;
-non-native custom representations remain outside that live-storage contract.
-See COMPATIBILITY.md and release/SUPPORT.md for the complete boundaries and the
-reason the modern module stays RC. Existing RC1 and RC2 tags remain immutable.
-
-Actual tag installation evidence: [Go1.15/1.23/1.27 cold-cache consumer CI](https://github.com/carter-ya/protobuf/actions/runs/41800835625).
+Legacy MessageSet remains supported; modern live reflection rejects MessageSet
+and the documented non-native/custom/value/embedded representations. See
+[COMPATIBILITY.md](../COMPATIBILITY.md), [modern contract](../reflect/README.md)
+and [support policy](SUPPORT.md). This release does not claim every official Go
+API or conformance case. Historical RC2 notes remain in NOTES.md. The earlier
+v1.4.0 tag remains at `057d06490a721bea0fceb39c5c088bc1ef3085e8`; its initial
+qualification is retained in [the historical tag CI](https://github.com/carter-ya/protobuf/actions/runs/41800835625).
 
 ## Optional-module source fixes after RC2
 
-This source also fixes quadratic unknown-buffer allocation paths and repeated
-whole-message validation during closed-enum occurrence decoding in the optional
-reflection decoder. The unchanged published reflect RC2 does not
-contain those fixes. They require a separately qualified optional-module
-release; the root stable tag does not republish the nested module. See the
-known source-fix boundary in reflect/README.md before using RC2 on untrusted
-wire input with many occurrences or large preexisting unknown buffers.
+The current optional-module source fixes quadratic unknown-buffer allocation
+paths and repeated whole-message validation during closed-enum decoding. The
+immutable published reflect RC2 does not include these fixes and may use
+disproportionate CPU or memory on wire inputs with many unknown/closed-enum
+occurrences. Bound input sizes and occurrence counts when using that RC with
+untrusted input, or qualify a full source revision separately. Root v1.4.1 does
+not republish the nested module. See reflect/README.md for this known boundary.
