@@ -143,8 +143,11 @@ before upgrading or attempting a downgrade to the stable reference.
 
 The current source avoids repeated unknown-buffer copies during closed-enum
 merge/discard decoding and ordinary unknown-field decoding, including messages
-with extension ranges. These fixes are not in the immutable published reflect RC2 module.
-RC2 may allocate disproportionately for inputs containing many such occurrences,
+with extension ranges. Closed-enum occurrences use an empty carrier so the
+accumulated lists/maps/extensions are not revalidated or re-encoded for each
+field. Final required-field completeness is checked by the outer V2 operation.
+These fixes are not in the immutable published reflect RC2 module.
+RC2 may allocate disproportionately for inputs containing many unknown or known closed-enum occurrences,
 including Merge+DiscardUnknown with a large existing unknown buffer. Bound input
 sizes and occurrence counts when using that RC with untrusted wire data, or use
 a separately qualified full source revision. Root v1.4.1 publication does not

@@ -37,6 +37,7 @@ var nativeMethods = protoiface.Methods{
 		options := v2.UnmarshalOptions{Merge: true, AllowPartial: true, DiscardUnknown: in.Flags&protoiface.UnmarshalDiscardUnknown != 0, Resolver: resolver, RecursionLimit: in.Depth}
 		slow := &slowView{Message: m}
 		defer slow.flushUnknownExtensions()
+		var occurrence *message
 		for buf := in.Buf; len(buf) > 0; {
 			number, wire, taglen := protowire.ConsumeTag(buf)
 			if taglen < 0 {
@@ -61,28 +62,12 @@ var nativeMethods = protoiface.Methods{
 				enum = fd.MapValue()
 			}
 			if enum != nil && enum.Enum() != nil && enum.Enum().IsClosed() {
-				var previous []byte
-				if options.DiscardUnknown {
-					// Native closed-enum decoding appends rejected values only
-					// to the regular unknown field, including for extensions.
-					// Retain its slice header; appending cannot change the prefix.
-					previous = m.nativeField(m.info.unknown).Bytes()
+				if occurrence == nil {
+					occurrence = m.info.New().(*message)
+				} else {
+					occurrence.Reset()
 				}
-				if fd.IsExtension() {
-					x := m.extension(fd)
-					if err := gogo.MaterializeExtensionWire(m.native(), x.native); err != nil {
-						return out, err
-					}
-				}
-				err := gogo.UnmarshalMerge(raw, m.native())
-				var required *gogo.RequiredNotSetError
-				if errors.As(err, &required) {
-					err = nil
-				}
-				if options.DiscardUnknown {
-					m.nativeField(m.info.unknown).SetBytes(previous)
-				}
-				if err != nil {
+				if err := m.mergeClosedEnumOccurrence(raw, fd, occurrence, options.DiscardUnknown); err != nil {
 					return out, err
 				}
 			} else if err := options.Unmarshal(raw, slow); err != nil {
@@ -91,6 +76,45 @@ var nativeMethods = protoiface.Methods{
 		}
 		return out, nil
 	},
+}
+
+// Decode into an empty reusable carrier so native required/extension validation
+// visits only this occurrence. Merge its accepted values in wire order, leaving
+// final required-field completeness to V2's outer CheckInitialized pass. In
+// particular, never revalidate or re-encode the accumulated enum list/map/store.
+func (m *message) mergeClosedEnumOccurrence(raw []byte, fd protoreflect.FieldDescriptor, occurrence *message, discard bool) error {
+	err := gogo.UnmarshalMerge(raw, occurrence.native())
+	var required *gogo.RequiredNotSetError
+	if err != nil && !errors.As(err, &required) {
+		return err
+	}
+	unknown := occurrence.nativeField(occurrence.info.unknown).Bytes()
+	switch {
+	case fd.IsList():
+		incoming := occurrence.Get(fd).List()
+		if incoming.Len() != 0 {
+			list := m.Mutable(fd).List()
+			for i := 0; i < incoming.Len(); i++ {
+				list.Append(incoming.Get(i))
+			}
+		}
+	case fd.IsMap():
+		occurrence.Get(fd).Map().Range(func(key protoreflect.MapKey, value protoreflect.Value) bool {
+			m.Mutable(fd).Map().Set(key, value)
+			return true
+		})
+	default:
+		// A known implicit-presence zero must clear an earlier nonzero value,
+		// even though Has reports false for the accepted default value.
+		if occurrence.Has(fd) || (!fd.HasPresence() && len(unknown) == 0) {
+			m.Set(fd, occurrence.Get(fd))
+		}
+	}
+	if !discard && len(unknown) != 0 {
+		field := m.nativeField(m.info.unknown)
+		field.SetBytes(append(field.Bytes(), unknown...))
+	}
+	return nil
 }
 
 // slowView is private to one official reflective decode. The official decoder

@@ -70,8 +70,9 @@ Actual tag installation evidence: [Go1.15/1.23/1.27 cold-cache consumer CI](http
 
 ## Optional-module source fixes after RC2
 
-This source also fixes two quadratic unknown-buffer allocation paths in the
-optional reflection decoder. The unchanged published reflect RC2 does not
+This source also fixes quadratic unknown-buffer allocation paths and repeated
+whole-message validation during closed-enum occurrence decoding in the optional
+reflection decoder. The unchanged published reflect RC2 does not
 contain those fixes. They require a separately qualified optional-module
 release; the root stable tag does not republish the nested module. See the
 known source-fix boundary in reflect/README.md before using RC2 on untrusted

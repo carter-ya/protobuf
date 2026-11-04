@@ -2,9 +2,11 @@ package gogoreflect_test
 
 import (
 	"bytes"
+	"fmt"
 	"runtime"
 	"testing"
 
+	live "github.com/gogo/protobuf/reflect"
 	pb "github.com/gogo/protobuf/reflect/internal/testpb"
 	v2 "google.golang.org/protobuf/proto"
 )
@@ -97,5 +99,28 @@ func TestUnknownExtensionsSurvivePartialDecodeError(t *testing.T) {
 	}
 	if want := append(varint(107, 1), varint(108, 9)...); !bytes.Equal(m.GetUnknown(), want) {
 		t.Fatal("an error discarded previously decoded unknown extensions", m.GetUnknown())
+	}
+}
+
+func BenchmarkClosedEnumOccurrenceMerge(b *testing.B) {
+	for _, size := range []int{2000, 4000, 8000} {
+		b.Run(fmt.Sprint(size), func(b *testing.B) {
+			n := new(pb.Closed)
+			wrapped, err := live.Wrap(n)
+			if err != nil {
+				b.Fatal(err)
+			}
+			input := bytes.Repeat(varint(2, 7), size)
+			if err := v2.Unmarshal(input[:2], wrapped); err != nil {
+				b.Fatal(err)
+			}
+			b.SetBytes(int64(len(input)))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if err := v2.Unmarshal(input, wrapped); err != nil || len(n.List) != size {
+					b.Fatal("closed enum list decode", err, len(n.List))
+				}
+			}
+		})
 	}
 }
