@@ -28,7 +28,7 @@ go 1.15
 require github.com/gogo/protobuf v1.4.0
 replace github.com/gogo/protobuf => $repo
 MOD
-  "$compiler" -I "$consumer" --plugin="protoc-gen-test=$GOBIN/protoc-gen-$backend" --test_out="paths=source_relative:$consumer/pb" schema.proto
+  (cd "$consumer" && "$compiler" -I . --plugin="protoc-gen-test=$GOBIN/protoc-gen-$backend" --test_out="paths=source_relative:$consumer/pb" schema.proto)
   (cd "$consumer" && go test -mod=mod -count=1 ./... && go test -mod=mod -count=1 -tags purego ./...)
  done
 done
