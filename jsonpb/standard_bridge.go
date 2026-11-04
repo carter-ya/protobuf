@@ -149,8 +149,8 @@ func validateStandardJSON(raw []byte) error {
 					return fmt.Errorf("duplicate JSON key %q", name)
 				}
 				keys[name] = true
-				if err := visit(depth + 1); err != nil {
-					return err
+				if objectValueErr := visit(depth + 1); objectValueErr != nil {
+					return objectValueErr
 				}
 			}
 		case '[':
